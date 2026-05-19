@@ -7,6 +7,7 @@ import {
     createNormalizedCallback,
     createNormalizedConstructor,
     createNormalizedField,
+    createNormalizedFunction,
     createNormalizedMethod,
     createNormalizedNamespace,
     createNormalizedParameter,
@@ -19,7 +20,7 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
     const ns = createNormalizedNamespace({ name: "Gdk" });
     namespaces.set("Gdk", ns);
     const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gdk");
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gdk");
     const file = fileBuilder();
     const options = {
         namespace: "Gdk",
@@ -36,7 +37,7 @@ function createTestSetupWithRepo(configure: (ns: ReturnType<typeof createNormali
     configure(ns);
     const namespaces = new Map([["Gdk", ns]]);
     const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gdk");
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gdk");
     const file = fileBuilder();
     const options = {
         namespace: "Gdk",
@@ -44,7 +45,12 @@ function createTestSetupWithRepo(configure: (ns: ReturnType<typeof createNormali
         glibLibrary: "libglib-2.0.so.0",
         gobjectLibrary: "libgobject-2.0.so.0",
     };
-    const generator = new RecordGenerator(ffiMapper, file, options, repo as Parameters<typeof RecordGenerator>[3]);
+    const generator = new RecordGenerator(
+        ffiMapper,
+        file,
+        options,
+        repo as ConstructorParameters<typeof RecordGenerator>[3],
+    );
     return { generator, file, repo, namespace: ns };
 }
 
@@ -132,7 +138,7 @@ describe("RecordGenerator", () => {
             const glibNs = createNormalizedNamespace({ name: "GLib" });
             const namespaces = new Map([["GLib", glibNs]]);
             const repo = createMockRepository(namespaces);
-            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GLib");
+            const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GLib");
             const glibFile = fileBuilder();
             const options = {
                 namespace: "GLib",
@@ -360,13 +366,13 @@ describe("RecordGenerator", () => {
             const record = createNormalizedRecord({
                 name: "Rectangle",
                 staticFunctions: [
-                    {
+                    createNormalizedFunction({
                         name: "intersect",
                         cIdentifier: "gdk_rectangle_intersect",
                         returnType: createNormalizedType({ name: "gboolean" }),
                         parameters: [],
                         throws: false,
-                    },
+                    }),
                 ],
                 fields: [],
             });
@@ -1229,7 +1235,7 @@ describe("RecordGenerator", () => {
             const glibNs = createNormalizedNamespace({ name: "GLib" });
             const namespaces = new Map([["GLib", glibNs]]);
             const repo = createMockRepository(namespaces);
-            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GLib");
+            const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GLib");
             const file = fileBuilder();
             const options = {
                 namespace: "GLib",
@@ -1265,7 +1271,7 @@ describe("RecordGenerator", () => {
             const record = createNormalizedRecord({
                 name: "Rectangle",
                 staticFunctions: [
-                    {
+                    createNormalizedFunction({
                         name: "with_closure",
                         cIdentifier: "gdk_rectangle_with_closure",
                         returnType: createNormalizedType({ name: "none" }),
@@ -1276,7 +1282,7 @@ describe("RecordGenerator", () => {
                             }),
                         ],
                         throws: false,
-                    },
+                    }),
                 ],
                 fields: [],
             });

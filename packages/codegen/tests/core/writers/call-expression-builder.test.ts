@@ -218,6 +218,7 @@ describe("CallExpressionBuilder", () => {
         it("returns simple value for primitive types", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
+                imports: [],
                 ts: "number",
                 ffi: { type: "int32" },
             };
@@ -230,6 +231,7 @@ describe("CallExpressionBuilder", () => {
         it("returns simple value for string type", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
+                imports: [],
                 ts: "string",
                 ffi: { type: "string", ownership: "borrowed" },
             };
@@ -242,6 +244,7 @@ describe("CallExpressionBuilder", () => {
         it("returns simple value for boolean type", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
+                imports: [],
                 ts: "boolean",
                 ffi: { type: "boolean" },
             };
@@ -254,6 +257,7 @@ describe("CallExpressionBuilder", () => {
         it("returns ID extraction expression for gobject type", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
+                imports: [],
                 ts: "Widget",
                 ffi: { type: "gobject", ownership: "borrowed" },
             };
@@ -266,6 +270,7 @@ describe("CallExpressionBuilder", () => {
         it("returns ID extraction expression for boxed type", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
+                imports: [],
                 ts: "GdkRGBA",
                 ffi: { type: "boxed", ownership: "borrowed", innerType: "GdkRGBA" },
             };
@@ -278,6 +283,7 @@ describe("CallExpressionBuilder", () => {
         it("returns ID extraction expression for struct type", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
+                imports: [],
                 ts: "Allocation",
                 ffi: { type: "struct", ownership: "borrowed", innerType: "GtkAllocation" },
             };
@@ -290,6 +296,7 @@ describe("CallExpressionBuilder", () => {
         it("handles complex value names", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
+                imports: [],
                 ts: "Widget",
                 ffi: { type: "gobject", ownership: "borrowed" },
             };
@@ -302,6 +309,7 @@ describe("CallExpressionBuilder", () => {
         it("handles array value names", () => {
             const builder = new CallExpressionBuilder();
             const mappedType: MappedType = {
+                imports: [],
                 ts: "Widget",
                 ffi: { type: "gobject", ownership: "borrowed" },
             };

@@ -18,8 +18,8 @@ import { createMockRepository } from "../../fixtures/mock-repository.js";
 
 function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>>) {
     const repo = createMockRepository(namespaces);
-    const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-    const analyzer = new PropertyAnalyzer(repo as Parameters<typeof PropertyAnalyzer>[0], mapper);
+    const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
+    const analyzer = new PropertyAnalyzer(repo as ConstructorParameters<typeof PropertyAnalyzer>[0], mapper);
     return { repo, mapper, analyzer };
 }
 
@@ -371,8 +371,8 @@ describe("PropertyAnalyzer", () => {
                     ["Gdk", gdkNs],
                 ]),
             );
-            const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-            const analyzer = new PropertyAnalyzer(repo as Parameters<typeof PropertyAnalyzer>[0], mapper);
+            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
+            const analyzer = new PropertyAnalyzer(repo as ConstructorParameters<typeof PropertyAnalyzer>[0], mapper);
 
             const result = analyzer.analyzeWidgetProperties(imageClass);
 
@@ -462,8 +462,8 @@ describe("PropertyAnalyzer", () => {
                     ["Gdk", gdkNs],
                 ]),
             );
-            const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-            const analyzer = new PropertyAnalyzer(repo as Parameters<typeof PropertyAnalyzer>[0], mapper);
+            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
+            const analyzer = new PropertyAnalyzer(repo as ConstructorParameters<typeof PropertyAnalyzer>[0], mapper);
 
             const result = analyzer.analyzeWidgetProperties(widgetClass);
 
@@ -797,7 +797,7 @@ describe("PropertyAnalyzer - Extended Coverage", () => {
                     createNormalizedProperty({
                         name: "visible",
                         type: createNormalizedType({ name: "gboolean" }),
-                        defaultValue: "TRUE",
+                        defaultValue: { kind: "boolean", value: true },
                     }),
                 ],
                 constructors: [

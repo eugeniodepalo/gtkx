@@ -29,7 +29,7 @@ function createTestSetup(
     });
     namespaces.set("Gtk", ns);
     const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
     const file = fileBuilder();
     const options = {
         namespace: "Gtk",
@@ -74,8 +74,8 @@ describe("StaticFunctionBuilder", () => {
             const structures = builder.buildStructures();
 
             expect(structures).toHaveLength(1);
-            expect(structures[0].name).toBe("getDefault");
-            expect(structures[0].isStatic).toBe(true);
+            expect(structures[0]?.name).toBe("getDefault");
+            expect(structures[0]?.isStatic).toBe(true);
         });
 
         it("builds structures for multiple static functions", () => {
@@ -97,8 +97,8 @@ describe("StaticFunctionBuilder", () => {
             const structures = builder.buildStructures();
 
             expect(structures).toHaveLength(2);
-            expect(structures[0].name).toBe("funcOne");
-            expect(structures[1].name).toBe("funcTwo");
+            expect(structures[0]?.name).toBe("funcOne");
+            expect(structures[1]?.name).toBe("funcTwo");
         });
 
         it("converts function names to camelCase", () => {
@@ -114,7 +114,7 @@ describe("StaticFunctionBuilder", () => {
 
             const structures = builder.buildStructures();
 
-            expect(structures[0].name).toBe("someLongFunctionName");
+            expect(structures[0]?.name).toBe("someLongFunctionName");
         });
 
         it("includes parameters in structure", () => {
@@ -140,9 +140,9 @@ describe("StaticFunctionBuilder", () => {
 
             const structures = builder.buildStructures();
 
-            expect(structures[0].parameters).toHaveLength(2);
-            expect(structures[0].parameters?.[0].name).toBe("label");
-            expect(structures[0].parameters?.[1].name).toBe("count");
+            expect(structures[0]?.parameters).toHaveLength(2);
+            expect(structures[0]?.parameters?.[0]?.name).toBe("label");
+            expect(structures[0]?.parameters?.[1]?.name).toBe("count");
         });
 
         it("includes return type when not void", () => {
@@ -158,7 +158,7 @@ describe("StaticFunctionBuilder", () => {
 
             const structures = builder.buildStructures();
 
-            expect(structures[0].returnType).toBe("number");
+            expect(structures[0]?.returnType).toBe("number");
         });
 
         it("omits return type for void functions", () => {
@@ -174,7 +174,7 @@ describe("StaticFunctionBuilder", () => {
 
             const structures = builder.buildStructures();
 
-            expect(structures[0].returnType).toBeUndefined();
+            expect(structures[0]?.returnType).toBeUndefined();
         });
 
         it("emits a stub for functions whose parameters are GLib.Closure (untyped, unsafe)", () => {
@@ -219,7 +219,7 @@ describe("StaticFunctionBuilder", () => {
 
             const structures = builder.buildStructures();
 
-            expect(structures[0].returnType).toBe("Button");
+            expect(structures[0]?.returnType).toBe("Button");
         });
     });
 

@@ -7,6 +7,7 @@ import type { GirRepository } from "../../../../src/gir/index.js";
 import {
     createNormalizedClass,
     createNormalizedConstructor,
+    createNormalizedFunction,
     createNormalizedMethod,
     createNormalizedNamespace,
     createNormalizedParameter,
@@ -39,7 +40,7 @@ function createTestSetup(
     gtkNs.classes.set(cls.name, cls);
 
     const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
     const file = fileBuilder();
     const options = {
         namespace: "Gtk",
@@ -153,13 +154,13 @@ describe("ClassGenerator", () => {
         it("generates static functions", () => {
             const { generator, file } = createTestSetup({
                 staticFunctions: [
-                    {
+                    createNormalizedFunction({
                         name: "get_default_direction",
                         cIdentifier: "gtk_widget_get_default_direction",
                         returnType: createNormalizedType({ name: "gint" }),
                         parameters: [],
                         throws: false,
-                    },
+                    }),
                 ],
             });
 
@@ -398,7 +399,7 @@ describe("ClassGenerator", () => {
             const namespaces = new Map([["GObject", gobjectNs]]);
 
             const repo = createMockRepository(namespaces);
-            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GObject");
+            const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GObject");
             const psFile = fileBuilder();
             const options = {
                 namespace: "GObject",
@@ -455,7 +456,7 @@ describe("ClassGenerator", () => {
             ]);
 
             const repo = createMockRepository(namespaces);
-            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Adw");
+            const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Adw");
             const adwFile = fileBuilder();
             const options = {
                 namespace: "Adw",
@@ -515,7 +516,7 @@ describe("ClassGenerator", () => {
                 };
             };
 
-            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+            const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
             const file = fileBuilder();
             const options = {
                 namespace: "Gtk",
@@ -595,7 +596,7 @@ describe("ClassGenerator", () => {
                 return null;
             };
 
-            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+            const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
             const file = fileBuilder();
             const options = {
                 namespace: "Gtk",
@@ -628,7 +629,7 @@ describe("ClassGenerator", () => {
             gtkNs.classes.set(button.name, button);
 
             const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
-            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+            const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
             const file = fileBuilder();
             const options = {
                 namespace: "Gtk",
@@ -674,7 +675,7 @@ describe("ClassGenerator", () => {
             gtkNs.classes.set(button.name, button);
 
             const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
-            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+            const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
             const file = fileBuilder();
 
             const generator = new ClassGenerator(button, ffiMapper, file, repo as unknown as GirRepository, {
@@ -712,7 +713,7 @@ describe("ClassGenerator", () => {
             gtkNs.classes.set(socket.name, socket);
 
             const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
-            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+            const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
             const file = fileBuilder();
 
             const generator = new ClassGenerator(socket, ffiMapper, file, repo as unknown as GirRepository, {

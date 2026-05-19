@@ -7,6 +7,7 @@ import type {
     GirInterface,
     GirNamespace,
     GirRecord,
+    GirRepository,
     TypeKind,
 } from "../../src/gir/index.js";
 
@@ -38,7 +39,7 @@ export interface MockGirRepository {
     findClasses(predicate: (cls: GirClass) => boolean): GirClass[];
 }
 
-export function createMockRepository(namespaces: Map<string, GirNamespace> = new Map()): MockGirRepository {
+export function createMockRepository(namespaces: Map<string, GirNamespace> = new Map()): GirRepository {
     const repo: MockGirRepository = {
         getNamespace(name: string): GirNamespace | null {
             return namespaces.get(name) ?? null;
@@ -196,5 +197,5 @@ export function createMockRepository(namespaces: Map<string, GirNamespace> = new
         },
     };
 
-    return repo;
+    return repo as unknown as GirRepository;
 }

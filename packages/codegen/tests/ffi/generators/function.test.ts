@@ -15,7 +15,7 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
     const ns = createNormalizedNamespace({ name: "Gtk" });
     namespaces.set("Gtk", ns);
     const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
     const file = fileBuilder();
     const options = {
         namespace: "Gtk",

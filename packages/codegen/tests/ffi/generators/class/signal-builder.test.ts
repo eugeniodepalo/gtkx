@@ -32,7 +32,7 @@ function createTestSetup(
         namespaces.set("Gtk", createNormalizedNamespace({ name: "Gtk" }));
     }
     const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
     const file = fileBuilder();
     const options = {
         namespace: "Gtk",
@@ -49,7 +49,13 @@ function createTestSetup(
         ...classOverrides,
     });
 
-    const builder = new SignalBuilder(cls, ffiMapper, file, repo as Parameters<typeof FfiMapper>[0], options);
+    const builder = new SignalBuilder(
+        cls,
+        ffiMapper,
+        file,
+        repo as ConstructorParameters<typeof FfiMapper>[0],
+        options,
+    );
     return { cls, builder, ffiMapper, file };
 }
 
@@ -87,8 +93,8 @@ describe("SignalBuilder", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            expect(structures[0].overloads).toBeDefined();
-            expect(structures[0].overloads?.length).toBeGreaterThanOrEqual(2);
+            expect(structures[0]?.overloads).toBeDefined();
+            expect(structures[0]?.overloads?.length).toBeGreaterThanOrEqual(2);
         });
 
         it("includes generic string overload", () => {
@@ -98,7 +104,7 @@ describe("SignalBuilder", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            const genericOverload = structures[0].overloads?.find((o) => o.params?.[0]?.type === "string");
+            const genericOverload = structures[0]?.overloads?.find((o) => o.params?.[0]?.type === "string");
             expect(genericOverload).toBeDefined();
         });
 
@@ -109,7 +115,7 @@ describe("SignalBuilder", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            expect(structures[0].returnType).toBe("number");
+            expect(structures[0]?.returnType).toBe("number");
         });
     });
 
@@ -164,7 +170,7 @@ describe("SignalBuilder", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            const overload = structures[0].overloads?.[0];
+            const overload = structures[0]?.overloads?.[0];
             expect(overload?.params?.[1]?.type).toBe("() => void");
         });
 
@@ -189,7 +195,7 @@ describe("SignalBuilder", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            const overload = structures[0].overloads?.[0];
+            const overload = structures[0]?.overloads?.[0];
             expect(overload?.params?.[1]?.type).toContain("deltaX:");
             expect(overload?.params?.[1]?.type).toContain("deltaY:");
         });
@@ -253,7 +259,7 @@ describe("SignalBuilder - Extended Coverage", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            const overload = structures[0].overloads?.[0];
+            const overload = structures[0]?.overloads?.[0];
             expect(overload?.params?.[1]?.type).toContain("=> boolean");
         });
 
@@ -269,7 +275,7 @@ describe("SignalBuilder - Extended Coverage", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            const overload = structures[0].overloads?.[0];
+            const overload = structures[0]?.overloads?.[0];
             expect(overload?.params?.[1]?.type).toContain("=> void");
         });
 
@@ -285,7 +291,7 @@ describe("SignalBuilder - Extended Coverage", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            const overload = structures[0].overloads?.[0];
+            const overload = structures[0]?.overloads?.[0];
             expect(overload?.params?.[1]?.type).toContain("=> string");
         });
     });
@@ -320,8 +326,8 @@ describe("SignalBuilder - Extended Coverage", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            expect(structures[0].name).toBe("connect");
-            const overload = structures[0].overloads?.[0];
+            expect(structures[0]?.name).toBe("connect");
+            const overload = structures[0]?.overloads?.[0];
             expect(overload?.params?.[1]?.type).toContain("child:");
         });
     });
@@ -349,7 +355,7 @@ describe("SignalBuilder - Extended Coverage", () => {
 
             const structures = builder.buildConnectMethodStructures();
 
-            const overload = structures[0].overloads?.[0];
+            const overload = structures[0]?.overloads?.[0];
             expect(overload?.params?.[1]?.type).not.toContain("...");
         });
     });
@@ -387,7 +393,7 @@ describe("SignalBuilder - Extended Coverage", () => {
             });
 
             const repo = createMockRepository(new Map([["Gtk", ns]]));
-            const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+            const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
             const file = fileBuilder();
             const options = {
                 namespace: "Gtk",
@@ -400,7 +406,7 @@ describe("SignalBuilder - Extended Coverage", () => {
                 childClass,
                 ffiMapper,
                 file,
-                repo as Parameters<typeof FfiMapper>[0],
+                repo as ConstructorParameters<typeof FfiMapper>[0],
                 options,
             );
 
@@ -475,7 +481,7 @@ describe("SignalBuilder - signal meta table", () => {
 
     it("resolves the gtype from the glib type name when no get-type function exists", () => {
         const { builder } = createTestSetup({
-            glibGetType: null,
+            glibGetType: undefined,
             glibTypeName: "GtkButton",
             signals: [createNormalizedSignal({ name: "clicked" })],
         });
@@ -488,8 +494,8 @@ describe("SignalBuilder - signal meta table", () => {
 
     it("falls back to a zero gtype when neither get-type nor type-name is available", () => {
         const { builder } = createTestSetup({
-            glibGetType: null,
-            glibTypeName: null,
+            glibGetType: undefined,
+            glibTypeName: undefined,
             signals: [createNormalizedSignal({ name: "clicked" })],
         });
 
@@ -573,13 +579,19 @@ describe("SignalBuilder - collectAllSignals composition", () => {
         );
         ns.classes.set("Button", child);
 
-        const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-        const builder = new SignalBuilder(child, ffiMapper, fileBuilder(), repo as Parameters<typeof FfiMapper>[0], {
-            namespace: "Gtk",
-            sharedLibrary: "libgtk-4.so.1",
-            glibLibrary: "libglib-2.0.so.0",
-            gobjectLibrary: "libgobject-2.0.so.0",
-        });
+        const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
+        const builder = new SignalBuilder(
+            child,
+            ffiMapper,
+            fileBuilder(),
+            repo as ConstructorParameters<typeof FfiMapper>[0],
+            {
+                namespace: "Gtk",
+                sharedLibrary: "libgtk-4.so.1",
+                glibLibrary: "libglib-2.0.so.0",
+                gobjectLibrary: "libgobject-2.0.so.0",
+            },
+        );
 
         const { allSignals, hasCrossNamespaceParent } = builder.collectAllSignals();
 
@@ -618,13 +630,19 @@ describe("SignalBuilder - collectAllSignals composition", () => {
         );
         gtkNs.classes.set("Button", child);
 
-        const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-        const builder = new SignalBuilder(child, ffiMapper, fileBuilder(), repo as Parameters<typeof FfiMapper>[0], {
-            namespace: "Gtk",
-            sharedLibrary: "libgtk-4.so.1",
-            glibLibrary: "libglib-2.0.so.0",
-            gobjectLibrary: "libgobject-2.0.so.0",
-        });
+        const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
+        const builder = new SignalBuilder(
+            child,
+            ffiMapper,
+            fileBuilder(),
+            repo as ConstructorParameters<typeof FfiMapper>[0],
+            {
+                namespace: "Gtk",
+                sharedLibrary: "libgtk-4.so.1",
+                glibLibrary: "libglib-2.0.so.0",
+                gobjectLibrary: "libgobject-2.0.so.0",
+            },
+        );
 
         const { hasCrossNamespaceParent } = builder.collectAllSignals();
 
@@ -647,13 +665,19 @@ describe("SignalBuilder - GObject namespace specifics", () => {
         );
         ns.classes.set("Object", cls);
 
-        const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GObject");
-        const builder = new SignalBuilder(cls, ffiMapper, fileBuilder(), repo as Parameters<typeof FfiMapper>[0], {
-            namespace: "GObject",
-            sharedLibrary: "libgobject-2.0.so.0",
-            glibLibrary: "libglib-2.0.so.0",
-            gobjectLibrary: "libgobject-2.0.so.0",
-        });
+        const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GObject");
+        const builder = new SignalBuilder(
+            cls,
+            ffiMapper,
+            fileBuilder(),
+            repo as ConstructorParameters<typeof FfiMapper>[0],
+            {
+                namespace: "GObject",
+                sharedLibrary: "libgobject-2.0.so.0",
+                glibLibrary: "libglib-2.0.so.0",
+                gobjectLibrary: "libgobject-2.0.so.0",
+            },
+        );
 
         const structures = builder.buildConnectMethodStructures();
         const connectWriter = new Writer();
@@ -676,13 +700,19 @@ describe("SignalBuilder - GObject namespace specifics", () => {
         );
         ns.classes.set("Object", cls);
 
-        const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GObject");
-        const builder = new SignalBuilder(cls, ffiMapper, fileBuilder(), repo as Parameters<typeof FfiMapper>[0], {
-            namespace: "GObject",
-            sharedLibrary: "libgobject-2.0.so.0",
-            glibLibrary: "libglib-2.0.so.0",
-            gobjectLibrary: "libgobject-2.0.so.0",
-        });
+        const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GObject");
+        const builder = new SignalBuilder(
+            cls,
+            ffiMapper,
+            fileBuilder(),
+            repo as ConstructorParameters<typeof FfiMapper>[0],
+            {
+                namespace: "GObject",
+                sharedLibrary: "libgobject-2.0.so.0",
+                glibLibrary: "libglib-2.0.so.0",
+                gobjectLibrary: "libgobject-2.0.so.0",
+            },
+        );
 
         const code = renderMeta(builder);
 

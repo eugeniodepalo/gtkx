@@ -263,7 +263,7 @@ describe("partitionSupportedMethods", () => {
             () => false,
         );
         expect(supported).toHaveLength(1);
-        expect(supported[0].name).toBe("supported");
+        expect(supported[0]?.name).toBe("supported");
     });
 
     it("filters out methods with unsafe return types", () => {
@@ -278,7 +278,7 @@ describe("partitionSupportedMethods", () => {
             (returnType) => returnType?.name === "gpointer",
         );
         expect(supported).toHaveLength(1);
-        expect(supported[0].name).toBe("safe");
+        expect(supported[0]?.name).toBe("safe");
     });
 
     it("keeps first occurrence when duplicates exist", () => {
@@ -293,7 +293,7 @@ describe("partitionSupportedMethods", () => {
             () => false,
         );
         expect(supported).toHaveLength(1);
-        expect(supported[0].parameters[0].name).toBe("first");
+        expect(supported[0]?.parameters[0]?.name).toBe("first");
     });
 
     it("returns empty array for empty input", () => {

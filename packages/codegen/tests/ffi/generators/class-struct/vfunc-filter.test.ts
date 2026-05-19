@@ -13,7 +13,7 @@ import { createMockRepository } from "../../../fixtures/mock-repository.js";
 function createMapper() {
     const ns = createNormalizedNamespace({ name: "GObject" });
     const repo = createMockRepository(new Map([["GObject", ns]]));
-    return new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GObject");
+    return new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GObject");
 }
 
 describe("classifyVfunc", () => {

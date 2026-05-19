@@ -96,6 +96,7 @@ describe("GirRecord", () => {
             cType: "GdkRectangle",
             opaque: false,
             disguised: false,
+            isUnion: false,
             glibTypeName: "GdkRectangle",
             glibGetType: "gdk_rectangle_get_type",
             fields: [],
@@ -114,6 +115,7 @@ describe("GirRecord", () => {
             cType: "GdkPoint",
             opaque: false,
             disguised: false,
+            isUnion: false,
             fields: [
                 new GirField({
                     name: "x",

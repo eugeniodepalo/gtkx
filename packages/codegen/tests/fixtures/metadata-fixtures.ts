@@ -36,6 +36,7 @@ export function createCodegenWidgetMeta(overrides: Partial<CodegenWidgetMeta> = 
         namespace: "Gtk",
         jsxName: "GtkButton",
         slots: [],
+        containerMethods: [],
         propNames: ["label", "icon-name"],
         signalNames: ["clicked"],
         parentClassName: "Widget",

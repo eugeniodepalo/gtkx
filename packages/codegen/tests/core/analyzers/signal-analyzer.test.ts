@@ -14,8 +14,8 @@ import { createMockRepository } from "../../fixtures/mock-repository.js";
 
 function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>>) {
     const repo = createMockRepository(namespaces);
-    const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-    const analyzer = new SignalAnalyzer(repo as Parameters<typeof SignalAnalyzer>[0], mapper);
+    const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
+    const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
     return { repo, mapper, analyzer };
 }
 
@@ -256,8 +256,8 @@ describe("SignalAnalyzer", () => {
                     ["Gdk", gdkNs],
                 ]),
             );
-            const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-            const analyzer = new SignalAnalyzer(repo as Parameters<typeof SignalAnalyzer>[0], mapper);
+            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
+            const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
 
             const result = analyzer.analyzeWidgetSignals(widgetClass);
 
@@ -295,8 +295,8 @@ describe("SignalAnalyzer", () => {
                     ["Gdk", gdkNs],
                 ]),
             );
-            const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-            const analyzer = new SignalAnalyzer(repo as Parameters<typeof SignalAnalyzer>[0], mapper);
+            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
+            const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
 
             const result = analyzer.analyzeWidgetSignals(dndClass);
 
@@ -363,8 +363,8 @@ describe("SignalAnalyzer", () => {
                     ["Gdk", gdkNs],
                 ]),
             );
-            const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
-            const analyzer = new SignalAnalyzer(repo as Parameters<typeof SignalAnalyzer>[0], mapper);
+            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
+            const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
 
             const result = analyzer.analyzeWidgetSignals(gestureClass);
 

@@ -21,7 +21,7 @@ function createMockAnalyzers(): ClassMetaAnalyzers {
         constructor: {
             getConstructorParamNames: () => [],
         },
-    } as ClassMetaAnalyzers;
+    } as unknown as ClassMetaAnalyzers;
 }
 
 function createTestSetup(

@@ -24,7 +24,7 @@ function createTestSetup(
         namespaces.set(namespace, createNormalizedNamespace({ name: namespace }));
     }
     const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], namespace);
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], namespace);
     const file = fileBuilder();
     const options = {
         namespace,
@@ -32,7 +32,12 @@ function createTestSetup(
         glibLibrary: "libglib-2.0.so.0",
         gobjectLibrary: "libgobject-2.0.so.0",
     };
-    const generator = new InterfaceGenerator(ffiMapper, file, repo as Parameters<typeof FfiMapper>[0], options);
+    const generator = new InterfaceGenerator(
+        ffiMapper,
+        file,
+        repo as ConstructorParameters<typeof FfiMapper>[0],
+        options,
+    );
     return { generator, file, repo };
 }
 

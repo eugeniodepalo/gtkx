@@ -40,6 +40,7 @@ function makeWidgetMeta(jsxName: string, namespace = "Gtk"): CodegenWidgetMeta {
         namespace,
         jsxName,
         slots: [],
+        containerMethods: [],
         propNames: [],
         signalNames: [],
         properties: [],

@@ -19,8 +19,11 @@ function makeInterface(repo: RepositoryLike, overrides: Partial<InterfaceData> =
         cType: "GtkBuildable",
         prerequisites: [],
         methods: [],
+        staticFunctions: [],
         properties: [],
         signals: [],
+        fieldNames: [],
+        virtualMethodNames: [],
         ...overrides,
     };
     return new GirInterface(data, repo);

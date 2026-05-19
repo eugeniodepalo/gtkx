@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder } from "../../../../src/builders/file-builder.js";
 import { FfiMapper } from "../../../../src/core/type-system/ffi-mapper.js";
-import { SELF_TYPE_GOBJECT } from "../../../../src/core/type-system/ffi-types.js";
+import { fundamentalSelfType, SELF_TYPE_GOBJECT } from "../../../../src/core/type-system/ffi-types.js";
 import { MethodBuilder } from "../../../../src/ffi/generators/class/method-builder.js";
 import {
     createNormalizedMethod,
@@ -15,7 +15,7 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
     const ns = createNormalizedNamespace({ name: "Gtk" });
     namespaces.set("Gtk", ns);
     const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
     const file = fileBuilder();
     const methodRenames = new Map<string, string>();
     const options = {
@@ -59,7 +59,7 @@ describe("MethodBuilder", () => {
             const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures).toHaveLength(1);
-            expect(structures[0].name).toBe("getLabel");
+            expect(structures[0]?.name).toBe("getLabel");
         });
 
         it("builds structures for multiple methods", () => {
@@ -86,8 +86,8 @@ describe("MethodBuilder", () => {
             const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
             expect(structures).toHaveLength(2);
-            expect(structures[0].name).toBe("getLabel");
-            expect(structures[1].name).toBe("setLabel");
+            expect(structures[0]?.name).toBe("getLabel");
+            expect(structures[1]?.name).toBe("setLabel");
         });
 
         it("converts method names to camelCase", () => {
@@ -102,7 +102,7 @@ describe("MethodBuilder", () => {
 
             const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
-            expect(structures[0].name).toBe("getSomeLongProperty");
+            expect(structures[0]?.name).toBe("getSomeLongProperty");
         });
 
         it("includes parameters in method structure", () => {
@@ -127,7 +127,7 @@ describe("MethodBuilder", () => {
 
             const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
-            expect(structures[0].parameters).toHaveLength(2);
+            expect(structures[0]?.parameters).toHaveLength(2);
         });
 
         it("includes return type for non-void methods", () => {
@@ -142,7 +142,7 @@ describe("MethodBuilder", () => {
 
             const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
-            expect(structures[0].returnType).toBe("number");
+            expect(structures[0]?.returnType).toBe("number");
         });
 
         it("omits return type for void methods", () => {
@@ -157,7 +157,7 @@ describe("MethodBuilder", () => {
 
             const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
-            expect(structures[0].returnType).toBeUndefined();
+            expect(structures[0]?.returnType).toBeUndefined();
         });
     });
 
@@ -334,7 +334,10 @@ describe("MethodBuilder", () => {
                 }),
             ];
 
-            const structures = builder.buildStructures(methods, { type: "gparam", ownership: "borrowed" });
+            const structures = builder.buildStructures(
+                methods,
+                fundamentalSelfType("libgobject-2.0.so.0", "g_param_spec_ref", "g_param_spec_unref"),
+            );
 
             expect(structures).toHaveLength(1);
         });
@@ -354,7 +357,7 @@ describe("MethodBuilder", () => {
 
             const structures = builder.buildStructures(methods, SELF_TYPE_GOBJECT);
 
-            expect(structures[0].name).toBe("getBuildableName");
+            expect(structures[0]?.name).toBe("getBuildableName");
         });
     });
 });

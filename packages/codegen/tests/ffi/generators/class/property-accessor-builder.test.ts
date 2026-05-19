@@ -63,7 +63,7 @@ function createSetup(
     });
     ns.classes.set("Button", cls);
     const repo = createMockRepository(new Map([["Gtk", ns]]));
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
     const file = fileBuilder();
     const builder = new PropertyAccessorBuilder(
         cls,
@@ -82,7 +82,7 @@ function createInterfaceSetup(
 ): { builder: PropertyAccessorBuilder; file: ReturnType<typeof fileBuilder> } {
     const ns = buildGtkNamespace();
     const repo = createMockRepository(new Map([["Gtk", ns]]));
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
     const file = fileBuilder();
     const methodsByCIdentifier = new Map<string, GirMethod>();
     for (const method of methods) {
@@ -93,6 +93,7 @@ function createInterfaceSetup(
         ownerName: "Orientable",
         properties,
         methodsByCIdentifier,
+        virtualMethodNames: new Set<string>(),
     };
     const builder = new PropertyAccessorBuilder(
         null,

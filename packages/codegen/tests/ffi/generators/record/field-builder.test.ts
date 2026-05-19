@@ -16,7 +16,7 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
     const ns = createNormalizedNamespace({ name: "Gtk" });
     namespaces.set("Gtk", ns);
     const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
     const imports = fileBuilder();
     const builder = new FieldBuilder(ffiMapper, imports);
     return { builder, imports, ffiMapper };
@@ -27,7 +27,7 @@ function createRepoBackedSetup(namespaces: Map<string, ReturnType<typeof createN
         namespaces.set("Gtk", createNormalizedNamespace({ name: "Gtk" }));
     }
     const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
     const imports = fileBuilder();
     const builder = new FieldBuilder(ffiMapper, imports, repo as unknown as GirRepository, "Gtk");
     return { builder, imports, ffiMapper, repo };
@@ -68,8 +68,8 @@ describe("FieldBuilder", () => {
             const layout = builder.calculateLayout(fields);
 
             expect(layout).toHaveLength(1);
-            expect(layout[0].offset).toBe(0);
-            expect(layout[0].size).toBe(4);
+            expect(layout[0]?.offset).toBe(0);
+            expect(layout[0]?.size).toBe(4);
         });
 
         it("calculates layout for multiple fields", () => {
@@ -88,8 +88,8 @@ describe("FieldBuilder", () => {
             const layout = builder.calculateLayout(fields);
 
             expect(layout).toHaveLength(2);
-            expect(layout[0].offset).toBe(0);
-            expect(layout[1].offset).toBe(4);
+            expect(layout[0]?.offset).toBe(0);
+            expect(layout[1]?.offset).toBe(4);
         });
 
         it("excludes private fields by default", () => {
@@ -110,7 +110,7 @@ describe("FieldBuilder", () => {
             const layout = builder.calculateLayout(fields);
 
             expect(layout).toHaveLength(1);
-            expect(layout[0].field.name).toBe("public_field");
+            expect(layout[0]?.field.name).toBe("public_field");
         });
 
         it("includes private fields when includePrivate is true", () => {
@@ -148,9 +148,9 @@ describe("FieldBuilder", () => {
 
             const layout = builder.calculateLayout(fields);
 
-            expect(layout[0].offset).toBe(0);
-            expect(layout[0].size).toBe(1);
-            expect(layout[1].offset).toBe(4);
+            expect(layout[0]?.offset).toBe(0);
+            expect(layout[0]?.size).toBe(1);
+            expect(layout[1]?.offset).toBe(4);
         });
 
         it("calculates correct sizes for various types", () => {
@@ -176,10 +176,10 @@ describe("FieldBuilder", () => {
 
             const layout = builder.calculateLayout(fields);
 
-            expect(layout[0].size).toBe(1);
-            expect(layout[1].size).toBe(2);
-            expect(layout[2].size).toBe(4);
-            expect(layout[3].size).toBe(8);
+            expect(layout[0]?.size).toBe(1);
+            expect(layout[1]?.size).toBe(2);
+            expect(layout[2]?.size).toBe(4);
+            expect(layout[3]?.size).toBe(8);
         });
 
         it("preserves field reference in layout", () => {
@@ -191,7 +191,7 @@ describe("FieldBuilder", () => {
 
             const layout = builder.calculateLayout([field]);
 
-            expect(layout[0].field).toBe(field);
+            expect(layout[0]?.field).toBe(field);
         });
     });
 
@@ -319,7 +319,7 @@ describe("FieldBuilder", () => {
             const writable = builder.getWritableFields(fields);
 
             expect(writable).toHaveLength(1);
-            expect(writable[0].name).toBe("public");
+            expect(writable[0]?.name).toBe("public");
         });
 
         it("excludes explicitly non-writable fields", () => {
@@ -340,7 +340,7 @@ describe("FieldBuilder", () => {
             const writable = builder.getWritableFields(fields);
 
             expect(writable).toHaveLength(1);
-            expect(writable[0].name).toBe("writable");
+            expect(writable[0]?.name).toBe("writable");
         });
 
         it("excludes non-memory-writable types", () => {
@@ -361,7 +361,7 @@ describe("FieldBuilder", () => {
             const writable = builder.getWritableFields(fields);
 
             expect(writable).toHaveLength(1);
-            expect(writable[0].name).toBe("primitive");
+            expect(writable[0]?.name).toBe("primitive");
         });
     });
 
@@ -425,7 +425,7 @@ describe("FieldBuilder", () => {
 
             const layout = builder.calculateLayout(fields);
 
-            expect(layout[1].offset).toBe(2);
+            expect(layout[1]?.offset).toBe(2);
         });
 
         it("aligns 4-byte types to 4-byte boundaries", () => {
@@ -443,7 +443,7 @@ describe("FieldBuilder", () => {
 
             const layout = builder.calculateLayout(fields);
 
-            expect(layout[1].offset).toBe(4);
+            expect(layout[1]?.offset).toBe(4);
         });
 
         it("aligns 8-byte types to 8-byte boundaries", () => {
@@ -461,7 +461,7 @@ describe("FieldBuilder", () => {
 
             const layout = builder.calculateLayout(fields);
 
-            expect(layout[1].offset).toBe(8);
+            expect(layout[1]?.offset).toBe(8);
         });
     });
 });
@@ -476,10 +476,10 @@ describe("FieldBuilder - bitfields and unions", () => {
 
         const layout = builder.calculateLayout(fields);
 
-        expect(layout[0].offset).toBe(0);
-        expect(layout[0].bitOffset).toBe(0);
-        expect(layout[1].offset).toBe(0);
-        expect(layout[1].bitOffset).toBe(3);
+        expect(layout[0]?.offset).toBe(0);
+        expect(layout[0]?.bitOffset).toBe(0);
+        expect(layout[1]?.offset).toBe(0);
+        expect(layout[1]?.bitOffset).toBe(3);
     });
 
     it("opens a fresh storage unit when a bitfield run overflows the current one", () => {
@@ -491,9 +491,9 @@ describe("FieldBuilder - bitfields and unions", () => {
 
         const layout = builder.calculateLayout(fields);
 
-        expect(layout[0].offset).toBe(0);
-        expect(layout[1].offset).toBe(1);
-        expect(layout[1].bitOffset).toBe(0);
+        expect(layout[0]?.offset).toBe(0);
+        expect(layout[1]?.offset).toBe(1);
+        expect(layout[1]?.bitOffset).toBe(0);
     });
 
     it("overlays union members at offset zero", () => {
@@ -505,8 +505,8 @@ describe("FieldBuilder - bitfields and unions", () => {
 
         const layout = builder.calculateLayout(fields, false, true);
 
-        expect(layout[0].offset).toBe(0);
-        expect(layout[1].offset).toBe(0);
+        expect(layout[0]?.offset).toBe(0);
+        expect(layout[1]?.offset).toBe(0);
     });
 
     it("overlays union bitfield members at offset zero", () => {
@@ -517,9 +517,9 @@ describe("FieldBuilder - bitfields and unions", () => {
 
         const layout = builder.calculateLayout(fields, false, true);
 
-        expect(layout[0].offset).toBe(0);
-        expect(layout[0].bitOffset).toBe(0);
-        expect(layout[0].bitWidth).toBe(4);
+        expect(layout[0]?.offset).toBe(0);
+        expect(layout[0]?.bitOffset).toBe(0);
+        expect(layout[0]?.bitWidth).toBe(4);
     });
 
     it("sizes a union as its widest member rounded to alignment", () => {
@@ -552,8 +552,8 @@ describe("FieldBuilder - inline composite members", () => {
 
         const layout = builder.calculateLayout(fields, true);
 
-        expect(layout[0].size).toBe(8);
-        expect(layout[0].alignment).toBe(4);
+        expect(layout[0]?.size).toBe(8);
+        expect(layout[0]?.alignment).toBe(4);
     });
 });
 

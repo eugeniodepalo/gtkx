@@ -18,7 +18,7 @@ function createTestSetup() {
     const ns = createNormalizedNamespace({ name: "GObject" });
     namespaces.set("GObject", ns);
     const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GObject");
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GObject");
     const file = fileBuilder();
     const options = {
         namespace: "GObject",
@@ -32,7 +32,7 @@ function createTestSetup() {
         ffiMapper,
         file,
         options,
-        repo as Parameters<typeof ClassStructGenerator>[3],
+        repo as ConstructorParameters<typeof ClassStructGenerator>[3],
         logger,
     );
     return { generator, file, repo, skipMessages };

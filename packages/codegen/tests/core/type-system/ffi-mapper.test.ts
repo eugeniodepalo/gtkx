@@ -22,7 +22,7 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
     mapper: FfiMapper;
 } {
     const repo = createMockRepository(namespaces);
-    const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+    const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
     return { repo, mapper };
 }
 
@@ -440,7 +440,7 @@ describe("FfiMapper", () => {
                     records: new Map([["Rectangle", record]]),
                 });
                 const repo = createMockRepository(new Map([["Gdk", ns]]));
-                const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gdk");
+                const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gdk");
 
                 const type = createNormalizedType({ name: "Rectangle" });
                 const result = mapper.mapType(type);
@@ -465,7 +465,7 @@ describe("FfiMapper", () => {
                     records: new Map([["Color", record]]),
                 });
                 const repo = createMockRepository(new Map([["Gdk", ns]]));
-                const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gdk");
+                const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gdk");
 
                 const type = createNormalizedType({ name: "Color" });
                 const result = mapper.mapType(type);
@@ -484,7 +484,7 @@ describe("FfiMapper", () => {
                     records: new Map([["Color", record]]),
                 });
                 const repo = createMockRepository(new Map([["Gdk", ns]]));
-                const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gdk");
+                const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gdk");
 
                 const type = createNormalizedType({ name: "Color" });
                 const result = mapper.mapType(type);
@@ -508,7 +508,7 @@ describe("FfiMapper", () => {
                     records: new Map([["Variant", variant]]),
                 });
                 const repo = createMockRepository(new Map([["GLib", glibNs]]));
-                const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GLib");
+                const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GLib");
 
                 const type = createNormalizedType({ name: "Variant" });
                 const result = mapper.mapType(type);
@@ -653,7 +653,7 @@ describe("FfiMapper", () => {
                     records: new Map([["Rectangle", record]]),
                 });
                 const repo = createMockRepository(new Map([["Gdk", ns]]));
-                const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gdk");
+                const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gdk");
 
                 const param = createNormalizedParameter({
                     name: "rect",
@@ -1082,7 +1082,7 @@ describe("FfiMapper - Extended Coverage", () => {
                 records: new Map([["Color", record]]),
             });
             const repo = createMockRepository(new Map([["Gdk", ns]]));
-            const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gdk");
+            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gdk");
 
             const param = createNormalizedParameter({
                 name: "color",
@@ -1166,8 +1166,8 @@ describe("FfiMapper - Extended Coverage", () => {
 
             expect(result.ffi.type).toBe("array");
             expect(result.ffi.ownership).toBe("full");
-            expect(result.ffi.itemType.type).toBe("gobject");
-            expect(result.ffi.itemType.ownership).toBe("borrowed");
+            expect(result.ffi.itemType?.type).toBe("gobject");
+            expect(result.ffi.itemType?.ownership).toBe("borrowed");
         });
 
         it("maps boxed type with transfer-full", () => {
@@ -1183,7 +1183,7 @@ describe("FfiMapper - Extended Coverage", () => {
                 records: new Map([["Rectangle", record]]),
             });
             const repo = createMockRepository(new Map([["Gdk", ns]]));
-            const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gdk");
+            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gdk");
 
             const type = createNormalizedType({ name: "Rectangle", transferOwnership: "full" });
             const result = mapper.mapType(type);
@@ -1205,7 +1205,7 @@ describe("FfiMapper - Extended Coverage", () => {
                 records: new Map([["Rectangle", record]]),
             });
             const repo = createMockRepository(new Map([["Gdk", ns]]));
-            const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gdk");
+            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gdk");
 
             const type = createNormalizedType({ name: "Rectangle", transferOwnership: "none" });
             const result = mapper.mapType(type, true);
@@ -1294,8 +1294,8 @@ describe("FfiMapper - Extended Coverage", () => {
 
             expect(result.ffi.type).toBe("array");
             expect(result.ffi.ownership).toBe("full");
-            expect(result.ffi.itemType.type).toBe("gobject");
-            expect(result.ffi.itemType.ownership).toBe("full");
+            expect(result.ffi.itemType?.type).toBe("gobject");
+            expect(result.ffi.itemType?.ownership).toBe("full");
         });
 
         it("maps string array with container transfer - elements are borrowed", () => {
@@ -1311,8 +1311,8 @@ describe("FfiMapper - Extended Coverage", () => {
 
             expect(result.ffi.type).toBe("array");
             expect(result.ffi.ownership).toBe("full");
-            expect(result.ffi.itemType.type).toBe("string");
-            expect(result.ffi.itemType.ownership).toBe("borrowed");
+            expect(result.ffi.itemType?.type).toBe("string");
+            expect(result.ffi.itemType?.ownership).toBe("borrowed");
         });
 
         it("maps hashtable with container transfer - keys and values are borrowed", () => {
@@ -1334,10 +1334,10 @@ describe("FfiMapper - Extended Coverage", () => {
 
             expect(result.ffi.type).toBe("hashtable");
             expect(result.ffi.ownership).toBe("full");
-            expect(result.ffi.keyType.type).toBe("string");
-            expect(result.ffi.keyType.ownership).toBe("borrowed");
-            expect(result.ffi.valueType.type).toBe("gobject");
-            expect(result.ffi.valueType.ownership).toBe("borrowed");
+            expect(result.ffi.keyType?.type).toBe("string");
+            expect(result.ffi.keyType?.ownership).toBe("borrowed");
+            expect(result.ffi.valueType?.type).toBe("gobject");
+            expect(result.ffi.valueType?.ownership).toBe("borrowed");
         });
 
         it("maps hashtable with full transfer - keys and values are fully owned", () => {
@@ -1359,10 +1359,10 @@ describe("FfiMapper - Extended Coverage", () => {
 
             expect(result.ffi.type).toBe("hashtable");
             expect(result.ffi.ownership).toBe("full");
-            expect(result.ffi.keyType.type).toBe("string");
-            expect(result.ffi.keyType.ownership).toBe("full");
-            expect(result.ffi.valueType.type).toBe("gobject");
-            expect(result.ffi.valueType.ownership).toBe("full");
+            expect(result.ffi.keyType?.type).toBe("string");
+            expect(result.ffi.keyType?.ownership).toBe("full");
+            expect(result.ffi.valueType?.type).toBe("gobject");
+            expect(result.ffi.valueType?.ownership).toBe("full");
         });
     });
 
@@ -1692,7 +1692,7 @@ describe("FfiMapper - Extended Coverage", () => {
                 records: new Map([["Variant", variant]]),
             });
             const repo = createMockRepository(new Map([["GLib", glibNs]]));
-            const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GLib");
+            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GLib");
 
             const type = createNormalizedType({ name: "Variant", transferOwnership: "none" });
             const result = mapper.mapType(type, true);
@@ -1963,7 +1963,7 @@ describe("FfiMapper - branch coverage", () => {
         it("maps GType to a bare GType inside the GObject namespace", () => {
             const ns = createNormalizedNamespace({ name: "GObject" });
             const repo = createMockRepository(new Map([["GObject", ns]]));
-            const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GObject");
+            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GObject");
 
             const result = mapper.mapType(createNormalizedType({ name: "GType" }));
 
@@ -2771,7 +2771,7 @@ describe("FfiMapper - branch coverage", () => {
             expect(result.ffi.type).toBe("trampoline");
             if (result.ffi.type === "trampoline") {
                 expect(result.ffi.userDataIndex).toBe(1);
-                expect(result.ffi.returnType.type).toBe("boolean");
+                expect(result.ffi.returnType?.type).toBe("boolean");
             }
         });
     });

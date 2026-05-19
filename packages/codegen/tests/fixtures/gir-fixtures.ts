@@ -205,6 +205,7 @@ export function createNormalizedRecord(overrides: Partial<NormalizedRecordData> 
         cType: `${namespace}${name}`,
         opaque: false,
         disguised: false,
+        isUnion: false,
         fields: [],
         methods: [],
         constructors: [],

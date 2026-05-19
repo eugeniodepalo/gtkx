@@ -28,7 +28,7 @@ import { createMockRepository } from "../../fixtures/mock-repository.js";
 
 function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map()) {
     const repo = createMockRepository(namespaces);
-    const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+    const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
     const imports = fileBuilder();
     const ffiTypeWriter = new FfiTypeWriter({ currentSharedLibrary: "libgtk-4.so.1", glibLibrary: "libglib-2.0.so.0" });
     const writer = new MethodBodyWriter(mapper, imports, ffiTypeWriter);
@@ -74,7 +74,7 @@ describe("MethodBodyWriter", () => {
             const filtered = writer.filterParameters(params);
 
             expect(filtered).toHaveLength(1);
-            expect(filtered[0].name).toBe("label");
+            expect(filtered[0]?.name).toBe("label");
         });
 
         it("keeps regular parameters", () => {
@@ -178,6 +178,7 @@ describe("MethodBodyWriter", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
+                imports: [],
                 ts: "Button",
                 ffi: { type: "gobject", ownership: "full" },
             };
@@ -193,6 +194,7 @@ describe("MethodBodyWriter", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
+                imports: [],
                 ts: "RGBA",
                 ffi: { type: "boxed", ownership: "full", innerType: "GdkRGBA" },
             };
@@ -207,6 +209,7 @@ describe("MethodBodyWriter", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
+                imports: [],
                 ts: "RenderNode",
                 ffi: { type: "fundamental", ownership: "full" },
             };
@@ -221,6 +224,7 @@ describe("MethodBodyWriter", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
+                imports: [],
                 ts: "Orientable",
                 ffi: { type: "gobject", ownership: "full" },
                 kind: "interface",
@@ -237,6 +241,7 @@ describe("MethodBodyWriter", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
+                imports: [],
                 ts: "Widget[]",
                 ffi: {
                     type: "array",
@@ -255,6 +260,7 @@ describe("MethodBodyWriter", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
+                imports: [],
                 ts: "void",
                 ffi: { type: "void" },
             };
@@ -268,6 +274,7 @@ describe("MethodBodyWriter", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
+                imports: [],
                 ts: "number",
                 ffi: { type: "int32" },
             };
@@ -281,6 +288,7 @@ describe("MethodBodyWriter", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
+                imports: [],
                 ts: "string",
                 ffi: { type: "string", ownership: "full" },
             };
@@ -294,6 +302,7 @@ describe("MethodBodyWriter", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
             const mappedType: MappedType = {
+                imports: [],
                 ts: "unknown",
                 ffi: { type: "gobject", ownership: "full" },
             };
@@ -342,10 +351,10 @@ describe("MethodBodyWriter", () => {
             const result = writer.buildParameterList(params);
 
             expect(result).toHaveLength(2);
-            expect(result[0].name).toBe("label");
-            expect(result[0].type).toBe("string");
-            expect(result[1].name).toBe("count");
-            expect(result[1].type).toBe("number");
+            expect(result[0]?.name).toBe("label");
+            expect(result[0]?.type).toBe("string");
+            expect(result[1]?.name).toBe("count");
+            expect(result[1]?.type).toBe("number");
         });
 
         it("marks nullable parameters as required with a nullable type", () => {
@@ -361,8 +370,8 @@ describe("MethodBodyWriter", () => {
 
             const result = writer.buildParameterList(params);
 
-            expect(result[0].optional).toBeFalsy();
-            expect(result[0].type).toBe("string | null");
+            expect(result[0]?.optional).toBeFalsy();
+            expect(result[0]?.type).toBe("string | null");
         });
 
         it("marks optional-only parameters without null type", () => {
@@ -378,8 +387,8 @@ describe("MethodBodyWriter", () => {
 
             const result = writer.buildParameterList(params);
 
-            expect(result[0].optional).toBe(true);
-            expect(result[0].type).toBe("string");
+            expect(result[0]?.optional).toBe(true);
+            expect(result[0]?.type).toBe("string");
         });
 
         it("preserves GIR parameter order even when a nullable param precedes a required one", () => {
@@ -399,11 +408,11 @@ describe("MethodBodyWriter", () => {
 
             const result = writer.buildParameterList(params);
 
-            expect(result[0].name).toBe("optionalParam");
-            expect(result[0].optional).toBeFalsy();
-            expect(result[0].type).toBe("string | null");
-            expect(result[1].name).toBe("requiredParam");
-            expect(result[1].optional).toBeFalsy();
+            expect(result[0]?.name).toBe("optionalParam");
+            expect(result[0]?.optional).toBeFalsy();
+            expect(result[0]?.type).toBe("string | null");
+            expect(result[1]?.name).toBe("requiredParam");
+            expect(result[1]?.optional).toBeFalsy();
         });
 
         it("converts varargs to rest parameter", () => {
@@ -417,9 +426,9 @@ describe("MethodBodyWriter", () => {
             const result = writer.buildParameterList(params);
 
             expect(result).toHaveLength(2);
-            expect(result[0].name).toBe("label");
-            expect(result[1].name).toBe("args");
-            expect(result[1].isRestParameter).toBe(true);
+            expect(result[0]?.name).toBe("label");
+            expect(result[1]?.name).toBe("args");
+            expect(result[1]?.isRestParameter).toBe(true);
         });
 
         it("hides out parameters from the signature", () => {
@@ -452,7 +461,7 @@ describe("MethodBodyWriter", () => {
             const result = writer.buildParameterList(params);
 
             expect(result).toHaveLength(1);
-            expect(result[0].type).toBe("number");
+            expect(result[0]?.type).toBe("number");
         });
     });
 
@@ -499,7 +508,7 @@ describe("MethodBodyWriter", () => {
             });
 
             expect(structure.parameters).toHaveLength(1);
-            expect(structure.parameters?.[0].name).toBe("label");
+            expect(structure.parameters?.[0]?.name).toBe("label");
         });
 
         it("handles void return type", () => {
@@ -635,13 +644,13 @@ describe("MethodBodyWriter", () => {
         it("generates function body without self argument", () => {
             const ns = createNormalizedNamespace({ name: "Gtk" });
             const { writer } = createTestSetup(new Map([["Gtk", ns]]));
-            const func = {
+            const func = createNormalizedFunction({
                 name: "init",
                 cIdentifier: "gtk_init",
                 returnType: createNormalizedType({ name: "none" }),
                 parameters: [],
                 throws: false,
-            };
+            });
             const shape = writer.buildShape(func.parameters, func.returnType, 0);
 
             const w = new Writer();
@@ -1073,9 +1082,9 @@ describe("MethodBodyWriter - extended coverage", () => {
             });
 
             expect(structure.isStatic).toBe(true);
-            expect(structure.parameters[0].name).toBe("widgetClass");
-            expect(structure.parameters[0].type).toBe("ClassStructTarget");
-            expect(structure.parameters[1].name).toBe("propertyId");
+            expect(structure.parameters[0]?.name).toBe("widgetClass");
+            expect(structure.parameters[0]?.type).toBe("ClassStructTarget");
+            expect(structure.parameters[1]?.name).toBe("propertyId");
 
             const w = new Writer();
             structure.statements(w);
@@ -1403,7 +1412,7 @@ describe("MethodBodyWriter - extended coverage", () => {
                     ["Gtk", gtkNs],
                 ]),
             );
-            const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "Gtk");
+            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
             const imports = fileBuilder();
             const ffiTypeWriter = new FfiTypeWriter({
                 currentSharedLibrary: "libgtk-4.so.1",
@@ -1541,8 +1550,9 @@ describe("MethodBodyWriter - extended coverage", () => {
             writer.writeHiddenOutDeclarationFor(w, {
                 varName: "outValue",
                 initialValue: "0",
-                jsName: "outValue",
-                girIndex: 0,
+                tsType: "number",
+                ffi: { type: "int32" },
+                isLengthParam: false,
                 kind: "ref-primitive",
                 nullable: false,
             });
@@ -1558,8 +1568,9 @@ describe("MethodBodyWriter - extended coverage", () => {
             writer.writeHiddenOutDeclarationFor(w, {
                 varName: "iter",
                 initialValue: "",
-                jsName: "iter",
-                girIndex: 0,
+                tsType: "TextIter",
+                ffi: { type: "uint64" },
+                isLengthParam: false,
                 kind: "factory-struct",
                 nullable: false,
                 factoryCIdentifier: "gtkTextIterNew",
@@ -1576,8 +1587,9 @@ describe("MethodBodyWriter - extended coverage", () => {
             writer.writeHiddenOutDeclarationFor(w, {
                 varName: "iter",
                 initialValue: "",
-                jsName: "iter",
-                girIndex: 0,
+                tsType: "TextIter",
+                ffi: { type: "uint64" },
+                isLengthParam: false,
                 kind: "alloc-struct",
                 nullable: false,
                 wrapClassName: "TextIter",
@@ -1594,8 +1606,9 @@ describe("MethodBodyWriter - extended coverage", () => {
             writer.writeHiddenOutDeclarationFor(w, {
                 varName: "slot",
                 initialValue: "",
-                jsName: "slot",
-                girIndex: 0,
+                tsType: "unknown",
+                ffi: { type: "uint64" },
+                isLengthParam: false,
                 kind: "alloc-struct",
                 nullable: false,
             });
@@ -1611,8 +1624,9 @@ describe("MethodBodyWriter - extended coverage", () => {
             writer.writeHiddenOutDeclarationFor(w, {
                 varName: "handle",
                 initialValue: "null",
-                jsName: "handle",
-                girIndex: 0,
+                tsType: "unknown",
+                ffi: { type: "uint64" },
+                isLengthParam: false,
                 kind: "ref-handle",
                 nullable: false,
             });
@@ -1625,7 +1639,7 @@ describe("MethodBodyWriter - extended coverage", () => {
         it("imports the local Error for the GLib namespace", () => {
             const ns = createNormalizedNamespace({ name: "GLib" });
             const repo = createMockRepository(new Map([["GLib", ns]]));
-            const mapper = new FfiMapper(repo as Parameters<typeof FfiMapper>[0], "GLib");
+            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GLib");
             const imports = fileBuilder();
             const writer = new MethodBodyWriter(mapper, imports);
 
@@ -2050,8 +2064,9 @@ describe("MethodBodyWriter - extended coverage", () => {
                     {
                         varName: "outValue",
                         initialValue: "0",
-                        jsName: "outValue",
-                        girIndex: 0,
+                        tsType: "number",
+                        ffi: { type: "int32" },
+                        isLengthParam: false,
                         kind: "ref-primitive",
                         nullable: false,
                     },

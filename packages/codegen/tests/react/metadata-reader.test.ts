@@ -14,6 +14,7 @@ const createWidgetMeta = (overrides: Partial<CodegenWidgetMeta> = {}): CodegenWi
     properties: [],
     signals: [],
     slots: [],
+    containerMethods: [],
     hiddenPropNames: [],
     doc: undefined,
     ...overrides,
@@ -27,7 +28,7 @@ describe("sortWidgetsByClassName", () => {
             { className: "Label" },
         ];
         const sorted = sortWidgetsByClassName(widgets);
-        expect(sorted[0].className).toBe("Widget");
+        expect(sorted[0]?.className).toBe("Widget");
     });
 
     it("puts Window second after Widget", () => {
@@ -37,8 +38,8 @@ describe("sortWidgetsByClassName", () => {
             { className: "Widget" },
         ];
         const sorted = sortWidgetsByClassName(widgets);
-        expect(sorted[0].className).toBe("Widget");
-        expect(sorted[1].className).toBe("Window");
+        expect(sorted[0]?.className).toBe("Widget");
+        expect(sorted[1]?.className).toBe("Window");
     });
 
     it("sorts remaining widgets alphabetically", () => {
@@ -102,8 +103,8 @@ describe("MetadataReader", () => {
         it("returns WidgetInfo without properties and signals", () => {
             const meta = [
                 createWidgetMeta({
-                    properties: [{ name: "label", type: "string" }] as CodegenWidgetMeta["properties"],
-                    signals: [{ name: "clicked" }] as CodegenWidgetMeta["signals"],
+                    properties: [{ name: "label", type: "string" }] as unknown as CodegenWidgetMeta["properties"],
+                    signals: [{ name: "clicked" }] as unknown as CodegenWidgetMeta["signals"],
                 }),
             ];
             const reader = new MetadataReader(meta);

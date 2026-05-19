@@ -56,6 +56,9 @@ function makeClass(repo: RepositoryLike, overrides: Partial<ClassData> = {}): Gi
         staticFunctions: [],
         properties: [],
         signals: [],
+        fieldNames: [],
+        fields: [],
+        virtualMethodNames: [],
         ...overrides,
     };
     return new GirClass(data, repo);
