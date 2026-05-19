@@ -40,7 +40,7 @@ export function rewriteNamespaceDeclarations(source: string): string {
 }
 
 const DEFAULT_IMPORT_PATTERN = /^import type (\w+) from (['"]@gtkx\/ffi\/[a-z0-9]+['"]);?$/gm;
-const LEGACY_MODULE_KEYWORD_PATTERN = /^(\s*)((?:export\s+)?)module(\s+\w+\s*\{)/gm;
+const LEGACY_MODULE_KEYWORD_PATTERN = /^([ \t]*)((?:export[ \t]+)?)module([ \t]+\w+[ \t]*\{)/gm;
 
 /**
  * Converts each `import type <Name> from '@gtkx/ffi/<ns>'` line into the
@@ -70,7 +70,7 @@ export function rewriteModuleKeywordToNamespace(source: string): string {
 }
 
 const NAMESPACE_HEADER_PATTERN = /^export\s+(?:declare\s+)?namespace\s+\w+\s*\{/m;
-const EXPORT_DEFAULT_LINE = /^export\s+default\s+\w+\s*;?\s*$/gm;
+const EXPORT_DEFAULT_LINE = /^export[ \t]+default[ \t]+\w+(?:[ \t]*;)?[ \t]*$/gm;
 
 /**
  * Lifts every declaration inside the file's outer `export namespace <ns> { ... }`

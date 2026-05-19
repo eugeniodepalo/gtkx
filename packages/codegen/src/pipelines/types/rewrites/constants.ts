@@ -5,7 +5,7 @@
  * rewrites the `GType` type alias to the plain numeric form it is at runtime.
  */
 
-const NUMERIC_CONSTANT_PATTERN = /^(export const (\w+): )([^\n]+?)(\s*)$/gm;
+const NUMERIC_CONSTANT_PATTERN = /^(export const (\w+): )([^\n]+)$/gm;
 const PRIMITIVE_CONSTANT_TYPES: ReadonlySet<string> = new Set(["number", "string", "boolean"]);
 
 /**
@@ -25,8 +25,9 @@ const PRIMITIVE_CONSTANT_TYPES: ReadonlySet<string> = new Set(["number", "string
  */
 export function relaxNumericConstants(source: string, numericConstants?: ReadonlySet<string>): string {
     if (numericConstants === undefined || numericConstants.size === 0) return source;
-    return source.replace(NUMERIC_CONSTANT_PATTERN, (match, prefix: string, name: string, type: string, ws: string) => {
-        if (!numericConstants.has(name) || PRIMITIVE_CONSTANT_TYPES.has(type.trim())) return match;
+    return source.replace(NUMERIC_CONSTANT_PATTERN, (match, prefix: string, name: string, rest: string) => {
+        if (!numericConstants.has(name) || PRIMITIVE_CONSTANT_TYPES.has(rest.trim())) return match;
+        const ws = rest.slice(rest.trimEnd().length);
         return `${prefix}number${ws}`;
     });
 }

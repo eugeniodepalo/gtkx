@@ -63,7 +63,7 @@ export function stripGtypeStructClasses(source: string, gtypeStructNames?: Reado
 }
 
 const ANONYMOUS_COMPOSITE_CLASS_PATTERN =
-    /(^|\n)([ \t]*)export[ \t]+(?:abstract[ \t]+)?class[ \t]+_\w+__\w+__(?:union|struct)\b[^{]*\{/g;
+    /(^|\n)([ \t]*)export[ \t]+(?:abstract[ \t]+)?class[ \t]+_\w+__(?:union|struct)\b[^{]*\{/g;
 
 /**
  * Removes the `export class _<Owner>__<field>__union` value declarations that

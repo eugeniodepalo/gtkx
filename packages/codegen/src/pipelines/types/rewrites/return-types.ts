@@ -96,7 +96,7 @@ export function relaxMultiReturnTuples(source: string): string {
     return parts.join("");
 }
 
-const OPTIONAL_INOUT_RETURN = /\(([^\n]*)\): (\/\* (\w+) \*\/ [\w.]+)(?<suffix>(?:\[\])?)(?=\r?\n)/g;
+const OPTIONAL_INOUT_RETURN = /\(((?:[^\n)]|\)(?!: \/\* ))*)\): (\/\* (\w+) \*\/ [\w.]+)(?<suffix>(?:\[\])?)(?=\r?\n)/g;
 
 /**
  * Relaxes the return type of a callable whose sole out/inout-derived return
