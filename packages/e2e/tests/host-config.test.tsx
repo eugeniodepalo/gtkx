@@ -1,11 +1,20 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkApplicationWindow, GtkBox, GtkButton, GtkFrame, GtkLabel } from "@gtkx/react";
 import { render, screen, within } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
+import { renderChildren } from "./helpers/render-children.js";
 import { getChildTexts } from "./helpers/widget-text.js";
 
 const getLabelTexts = (parent: Gtk.Widget): string[] => getChildTexts(parent, { recursive: false });
+
+const buildLabelBox = (boxRef: RefObject<Gtk.Box | null>) => (items: string[]) => (
+    <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
+        {items.map((item) => (
+            <GtkLabel key={item} label={item} />
+        ))}
+    </GtkBox>
+);
 
 describe("host-config - children", () => {
     describe("adding children", () => {
@@ -66,21 +75,11 @@ describe("host-config - children", () => {
         it("inserts child before sibling", async () => {
             const boxRef = createRef<Gtk.Box>();
 
-            function App({ items }: { items: string[] }) {
-                return (
-                    <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
-                        {items.map((item) => (
-                            <GtkLabel key={item} label={item} />
-                        ))}
-                    </GtkBox>
-                );
-            }
-
-            const { rerender } = await render(<App items={["A", "C"]} />);
+            const { rerender } = await renderChildren(["A", "C"], buildLabelBox(boxRef));
 
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "C"]);
 
-            await rerender(<App items={["A", "B", "C"]} />);
+            await rerender(["A", "B", "C"]);
 
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
@@ -88,19 +87,9 @@ describe("host-config - children", () => {
         it("falls back to append when before not found", async () => {
             const boxRef = createRef<Gtk.Box>();
 
-            function App({ items }: { items: string[] }) {
-                return (
-                    <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
-                        {items.map((item) => (
-                            <GtkLabel key={item} label={item} />
-                        ))}
-                    </GtkBox>
-                );
-            }
+            const { rerender } = await renderChildren(["A", "B"], buildLabelBox(boxRef));
 
-            const { rerender } = await render(<App items={["A", "B"]} />);
-
-            await rerender(<App items={["A", "B", "C"]} />);
+            await rerender(["A", "B", "C"]);
 
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
@@ -156,43 +145,23 @@ describe("host-config - children", () => {
         it("maintains correct order after multiple operations", async () => {
             const boxRef = createRef<Gtk.Box>();
 
-            function App({ items }: { items: string[] }) {
-                return (
-                    <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
-                        {items.map((item) => (
-                            <GtkLabel key={item} label={item} />
-                        ))}
-                    </GtkBox>
-                );
-            }
-
-            const { rerender } = await render(<App items={["A", "B", "C"]} />);
+            const { rerender } = await renderChildren(["A", "B", "C"], buildLabelBox(boxRef));
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
 
-            await rerender(<App items={["A", "D", "B", "C"]} />);
+            await rerender(["A", "D", "B", "C"]);
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "D", "B", "C"]);
 
-            await rerender(<App items={["D", "C"]} />);
+            await rerender(["D", "C"]);
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["D", "C"]);
         });
 
         it("handles reordering via key changes", async () => {
             const boxRef = createRef<Gtk.Box>();
 
-            function App({ items }: { items: string[] }) {
-                return (
-                    <GtkBox ref={boxRef} orientation={Gtk.Orientation.VERTICAL}>
-                        {items.map((item) => (
-                            <GtkLabel key={item} label={item} />
-                        ))}
-                    </GtkBox>
-                );
-            }
-
-            const { rerender } = await render(<App items={["A", "B", "C"]} />);
+            const { rerender } = await renderChildren(["A", "B", "C"], buildLabelBox(boxRef));
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
 
-            await rerender(<App items={["C", "B", "A"]} />);
+            await rerender(["C", "B", "A"]);
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["C", "B", "A"]);
         });
     });

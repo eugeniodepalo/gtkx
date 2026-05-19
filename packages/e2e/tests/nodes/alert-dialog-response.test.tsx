@@ -1,10 +1,17 @@
 import * as Adw from "@gtkx/ffi/adw";
 import { AdwAlertDialog } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, type RefObject } from "react";
 import { describe, expect, it } from "vitest";
+import { renderChildren } from "../helpers/render-children.js";
 
 const options = { wrapper: false } as const;
+
+type Response = { id: string; label: string };
+
+const buildAlertDialog = (ref: RefObject<Adw.AlertDialog | null>) => (responses: Response[]) => (
+    <AdwAlertDialog ref={ref} heading="Test" responses={responses} />
+);
 
 describe("render - AlertDialogResponse", () => {
     describe("AlertDialogNode", () => {
@@ -134,17 +141,18 @@ describe("render - AlertDialogResponse", () => {
         it("removes responses when list shrinks", async () => {
             const ref = createRef<Adw.AlertDialog>();
 
-            function App({ showExtra }: { showExtra: boolean }) {
-                const responses = [{ id: "always", label: "Always" }];
-                if (showExtra) responses.push({ id: "extra", label: "Extra" });
-                return <AdwAlertDialog ref={ref} heading="Test" responses={responses} />;
-            }
-
-            await render(<App showExtra={true} />, options);
+            const { rerender } = await renderChildren(
+                [
+                    { id: "always", label: "Always" },
+                    { id: "extra", label: "Extra" },
+                ],
+                buildAlertDialog(ref),
+                options,
+            );
             expect(ref.current?.hasResponse("always")).toBe(true);
             expect(ref.current?.hasResponse("extra")).toBe(true);
 
-            await render(<App showExtra={false} />, options);
+            await rerender([{ id: "always", label: "Always" }]);
             expect(ref.current?.hasResponse("always")).toBe(true);
             expect(ref.current?.hasResponse("extra")).toBe(false);
         });
@@ -152,19 +160,23 @@ describe("render - AlertDialogResponse", () => {
         it("handles inserting responses dynamically", async () => {
             const ref = createRef<Adw.AlertDialog>();
 
-            function App({ showMid }: { showMid: boolean }) {
-                const responses = [{ id: "first", label: "First" }];
-                if (showMid) responses.push({ id: "middle", label: "Middle" });
-                responses.push({ id: "last", label: "Last" });
-                return <AdwAlertDialog ref={ref} heading="Test" responses={responses} />;
-            }
-
-            await render(<App showMid={false} />, options);
+            const { rerender } = await renderChildren(
+                [
+                    { id: "first", label: "First" },
+                    { id: "last", label: "Last" },
+                ],
+                buildAlertDialog(ref),
+                options,
+            );
             expect(ref.current?.hasResponse("first")).toBe(true);
             expect(ref.current?.hasResponse("middle")).toBe(false);
             expect(ref.current?.hasResponse("last")).toBe(true);
 
-            await render(<App showMid={true} />, options);
+            await rerender([
+                { id: "first", label: "First" },
+                { id: "middle", label: "Middle" },
+                { id: "last", label: "Last" },
+            ]);
             expect(ref.current?.hasResponse("first")).toBe(true);
             expect(ref.current?.hasResponse("middle")).toBe(true);
             expect(ref.current?.hasResponse("last")).toBe(true);

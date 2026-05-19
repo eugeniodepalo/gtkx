@@ -2,7 +2,7 @@ import * as Gio from "@gtkx/ffi/gio";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkPopoverMenu, GtkPopoverMenuBar } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
 const MenuItem = "MenuItem" as const;
@@ -33,18 +33,17 @@ const requireLink = (model: Gio.MenuModel | null): Gio.MenuModel => {
     return model;
 };
 
+const renderPopoverMenu = async (children: ReactNode): Promise<Gio.MenuModel> => {
+    const ref = createRef<Gtk.PopoverMenu>();
+    await render(<GtkPopoverMenu ref={ref}>{children}</GtkPopoverMenu>);
+    return requireModel(ref.current);
+};
+
 describe("render - Menu", () => {
     describe("GtkPopoverMenu", () => {
         it("creates PopoverMenu widget", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
+            const model = await renderPopoverMenu(<MenuItem id="item1" label="Item 1" onActivate={() => {}} />);
 
-            await render(
-                <GtkPopoverMenu ref={ref}>
-                    <MenuItem id="item1" label="Item 1" onActivate={() => {}} />
-                </GtkPopoverMenu>,
-            );
-
-            const model = requireModel(ref.current);
             expect(model.getNItems()).toBe(1);
             expect(itemLabel(model, 0)).toBe("Item 1");
         });
@@ -97,29 +96,17 @@ describe("render - Menu", () => {
 
     describe("Menu.Item", () => {
         it("adds menu item with label", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
+            const model = await renderPopoverMenu(<MenuItem id="test" label="Test Item" onActivate={() => {}} />);
 
-            await render(
-                <GtkPopoverMenu ref={ref}>
-                    <MenuItem id="test" label="Test Item" onActivate={() => {}} />
-                </GtkPopoverMenu>,
-            );
-
-            const model = requireModel(ref.current);
             expect(model.getNItems()).toBe(1);
             expect(itemLabel(model, 0)).toBe("Test Item");
         });
 
         it("sets keyboard accelerators via accels prop", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
-
-            await render(
-                <GtkPopoverMenu ref={ref}>
-                    <MenuItem id="save" label="Save" accels="<Control>s" onActivate={() => {}} />
-                </GtkPopoverMenu>,
+            const model = await renderPopoverMenu(
+                <MenuItem id="save" label="Save" accels="<Control>s" onActivate={() => {}} />,
             );
 
-            const model = requireModel(ref.current);
             expect(model.getNItems()).toBe(1);
             expect(itemLabel(model, 0)).toBe("Save");
         });
@@ -163,18 +150,13 @@ describe("render - Menu", () => {
 
     describe("Menu.Section", () => {
         it("creates menu section", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
-
-            await render(
-                <GtkPopoverMenu ref={ref}>
-                    <MenuSection>
-                        <MenuItem id="section1" label="Section Item 1" onActivate={() => {}} />
-                        <MenuItem id="section2" label="Section Item 2" onActivate={() => {}} />
-                    </MenuSection>
-                </GtkPopoverMenu>,
+            const model = await renderPopoverMenu(
+                <MenuSection>
+                    <MenuItem id="section1" label="Section Item 1" onActivate={() => {}} />
+                    <MenuItem id="section2" label="Section Item 2" onActivate={() => {}} />
+                </MenuSection>,
             );
 
-            const model = requireModel(ref.current);
             expect(model.getNItems()).toBe(1);
 
             const section = requireLink(sectionAt(model, 0));
@@ -184,20 +166,17 @@ describe("render - Menu", () => {
         });
 
         it("adds items within section", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
-
-            await render(
-                <GtkPopoverMenu ref={ref}>
+            const model = await renderPopoverMenu(
+                <>
                     <MenuSection>
                         <MenuItem id="itemA" label="Item A" onActivate={() => {}} />
                     </MenuSection>
                     <MenuSection>
                         <MenuItem id="itemB" label="Item B" onActivate={() => {}} />
                     </MenuSection>
-                </GtkPopoverMenu>,
+                </>,
             );
 
-            const model = requireModel(ref.current);
             expect(model.getNItems()).toBe(2);
 
             const first = requireLink(sectionAt(model, 0));
@@ -207,17 +186,12 @@ describe("render - Menu", () => {
         });
 
         it("sets section label", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
-
-            await render(
-                <GtkPopoverMenu ref={ref}>
-                    <MenuSection label="Section Title">
-                        <MenuItem id="item" label="Item" onActivate={() => {}} />
-                    </MenuSection>
-                </GtkPopoverMenu>,
+            const model = await renderPopoverMenu(
+                <MenuSection label="Section Title">
+                    <MenuItem id="item" label="Item" onActivate={() => {}} />
+                </MenuSection>,
             );
 
-            const model = requireModel(ref.current);
             expect(itemLabel(model, 0)).toBe("Section Title");
             expect(requireLink(sectionAt(model, 0)).getNItems()).toBe(1);
         });
@@ -225,18 +199,13 @@ describe("render - Menu", () => {
 
     describe("Menu.Submenu", () => {
         it("creates submenu", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
-
-            await render(
-                <GtkPopoverMenu ref={ref}>
-                    <MenuSubmenu label="File">
-                        <MenuItem id="new" label="New" onActivate={() => {}} />
-                        <MenuItem id="open" label="Open" onActivate={() => {}} />
-                    </MenuSubmenu>
-                </GtkPopoverMenu>,
+            const model = await renderPopoverMenu(
+                <MenuSubmenu label="File">
+                    <MenuItem id="new" label="New" onActivate={() => {}} />
+                    <MenuItem id="open" label="Open" onActivate={() => {}} />
+                </MenuSubmenu>,
             );
 
-            const model = requireModel(ref.current);
             expect(model.getNItems()).toBe(1);
             expect(itemLabel(model, 0)).toBe("File");
 
@@ -247,53 +216,39 @@ describe("render - Menu", () => {
         });
 
         it("adds items within submenu", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
-
-            await render(
-                <GtkPopoverMenu ref={ref}>
-                    <MenuSubmenu label="Edit">
-                        <MenuItem id="cut" label="Cut" onActivate={() => {}} />
-                        <MenuItem id="copy" label="Copy" onActivate={() => {}} />
-                        <MenuItem id="paste" label="Paste" onActivate={() => {}} />
-                    </MenuSubmenu>
-                </GtkPopoverMenu>,
+            const model = await renderPopoverMenu(
+                <MenuSubmenu label="Edit">
+                    <MenuItem id="cut" label="Cut" onActivate={() => {}} />
+                    <MenuItem id="copy" label="Copy" onActivate={() => {}} />
+                    <MenuItem id="paste" label="Paste" onActivate={() => {}} />
+                </MenuSubmenu>,
             );
 
-            const submenu = requireLink(submenuAt(requireModel(ref.current), 0));
+            const submenu = requireLink(submenuAt(model, 0));
             expect(submenu.getNItems()).toBe(3);
         });
 
         it("sets submenu label", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
-
-            await render(
-                <GtkPopoverMenu ref={ref}>
-                    <MenuSubmenu label="Help">
-                        <MenuItem id="about" label="About" onActivate={() => {}} />
-                    </MenuSubmenu>
-                </GtkPopoverMenu>,
+            const model = await renderPopoverMenu(
+                <MenuSubmenu label="Help">
+                    <MenuItem id="about" label="About" onActivate={() => {}} />
+                </MenuSubmenu>,
             );
 
-            const model = requireModel(ref.current);
             expect(itemLabel(model, 0)).toBe("Help");
             expect(requireLink(submenuAt(model, 0)).getNItems()).toBe(1);
         });
 
         it("supports nested submenus", async () => {
-            const ref = createRef<Gtk.PopoverMenu>();
-
-            await render(
-                <GtkPopoverMenu ref={ref}>
-                    <MenuSubmenu label="File">
-                        <MenuSubmenu label="Recent">
-                            <MenuItem id="file1" label="File 1" onActivate={() => {}} />
-                            <MenuItem id="file2" label="File 2" onActivate={() => {}} />
-                        </MenuSubmenu>
+            const model = await renderPopoverMenu(
+                <MenuSubmenu label="File">
+                    <MenuSubmenu label="Recent">
+                        <MenuItem id="file1" label="File 1" onActivate={() => {}} />
+                        <MenuItem id="file2" label="File 2" onActivate={() => {}} />
                     </MenuSubmenu>
-                </GtkPopoverMenu>,
+                </MenuSubmenu>,
             );
 
-            const model = requireModel(ref.current);
             expect(model.getNItems()).toBe(1);
 
             const file = requireLink(submenuAt(model, 0));

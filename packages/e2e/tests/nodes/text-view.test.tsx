@@ -2,9 +2,10 @@ import * as Gtk from "@gtkx/ffi/gtk";
 import * as Pango from "@gtkx/ffi/pango";
 import { GtkButton, GtkTextView } from "@gtkx/react";
 import { render, screen } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, type RefObject } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { getBufferText } from "../helpers/buffer-text.js";
+import { renderChildren } from "../helpers/render-children.js";
 
 const hasTagAtOffset = (buffer: Gtk.TextBuffer, tagName: string, offset: number): boolean => {
     const tagTable = buffer.getTagTable();
@@ -14,6 +15,16 @@ const hasTagAtOffset = (buffer: Gtk.TextBuffer, tagName: string, offset: number)
     const iter = buffer.getIterAtOffset(offset);
     return iter.hasTag(tag);
 };
+
+const buildTaggedTextView = (ref: RefObject<Gtk.TextView | null>) => (items: string[]) => (
+    <GtkTextView ref={ref}>
+        {items.map((item) => (
+            <GtkTextView.Tag key={item} id={item} foreground="blue">
+                {item}
+            </GtkTextView.Tag>
+        ))}
+    </GtkTextView>
+);
 
 describe("render - TextView", () => {
     describe("basic text content", () => {
@@ -352,19 +363,7 @@ describe("render - TextView", () => {
         it("handles mapped items with keys", async () => {
             const ref = createRef<Gtk.TextView>();
 
-            function App({ items }: { items: string[] }) {
-                return (
-                    <GtkTextView ref={ref}>
-                        {items.map((item) => (
-                            <GtkTextView.Tag key={item} id={item} foreground="blue">
-                                {item}
-                            </GtkTextView.Tag>
-                        ))}
-                    </GtkTextView>
-                );
-            }
-
-            await render(<App items={["A", "B", "C"]} />);
+            await renderChildren(["A", "B", "C"], buildTaggedTextView(ref));
 
             const buffer = ref.current?.getBuffer();
             expect(getBufferText(buffer as Gtk.TextBuffer)).toBe("ABC");
@@ -465,24 +464,12 @@ describe("render - TextView", () => {
         it("reorders tags correctly", async () => {
             const ref = createRef<Gtk.TextView>();
 
-            function App({ items }: { items: string[] }) {
-                return (
-                    <GtkTextView ref={ref}>
-                        {items.map((item) => (
-                            <GtkTextView.Tag key={item} id={item} foreground="blue">
-                                {item}
-                            </GtkTextView.Tag>
-                        ))}
-                    </GtkTextView>
-                );
-            }
-
-            const { rerender } = await render(<App items={["A", "B", "C"]} />);
+            const { rerender } = await renderChildren(["A", "B", "C"], buildTaggedTextView(ref));
             const buffer = ref.current?.getBuffer();
 
             expect(getBufferText(buffer as Gtk.TextBuffer)).toBe("ABC");
 
-            await rerender(<App items={["C", "A", "B"]} />);
+            await rerender(["C", "A", "B"]);
 
             expect(getBufferText(buffer as Gtk.TextBuffer)).toBe("CAB");
             expect(hasTagAtOffset(buffer as Gtk.TextBuffer, "C", 0)).toBe(true);

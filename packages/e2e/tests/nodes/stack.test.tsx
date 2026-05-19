@@ -1,8 +1,19 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { GtkLabel, GtkStack } from "@gtkx/react";
 import { render, screen, waitFor } from "@gtkx/testing";
-import { createRef, useState } from "react";
+import { createRef, type RefObject, useState } from "react";
 import { describe, expect, it } from "vitest";
+import { renderChildren } from "../helpers/render-children.js";
+
+const buildIdStack = (ref: RefObject<Gtk.Stack | null>) => (pages: string[]) => (
+    <GtkStack ref={ref}>
+        {pages.map((name) => (
+            <GtkStack.Page key={name} id={name}>
+                {name}
+            </GtkStack.Page>
+        ))}
+    </GtkStack>
+);
 
 describe("render - Stack", () => {
     describe("GtkStack", () => {
@@ -77,21 +88,9 @@ describe("render - Stack", () => {
         it("inserts page before existing page", async () => {
             const stackRef = createRef<Gtk.Stack>();
 
-            function App({ pages }: { pages: string[] }) {
-                return (
-                    <GtkStack ref={stackRef}>
-                        {pages.map((name) => (
-                            <GtkStack.Page key={name} id={name}>
-                                {name}
-                            </GtkStack.Page>
-                        ))}
-                    </GtkStack>
-                );
-            }
+            const { rerender } = await renderChildren(["first", "last"], buildIdStack(stackRef));
 
-            await render(<App pages={["first", "last"]} />);
-
-            await render(<App pages={["first", "middle", "last"]} />);
+            await rerender(["first", "middle", "last"]);
 
             expect(stackRef.current?.getChildByName("first")).not.toBeNull();
             expect(stackRef.current?.getChildByName("middle")).not.toBeNull();
@@ -101,21 +100,9 @@ describe("render - Stack", () => {
         it("removes page", async () => {
             const stackRef = createRef<Gtk.Stack>();
 
-            function App({ pages }: { pages: string[] }) {
-                return (
-                    <GtkStack ref={stackRef}>
-                        {pages.map((name) => (
-                            <GtkStack.Page key={name} id={name}>
-                                {name}
-                            </GtkStack.Page>
-                        ))}
-                    </GtkStack>
-                );
-            }
+            const { rerender } = await renderChildren(["a", "b", "c"], buildIdStack(stackRef));
 
-            await render(<App pages={["a", "b", "c"]} />);
-
-            await render(<App pages={["a", "c"]} />);
+            await rerender(["a", "c"]);
 
             expect(stackRef.current?.getChildByName("a")).not.toBeNull();
             expect(stackRef.current?.getChildByName("b")).toBeNull();

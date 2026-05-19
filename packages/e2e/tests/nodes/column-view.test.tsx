@@ -126,6 +126,34 @@ function SortableColumnView({
     );
 }
 
+/** Handle returned by {@link renderSortableColumnView}. */
+interface SortableColumnViewFixture {
+    /** Ref to the rendered `GtkColumnView`. */
+    ref: React.RefObject<Gtk.ColumnView | null>;
+    /** Employees rendered into the column view. */
+    employees: Employee[];
+    /** Row id orders captured on every render, newest last. */
+    renderOrders: string[][];
+    /** Most recent captured render order, or `undefined` before the first render. */
+    latestOrder: () => string[] | undefined;
+}
+
+const renderSortableColumnView = async (count: number): Promise<SortableColumnViewFixture> => {
+    const employees = generateEmployees(count);
+    const renderOrders: string[][] = [];
+    const ref = createRef<Gtk.ColumnView>();
+
+    await render(
+        <SortableColumnView
+            employees={employees}
+            columnViewRef={ref}
+            onRenderOrder={(ids) => renderOrders.push(ids)}
+        />,
+    );
+
+    return { ref, employees, renderOrders, latestOrder: () => renderOrders[renderOrders.length - 1] };
+};
+
 describe("render - ColumnView", () => {
     describe("GtkColumnView", () => {
         it("creates ColumnView widget", async () => {
@@ -308,19 +336,9 @@ describe("render - ColumnView", () => {
 
     describe("React-side sorting with large dataset", () => {
         it("renders 200 rows in initial order", { timeout: 15000 }, async () => {
-            const employees = generateEmployees(200);
-            const renderOrders: string[][] = [];
-            const ref = createRef<Gtk.ColumnView>();
+            const { latestOrder } = await renderSortableColumnView(200);
 
-            await render(
-                <SortableColumnView
-                    employees={employees}
-                    columnViewRef={ref}
-                    onRenderOrder={(ids) => renderOrders.push(ids)}
-                />,
-            );
-
-            const initialOrder = renderOrders[renderOrders.length - 1];
+            const initialOrder = latestOrder();
             expect(initialOrder).toBeDefined();
             expect(initialOrder?.length).toBe(200);
             expect(initialOrder?.[0]).toBe("1");
@@ -328,24 +346,14 @@ describe("render - ColumnView", () => {
         });
 
         it("sorts 200 rows when clicking salary column header", { timeout: 15000 }, async () => {
-            const employees = generateEmployees(200);
-            const renderOrders: string[][] = [];
-            const ref = createRef<Gtk.ColumnView>();
+            const { ref, employees, latestOrder } = await renderSortableColumnView(200);
 
-            await render(
-                <SortableColumnView
-                    employees={employees}
-                    columnViewRef={ref}
-                    onRenderOrder={(ids) => renderOrders.push(ids)}
-                />,
-            );
-
-            const unsortedOrder = renderOrders[renderOrders.length - 1];
+            const unsortedOrder = latestOrder();
             expect(unsortedOrder?.[0]).toBe("1");
 
             await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
 
-            const sortedBySalary = renderOrders[renderOrders.length - 1];
+            const sortedBySalary = latestOrder();
             expect(sortedBySalary).toBeDefined();
 
             const firstItemId = sortedBySalary?.[0];
@@ -361,27 +369,17 @@ describe("render - ColumnView", () => {
         });
 
         it("sorts 200 rows descending when clicking column header with DESC order", { timeout: 30000 }, async () => {
-            const employees = generateEmployees(200);
-            const renderOrders: string[][] = [];
-            const ref = createRef<Gtk.ColumnView>();
-
-            await render(
-                <SortableColumnView
-                    employees={employees}
-                    columnViewRef={ref}
-                    onRenderOrder={(ids) => renderOrders.push(ids)}
-                />,
-            );
+            const { ref, employees, latestOrder } = await renderSortableColumnView(200);
 
             await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
 
-            const ascendingOrder = renderOrders[renderOrders.length - 1];
+            const ascendingOrder = latestOrder();
             const firstInAsc = employees.find((e) => e.id === ascendingOrder?.[0]);
             const lastInAsc = employees.find((e) => e.id === ascendingOrder?.[199]);
 
             await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.DESCENDING);
 
-            const descendingOrder = renderOrders[renderOrders.length - 1];
+            const descendingOrder = latestOrder();
             const firstInDesc = employees.find((e) => e.id === descendingOrder?.[0]);
             const lastInDesc = employees.find((e) => e.id === descendingOrder?.[199]);
 
@@ -391,25 +389,15 @@ describe("render - ColumnView", () => {
         });
 
         it("switches sort column when clicking different column header", { timeout: 15000 }, async () => {
-            const employees = generateEmployees(200);
-            const renderOrders: string[][] = [];
-            const ref = createRef<Gtk.ColumnView>();
-
-            await render(
-                <SortableColumnView
-                    employees={employees}
-                    columnViewRef={ref}
-                    onRenderOrder={(ids) => renderOrders.push(ids)}
-                />,
-            );
+            const { ref, latestOrder } = await renderSortableColumnView(200);
 
             await clickColumnHeader(ref.current as Gtk.ColumnView, "salary", Gtk.SortType.ASCENDING);
 
-            const sortedBySalary = [...(renderOrders[renderOrders.length - 1] ?? [])];
+            const sortedBySalary = [...(latestOrder() ?? [])];
 
             await clickColumnHeader(ref.current as Gtk.ColumnView, "name", Gtk.SortType.ASCENDING);
 
-            const sortedByName = renderOrders[renderOrders.length - 1];
+            const sortedByName = latestOrder();
 
             expect(sortedByName).not.toEqual(sortedBySalary);
 
@@ -418,10 +406,7 @@ describe("render - ColumnView", () => {
         });
 
         it("maintains model integrity after multiple sort operations on 200 rows", { timeout: 15000 }, async () => {
-            const employees = generateEmployees(200);
-            const ref = createRef<Gtk.ColumnView>();
-
-            await render(<SortableColumnView employees={employees} columnViewRef={ref} />);
+            const { ref } = await renderSortableColumnView(200);
 
             expect(ref.current?.getModel()).not.toBeNull();
 

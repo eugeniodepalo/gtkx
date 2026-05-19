@@ -2,8 +2,14 @@ import * as Adw from "@gtkx/ffi/adw";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import { AdwSpringAnimation, AdwTimedAnimation, GtkBox, GtkButton, GtkLabel } from "@gtkx/react";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
-import React, { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import React, { createRef, type ReactElement } from "react";
+import { describe, expect, it, type Mock, vi } from "vitest";
+
+const expectCompletes = async (animation: ReactElement, label: string, onComplete: Mock, timeout = 500) => {
+    await render(animation);
+    await screen.findByText(label);
+    await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout });
+};
 
 describe("AdwTimedAnimation / AdwSpringAnimation", () => {
     describe("mount animation", () => {
@@ -123,7 +129,7 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
             const onComplete = vi.fn();
             const buttonRef = createRef<Gtk.Button>();
 
-            await render(
+            await expectCompletes(
                 <AdwSpringAnimation
                     initial={{ scale: 0.5 }}
                     animate={{ scale: 1 }}
@@ -132,17 +138,16 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkButton ref={buttonRef} label="Spring" />
                 </AdwSpringAnimation>,
+                "Spring",
+                onComplete,
+                2000,
             );
-
-            await screen.findByText("Spring");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 2000 });
         });
 
         it("respects spring transition parameters", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwSpringAnimation
                     initial={{ translateX: -100 }}
                     animate={{ translateX: 0 }}
@@ -154,11 +159,10 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="Bouncy" />
                 </AdwSpringAnimation>,
+                "Bouncy",
+                onComplete,
+                2000,
             );
-
-            await screen.findByText("Bouncy");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 2000 });
         });
     });
 
@@ -166,7 +170,7 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
         it("respects easing function", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwTimedAnimation
                     initial={{ rotate: 0 }}
                     animate={{ rotate: 360 }}
@@ -177,11 +181,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="Rotating" />
                 </AdwTimedAnimation>,
+                "Rotating",
+                onComplete,
             );
-
-            await screen.findByText("Rotating");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
     });
 
@@ -189,7 +191,7 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
         it("animates multiple properties simultaneously", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwTimedAnimation
                     initial={{ opacity: 0, scale: 0.5, translateY: 50 }}
                     animate={{ opacity: 1, scale: 1, translateY: 0 }}
@@ -199,11 +201,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="Multi" />
                 </AdwTimedAnimation>,
+                "Multi",
+                onComplete,
             );
-
-            await screen.findByText("Multi");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
     });
 
@@ -211,7 +211,7 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
         it("animates skewX and skewY properties", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwTimedAnimation
                     initial={{ skewX: 0, skewY: 0 }}
                     animate={{ skewX: 10, skewY: 5 }}
@@ -221,11 +221,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="Skewed" />
                 </AdwTimedAnimation>,
+                "Skewed",
+                onComplete,
             );
-
-            await screen.findByText("Skewed");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
     });
 
@@ -233,7 +231,7 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
         it("runs animation with repeat count", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwTimedAnimation
                     initial={{ scale: 0.8 }}
                     animate={{ scale: 1.2 }}
@@ -244,17 +242,15 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="Repeating" />
                 </AdwTimedAnimation>,
+                "Repeating",
+                onComplete,
             );
-
-            await screen.findByText("Repeating");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
 
         it("runs animation with alternate", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwTimedAnimation
                     initial={{ translateY: 0 }}
                     animate={{ translateY: -20 }}
@@ -266,11 +262,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="Alternating" />
                 </AdwTimedAnimation>,
+                "Alternating",
+                onComplete,
             );
-
-            await screen.findByText("Alternating");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
     });
 
@@ -278,7 +272,7 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
         it("animates translateX property", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwTimedAnimation
                     initial={{ translateX: 0 }}
                     animate={{ translateX: 100 }}
@@ -288,17 +282,15 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="TranslateX" />
                 </AdwTimedAnimation>,
+                "TranslateX",
+                onComplete,
             );
-
-            await screen.findByText("TranslateX");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
 
         it("animates translateY property", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwTimedAnimation
                     initial={{ translateY: 0 }}
                     animate={{ translateY: 50 }}
@@ -308,17 +300,15 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="TranslateY" />
                 </AdwTimedAnimation>,
+                "TranslateY",
+                onComplete,
             );
-
-            await screen.findByText("TranslateY");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
 
         it("animates scale property", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwTimedAnimation
                     initial={{ scale: 1 }}
                     animate={{ scale: 1.5 }}
@@ -328,17 +318,15 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="Scale" />
                 </AdwTimedAnimation>,
+                "Scale",
+                onComplete,
             );
-
-            await screen.findByText("Scale");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
 
         it("animates rotate property", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwTimedAnimation
                     initial={{ rotate: 0 }}
                     animate={{ rotate: 180 }}
@@ -348,11 +336,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="Rotate" />
                 </AdwTimedAnimation>,
+                "Rotate",
+                onComplete,
             );
-
-            await screen.findByText("Rotate");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
     });
 
@@ -392,7 +378,7 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
         it("animates spring with low damping for bouncy effect", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwSpringAnimation
                     initial={{ translateX: 0 }}
                     animate={{ translateX: 100 }}
@@ -404,11 +390,10 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="Bouncy" />
                 </AdwSpringAnimation>,
+                "Bouncy",
+                onComplete,
+                3000,
             );
-
-            await screen.findByText("Bouncy");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 3000 });
         });
     });
 
@@ -416,7 +401,7 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
         it("delays timed animation start", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwTimedAnimation
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -427,11 +412,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="Delayed" />
                 </AdwTimedAnimation>,
+                "Delayed",
+                onComplete,
             );
-
-            await screen.findByText("Delayed");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
     });
 
@@ -439,7 +422,7 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
         it("animates with EASE_OUT_BOUNCE easing", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwTimedAnimation
                     initial={{ translateX: 0 }}
                     animate={{ translateX: 60 }}
@@ -450,17 +433,15 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="Bounce Easing" />
                 </AdwTimedAnimation>,
+                "Bounce Easing",
+                onComplete,
             );
-
-            await screen.findByText("Bounce Easing");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
 
         it("animates with EASE_OUT_ELASTIC easing", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwTimedAnimation
                     initial={{ translateX: 0 }}
                     animate={{ translateX: 60 }}
@@ -471,17 +452,15 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="Elastic Easing" />
                 </AdwTimedAnimation>,
+                "Elastic Easing",
+                onComplete,
             );
-
-            await screen.findByText("Elastic Easing");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
 
         it("animates with LINEAR easing", async () => {
             const onComplete = vi.fn();
 
-            await render(
+            await expectCompletes(
                 <AdwTimedAnimation
                     initial={{ translateX: 0 }}
                     animate={{ translateX: 60 }}
@@ -492,11 +471,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 >
                     <GtkLabel label="Linear Easing" />
                 </AdwTimedAnimation>,
+                "Linear Easing",
+                onComplete,
             );
-
-            await screen.findByText("Linear Easing");
-
-            await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
     });
 });
