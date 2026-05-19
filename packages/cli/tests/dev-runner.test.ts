@@ -32,10 +32,12 @@ vi.mock("../src/refresh-runtime.js", () => ({
     performRefresh: vi.fn(),
 }));
 
-vi.mock("../src/vite-plugin-gtkx-assets.js", () => ({ gtkxAssets: () => ({ name: "gtkx:assets" }) }));
-vi.mock("../src/vite-plugin-gtkx-gsettings.js", () => ({ gtkxGSettings: () => ({ name: "gtkx:gsettings" }) }));
-vi.mock("../src/vite-plugin-gtkx-refresh.js", () => ({ gtkxRefresh: () => ({ name: "gtkx:refresh" }) }));
-vi.mock("../src/vite-plugin-swc-ssr-refresh.js", () => ({ swcSsrRefresh: () => ({ name: "gtkx:swc-refresh" }) }));
+vi.mock("../src/vite-plugins/assets.js", () => ({ gtkxAssets: () => ({ name: "gtkx:assets" }) }));
+vi.mock("../src/vite-plugins/gsettings.js", () => ({ gtkxGSettings: () => ({ name: "gtkx:gsettings" }) }));
+vi.mock("../src/vite-plugins/react-refresh-runtime.js", () => ({ gtkxRefresh: () => ({ name: "gtkx:refresh" }) }));
+vi.mock("../src/vite-plugins/react-refresh-transform.js", () => ({
+    swcSsrRefresh: () => ({ name: "gtkx:swc-refresh" }),
+}));
 
 import { RELOAD_EXIT_CODE } from "../src/dev-protocol.js";
 import { createViteDevServer, handleFileChange, log, main, requestReload } from "../src/dev-runner.js";

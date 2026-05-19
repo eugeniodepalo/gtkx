@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { gtkxGSettings } from "../src/vite-plugin-gtkx-gsettings.js";
+import { gtkxGSettings } from "../../src/vite-plugins/gsettings.js";
 
 type ConfigResolvedHook = (config: { command: "build" | "serve" }) => void;
 type ResolveIdHook = (

@@ -1,8 +1,8 @@
 import { type InlineConfig, build as viteBuild } from "vite";
-import { gtkxAssets } from "./vite-plugin-gtkx-assets.js";
-import { gtkxBuiltUrl } from "./vite-plugin-gtkx-built-url.js";
-import { gtkxGSettings } from "./vite-plugin-gtkx-gsettings.js";
-import { gtkxNative } from "./vite-plugin-gtkx-native.js";
+import { gtkxAssets } from "./vite-plugins/assets.js";
+import { gtkxBuiltUrl } from "./vite-plugins/built-url.js";
+import { gtkxGSettings } from "./vite-plugins/gsettings.js";
+import { gtkxNative } from "./vite-plugins/native.js";
 
 /**
  * Options for building a GTKX application for production.

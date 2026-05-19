@@ -8,21 +8,21 @@ type ResolveIdHook = (id: string) => { id: string; external: boolean } | null;
 
 describe("gtkxNative", () => {
     it("returns a plugin with the expected name and pre-enforce", async () => {
-        const { gtkxNative } = await import("../src/vite-plugin-gtkx-native.js");
+        const { gtkxNative } = await import("../../src/vite-plugins/native.js");
         const plugin = gtkxNative("/tmp");
         expect(plugin.name).toBe("gtkx:native");
         expect(plugin.enforce).toBe("pre");
     });
 
     it("transform returns null for ids other than the native binding", async () => {
-        const { gtkxNative } = await import("../src/vite-plugin-gtkx-native.js");
+        const { gtkxNative } = await import("../../src/vite-plugins/native.js");
         const plugin = gtkxNative("/tmp");
         const result = (plugin.transform as TransformHook)("export const x = 1;", "/some/other/file.js");
         expect(result).toBeNull();
     });
 
     it("resolveId marks the emitted binary as external", async () => {
-        const { gtkxNative } = await import("../src/vite-plugin-gtkx-native.js");
+        const { gtkxNative } = await import("../../src/vite-plugins/native.js");
         const plugin = gtkxNative("/tmp");
         expect((plugin.resolveId as ResolveIdHook)("./gtkx.node")).toEqual({
             id: "./gtkx.node",
@@ -37,7 +37,7 @@ describe("gtkxNative", () => {
             platform: () => "darwin",
             arch: () => "x64",
         }));
-        const { gtkxNative } = await import("../src/vite-plugin-gtkx-native.js");
+        const { gtkxNative } = await import("../../src/vite-plugins/native.js");
         const plugin = gtkxNative("/tmp");
 
         expect(() =>
@@ -56,7 +56,7 @@ describe("gtkxNative", () => {
             platform: () => "linux",
             arch: () => "ia32",
         }));
-        const { gtkxNative } = await import("../src/vite-plugin-gtkx-native.js");
+        const { gtkxNative } = await import("../../src/vite-plugins/native.js");
         const plugin = gtkxNative("/tmp");
 
         expect(() =>
@@ -87,7 +87,7 @@ describe("gtkxNative", () => {
             return { ...real, readFileSync: () => Buffer.from("native-bytes") };
         });
 
-        const { gtkxNative } = await import("../src/vite-plugin-gtkx-native.js");
+        const { gtkxNative } = await import("../../src/vite-plugins/native.js");
         const plugin = gtkxNative("/tmp");
 
         const emitFile = vi.fn();

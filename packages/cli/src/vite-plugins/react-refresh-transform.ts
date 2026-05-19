@@ -4,7 +4,7 @@ import {
     type RefreshFilterOptions,
     resolveRefreshFilter,
     shouldTransformForRefresh,
-} from "./internal/vite-refresh-shared.js";
+} from "../internal/vite-refresh-shared.js";
 
 type SwcSsrRefreshOptions = RefreshFilterOptions;
 

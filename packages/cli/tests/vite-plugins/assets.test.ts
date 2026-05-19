@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { gtkxAssets } from "../src/vite-plugin-gtkx-assets.js";
+import { gtkxAssets } from "../../src/vite-plugins/assets.js";
 
 type ConfigHook = () => { assetsInclude: RegExp[] };
 type ConfigResolvedHook = (config: { command: "build" | "serve" }) => void;

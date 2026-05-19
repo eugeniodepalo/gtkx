@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gtkxBuiltUrl } from "../src/vite-plugin-gtkx-built-url.js";
+import { gtkxBuiltUrl } from "../../src/vite-plugins/built-url.js";
 
 type ConfigHook = (userConfig: {
     experimental?: {

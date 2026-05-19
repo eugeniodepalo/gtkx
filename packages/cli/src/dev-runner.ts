@@ -5,10 +5,10 @@ import { createServer, type ViteDevServer } from "vite";
 import { RELOAD_EXIT_CODE } from "./dev-protocol.js";
 import { startMcpClient, stopMcpClient } from "./mcp-client.js";
 import { isReactRefreshBoundary, performRefresh } from "./refresh-runtime.js";
-import { gtkxAssets } from "./vite-plugin-gtkx-assets.js";
-import { gtkxGSettings } from "./vite-plugin-gtkx-gsettings.js";
-import { gtkxRefresh } from "./vite-plugin-gtkx-refresh.js";
-import { swcSsrRefresh } from "./vite-plugin-swc-ssr-refresh.js";
+import { gtkxAssets } from "./vite-plugins/assets.js";
+import { gtkxGSettings } from "./vite-plugins/gsettings.js";
+import { gtkxRefresh } from "./vite-plugins/react-refresh-runtime.js";
+import { swcSsrRefresh } from "./vite-plugins/react-refresh-transform.js";
 
 /**
  * Argv slot the CLI supervisor uses to pass the entry path to the runner.

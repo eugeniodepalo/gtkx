@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gtkxRefresh } from "../src/vite-plugin-gtkx-refresh.js";
+import { gtkxRefresh } from "../../src/vite-plugins/react-refresh-runtime.js";
 
 describe("gtkxRefresh", () => {
     it("returns plugin with correct name", () => {

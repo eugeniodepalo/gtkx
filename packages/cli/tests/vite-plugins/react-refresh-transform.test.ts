@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { swcSsrRefresh } from "../src/vite-plugin-swc-ssr-refresh.js";
+import { swcSsrRefresh } from "../../src/vite-plugins/react-refresh-transform.js";
 
 type TransformResult = { code: string; map?: unknown } | undefined;
 
