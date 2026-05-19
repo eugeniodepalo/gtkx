@@ -9,7 +9,7 @@
             "path": "packages/ffi/tsconfig.json"
         },
         {
-            "path": "packages/gir/tsconfig.json"
+            "path": "packages/codegen/tsconfig.json"
         },
         {
             "path": "packages/mcp/tsconfig.json"

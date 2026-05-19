@@ -96,7 +96,14 @@
         },
         "typecheck": {
             "dependsOn": ["^build"],
-            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.app.json"],
+            "inputs": [
+                "src/**/*.ts",
+                "src/**/*.tsx",
+                "tsconfig.json",
+                "tsconfig.app.json",
+                "tsconfig.lib.json",
+                "tsconfig.test.json"
+            ],
             "outputs": [],
             "outputLogs": "new-only"
         },
@@ -143,7 +150,7 @@
         },
         "@gtkx/ffi#typecheck": {
             "dependsOn": ["^build"],
-            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.app.json"],
+            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
             "outputs": [],
             "outputLogs": "new-only"
         },
@@ -154,7 +161,7 @@
         },
         "@gtkx/react#typecheck": {
             "dependsOn": ["^build"],
-            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.app.json"],
+            "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.lib.json"],
             "outputs": [],
             "outputLogs": "new-only"
         },

@@ -8,14 +8,16 @@ This is a monorepo containing the following key packages in `packages/`:
 
 | Package   | Purpose                             |
 | --------- | ----------------------------------- |
-| `native`  | Rust native module (NAPI via Neon)  |
+| `native`  | Rust native module (napi-rs)        |
 | `ffi`     | TypeScript FFI bindings to GTK/GLib |
 | `react`   | React reconciler for GTK widgets    |
 | `css`     | CSS-in-JS styling for GTK           |
 | `codegen` | Code generation from GIR files      |
 | `cli`     | CLI tooling                         |
+| `mcp`     | MCP server for AI integration       |
 | `testing` | Test utilities                      |
 | `e2e`     | End-to-end tests (reconciler nodes) |
+| `vitest`  | Vitest plugin for GTKX testing      |
 
 ### Native Module (`packages/native`)
 
