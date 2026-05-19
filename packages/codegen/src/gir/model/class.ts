@@ -5,6 +5,36 @@ import type { RepositoryLike } from "./repository-like.js";
 import type { GirSignal } from "./signal.js";
 
 /**
+ * Constructor data for {@link GirClass}.
+ *
+ * Produced by the normalizer before the repository exists, so that
+ * `GirClass` construction can be deferred until the repo is available.
+ */
+export type GirClassData = {
+    name: string;
+    qualifiedName: string;
+    cType: string;
+    parent: string | null;
+    abstract: boolean;
+    glibTypeName?: string;
+    glibGetType?: string;
+    cSymbolPrefix?: string;
+    fundamental?: boolean;
+    refFunc?: string;
+    unrefFunc?: string;
+    implements: string[];
+    methods: GirMethod[];
+    constructors: GirConstructor[];
+    staticFunctions: GirFunction[];
+    properties: GirProperty[];
+    signals: GirSignal[];
+    fieldNames: string[];
+    fields: GirField[];
+    virtualMethodNames: string[];
+    doc?: string;
+};
+
+/**
  * GObject class with helper methods for type graph traversal.
  *
  * Receives a repository reference at construction time to enable
@@ -38,32 +68,7 @@ export class GirClass {
 
     private readonly repo: RepositoryLike;
 
-    constructor(
-        data: {
-            name: string;
-            qualifiedName: string;
-            cType: string;
-            parent: string | null;
-            abstract: boolean;
-            glibTypeName?: string;
-            glibGetType?: string;
-            cSymbolPrefix?: string;
-            fundamental?: boolean;
-            refFunc?: string;
-            unrefFunc?: string;
-            implements: string[];
-            methods: GirMethod[];
-            constructors: GirConstructor[];
-            staticFunctions: GirFunction[];
-            properties: GirProperty[];
-            signals: GirSignal[];
-            fieldNames: string[];
-            fields: GirField[];
-            virtualMethodNames: string[];
-            doc?: string;
-        },
-        repo: RepositoryLike,
-    ) {
+    constructor(data: GirClassData, repo: RepositoryLike) {
         this.name = data.name;
         this.qualifiedName = data.qualifiedName;
         this.cType = data.cType;

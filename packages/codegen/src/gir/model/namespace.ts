@@ -8,6 +8,26 @@ import type { GirInterface } from "./interface.js";
 import type { GirRecord } from "./record.js";
 
 /**
+ * Constructor data for {@link GirNamespace}.
+ */
+export type GirNamespaceData = {
+    name: string;
+    version: string;
+    sharedLibrary: string;
+    cPrefix: string;
+    classes: Map<string, GirClass>;
+    interfaces: Map<string, GirInterface>;
+    records: Map<string, GirRecord>;
+    enumerations: Map<string, GirEnumeration>;
+    bitfields: Map<string, GirEnumeration>;
+    callbacks: Map<string, GirCallback>;
+    functions: Map<string, GirFunction>;
+    constants: Map<string, GirConstant>;
+    aliases: Map<string, GirAlias>;
+    doc?: string;
+};
+
+/**
  * Namespace containing all resolved types from a single GIR file.
  */
 export class GirNamespace {
@@ -26,22 +46,7 @@ export class GirNamespace {
     readonly aliases: Map<string, GirAlias>;
     readonly doc?: string;
 
-    constructor(data: {
-        name: string;
-        version: string;
-        sharedLibrary: string;
-        cPrefix: string;
-        classes: Map<string, GirClass>;
-        interfaces: Map<string, GirInterface>;
-        records: Map<string, GirRecord>;
-        enumerations: Map<string, GirEnumeration>;
-        bitfields: Map<string, GirEnumeration>;
-        callbacks: Map<string, GirCallback>;
-        functions: Map<string, GirFunction>;
-        constants: Map<string, GirConstant>;
-        aliases: Map<string, GirAlias>;
-        doc?: string;
-    }) {
+    constructor(data: GirNamespaceData) {
         this.name = data.name;
         this.version = data.version;
         this.sharedLibrary = data.sharedLibrary;

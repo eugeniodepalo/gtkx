@@ -2,9 +2,12 @@ import { isIntrinsicType } from "../intrinsics.js";
 import { GirAlias } from "../model/alias.js";
 import { GirConstructor, GirFunction, GirMethod } from "../model/callables.js";
 import { GirCallback } from "../model/callback.js";
+import type { GirClassData } from "../model/class.js";
 import { GirConstant } from "../model/constant.js";
 import { GirEnumeration, GirEnumerationMember } from "../model/enumeration.js";
 import { GirField } from "../model/field.js";
+import type { GirInterfaceData } from "../model/interface.js";
+import type { GirNamespaceData } from "../model/namespace.js";
 import { GirParameter } from "../model/parameter.js";
 import { GirProperty, parseDefaultValue } from "../model/property.js";
 import { GirRecord } from "../model/record.js";
@@ -32,74 +35,15 @@ import type {
 type TypeIndex = Map<string, Set<string>>;
 
 /**
- * Data produced for a class before the repository exists.
- * Used to defer GirClass construction until the repo is available.
- */
-export type GirClassData = {
-    name: string;
-    qualifiedName: string;
-    cType: string;
-    parent: string | null;
-    abstract: boolean;
-    glibTypeName?: string;
-    glibGetType?: string;
-    cSymbolPrefix?: string;
-    fundamental?: boolean;
-    refFunc?: string;
-    unrefFunc?: string;
-    implements: string[];
-    methods: GirMethod[];
-    constructors: GirConstructor[];
-    staticFunctions: GirFunction[];
-    properties: GirProperty[];
-    signals: GirSignal[];
-    fieldNames: string[];
-    fields: GirField[];
-    virtualMethodNames: string[];
-    doc?: string;
-};
-
-/**
- * Data produced for an interface before the repository exists.
- */
-export type GirInterfaceData = {
-    name: string;
-    qualifiedName: string;
-    cType: string;
-    glibTypeName?: string;
-    glibGetType?: string;
-    prerequisites: string[];
-    methods: GirMethod[];
-    staticFunctions: GirFunction[];
-    properties: GirProperty[];
-    signals: GirSignal[];
-    fieldNames: string[];
-    virtualMethodNames: string[];
-    doc?: string;
-};
-
-/**
  * Intermediate namespace data produced by the normalizer.
  *
  * Classes and interfaces are stored as plain data because they need
  * the repository reference at construction time (which doesn't exist yet).
  * All other types are fully constructed model instances.
  */
-export type GirNamespaceIntermediate = {
-    name: string;
-    version: string;
-    sharedLibrary: string;
-    cPrefix: string;
+export type GirNamespaceIntermediate = Omit<GirNamespaceData, "classes" | "interfaces"> & {
     classes: Map<string, GirClassData>;
     interfaces: Map<string, GirInterfaceData>;
-    records: Map<string, GirRecord>;
-    enumerations: Map<string, GirEnumeration>;
-    bitfields: Map<string, GirEnumeration>;
-    callbacks: Map<string, GirCallback>;
-    functions: Map<string, GirFunction>;
-    constants: Map<string, GirConstant>;
-    aliases: Map<string, GirAlias>;
-    doc?: string;
 };
 
 /**

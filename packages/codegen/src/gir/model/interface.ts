@@ -4,6 +4,28 @@ import type { RepositoryLike } from "./repository-like.js";
 import type { GirSignal } from "./signal.js";
 
 /**
+ * Constructor data for {@link GirInterface}.
+ *
+ * Produced by the normalizer before the repository exists, so that
+ * `GirInterface` construction can be deferred until the repo is available.
+ */
+export type GirInterfaceData = {
+    name: string;
+    qualifiedName: string;
+    cType: string;
+    glibTypeName?: string;
+    glibGetType?: string;
+    prerequisites: string[];
+    methods: GirMethod[];
+    staticFunctions: GirFunction[];
+    properties: GirProperty[];
+    signals: GirSignal[];
+    fieldNames: string[];
+    virtualMethodNames: string[];
+    doc?: string;
+};
+
+/**
  * GObject interface with helper methods.
  *
  * Receives a repository reference at construction time to enable
@@ -28,24 +50,7 @@ export class GirInterface {
 
     private readonly repo: RepositoryLike;
 
-    constructor(
-        data: {
-            name: string;
-            qualifiedName: string;
-            cType: string;
-            glibTypeName?: string;
-            glibGetType?: string;
-            prerequisites: string[];
-            methods: GirMethod[];
-            staticFunctions: GirFunction[];
-            properties: GirProperty[];
-            signals: GirSignal[];
-            fieldNames: string[];
-            virtualMethodNames: string[];
-            doc?: string;
-        },
-        repo: RepositoryLike,
-    ) {
+    constructor(data: GirInterfaceData, repo: RepositoryLike) {
         this.name = data.name;
         this.qualifiedName = data.qualifiedName;
         this.cType = data.cType;

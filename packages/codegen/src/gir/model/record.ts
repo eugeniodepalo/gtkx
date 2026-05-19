@@ -2,6 +2,28 @@ import type { GirConstructor, GirFunction, GirMethod } from "./callables.js";
 import type { GirField } from "./field.js";
 
 /**
+ * Constructor data for {@link GirRecord}.
+ */
+export type GirRecordData = {
+    name: string;
+    qualifiedName: string;
+    cType: string;
+    opaque: boolean;
+    disguised: boolean;
+    isUnion: boolean;
+    glibTypeName?: string;
+    glibGetType?: string;
+    isGtypeStructFor?: string;
+    copyFunction?: string;
+    freeFunction?: string;
+    fields: GirField[];
+    methods: GirMethod[];
+    constructors: GirConstructor[];
+    staticFunctions: GirFunction[];
+    doc?: string;
+};
+
+/**
  * Record (boxed type or plain struct) with helper methods.
  */
 export class GirRecord {
@@ -22,24 +44,7 @@ export class GirRecord {
     readonly staticFunctions: GirFunction[];
     readonly doc?: string;
 
-    constructor(data: {
-        name: string;
-        qualifiedName: string;
-        cType: string;
-        opaque: boolean;
-        disguised: boolean;
-        isUnion: boolean;
-        glibTypeName?: string;
-        glibGetType?: string;
-        isGtypeStructFor?: string;
-        copyFunction?: string;
-        freeFunction?: string;
-        fields: GirField[];
-        methods: GirMethod[];
-        constructors: GirConstructor[];
-        staticFunctions: GirFunction[];
-        doc?: string;
-    }) {
+    constructor(data: GirRecordData) {
         this.name = data.name;
         this.qualifiedName = data.qualifiedName;
         this.cType = data.cType;

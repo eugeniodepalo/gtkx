@@ -82,25 +82,7 @@ export class GirRepository implements RepositoryLike {
                 interfaces.set(name, new GirInterface(ifaceData, repo));
             }
 
-            namespaceMap.set(
-                nsName,
-                new GirNamespace({
-                    name: data.name,
-                    version: data.version,
-                    sharedLibrary: data.sharedLibrary,
-                    cPrefix: data.cPrefix,
-                    classes,
-                    interfaces,
-                    records: data.records,
-                    enumerations: data.enumerations,
-                    bitfields: data.bitfields,
-                    callbacks: data.callbacks,
-                    functions: data.functions,
-                    constants: data.constants,
-                    aliases: data.aliases,
-                    doc: data.doc,
-                }),
-            );
+            namespaceMap.set(nsName, new GirNamespace({ ...data, classes, interfaces }));
         }
 
         return repo;
