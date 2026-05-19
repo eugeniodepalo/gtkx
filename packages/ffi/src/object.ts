@@ -73,6 +73,13 @@ export function constructNativeObject(instance: object, props: object = {}): voi
     (instance as GTypeStamped).__gtype__ = getClassGType(ctor);
 }
 
+type GObjectPropCollector = {
+    readonly props: Record<string, unknown>;
+    readonly names: string[];
+    readonly values: NativeHandle[];
+    readonly seen: Set<string>;
+};
+
 /**
  * GObject construction: walk the class chain, merge inherited props, then
  * dispatch `g_object_new_with_properties`.
@@ -82,36 +89,23 @@ function constructGObject(
     leafMeta: Extract<ConstructionMeta, { kind: "gobject" }>,
     props: Record<string, unknown>,
 ): NativeHandle {
-    const names: string[] = [];
-    const values: NativeHandle[] = [];
-    const seen = new Set<string>();
-    walkPropsForGObject(leafCtor, props, names, values, seen);
+    const collector: GObjectPropCollector = { props, names: [], values: [], seen: new Set() };
+    walkPropsForGObject(leafCtor, collector);
 
-    return objectNewWithProperties(Number(leafMeta.gtype()), names, values);
+    return objectNewWithProperties(Number(leafMeta.gtype()), collector.names, collector.values);
 }
 
-function walkPropsForGObject(
-    ctor: NativeClass | null,
-    props: Record<string, unknown>,
-    names: string[],
-    values: NativeHandle[],
-    seen: Set<string>,
-): void {
+function walkPropsForGObject(ctor: NativeClass | null, collector: GObjectPropCollector): void {
     if (!ctor) return;
     const meta = CONSTRUCTION_META.get(ctor);
     if (meta?.kind === "gobject") {
-        collectGObjectProps(meta.props, props, names, values, seen);
+        collectGObjectProps(meta.props, collector);
     }
-    walkPropsForGObject(getParentClass(ctor), props, names, values, seen);
+    walkPropsForGObject(getParentClass(ctor), collector);
 }
 
-function collectGObjectProps(
-    propMap: Record<string, GObjectPropMeta>,
-    props: Record<string, unknown>,
-    names: string[],
-    values: NativeHandle[],
-    seen: Set<string>,
-): void {
+function collectGObjectProps(propMap: Record<string, GObjectPropMeta>, collector: GObjectPropCollector): void {
+    const { props, names, values, seen } = collector;
     for (const propKey of Object.keys(propMap)) {
         if (seen.has(propKey)) continue;
         seen.add(propKey);

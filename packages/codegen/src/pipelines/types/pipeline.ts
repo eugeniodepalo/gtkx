@@ -221,22 +221,30 @@ export const collectClassFieldNames = (repository: GirRepository): FieldNameMap 
  * Collects the camelCased field names of every transitive prerequisite class
  * and interface reachable from the given prerequisite qualified names.
  */
+const collectAncestorFieldNamesInto = (
+    cls: NonNullable<ReturnType<GirRepository["resolveClass"]>>,
+    repository: GirRepository,
+    names: Set<string>,
+): void => {
+    for (const ancestorName of cls.getInheritanceChain()) {
+        const ancestor = repository.resolveClass(ancestorName);
+        if (!ancestor) continue;
+        for (const field of ancestor.fieldNames) names.add(toCamelCase(field));
+    }
+};
+
 export const collectPrerequisiteFieldNames = (
     repository: GirRepository,
     prerequisites: readonly string[],
 ): Set<string> => {
     const names = new Set<string>();
     const visited = new Set<string>();
-    const visit = (qualifiedName: string) => {
+    const visit = (qualifiedName: string): void => {
         if (visited.has(qualifiedName)) return;
         visited.add(qualifiedName);
         const cls = repository.resolveClass(qualifiedName);
         if (cls) {
-            for (const ancestorName of cls.getInheritanceChain()) {
-                const ancestor = repository.resolveClass(ancestorName);
-                if (!ancestor) continue;
-                for (const field of ancestor.fieldNames) names.add(toCamelCase(field));
-            }
+            collectAncestorFieldNamesInto(cls, repository, names);
             return;
         }
         const iface = repository.resolveInterface(qualifiedName);
@@ -334,28 +342,43 @@ export const declaredParameterCount = (method: GirMethod): number => {
  * @param repository - The loaded GIR repository.
  * @returns Method shadow-renames keyed namespace then owner name.
  */
+const collectShadowRenamesForClass = (
+    cls: NonNullable<ReturnType<GirRepository["resolveClass"]>>,
+    repository: GirRepository,
+): MethodShadowRename[] => {
+    const parentMethodNames = collectParentMethodNames(cls, repository);
+    const renames: MethodShadowRename[] = [];
+    for (const method of cls.methods) {
+        if (method.name === "connect" || !parentMethodNames.has(method.name)) continue;
+        renames.push({
+            original: toCamelCase(method.name),
+            renamed: generateConflictingMethodName(cls.name, method.name),
+            arity: declaredParameterCount(method),
+        });
+    }
+    return renames;
+};
+
+const collectShadowRenamesForNamespace = (
+    namespace: GirNamespace,
+    repository: GirRepository,
+): Map<string, MethodShadowRename[]> => {
+    const owners = new Map<string, MethodShadowRename[]>();
+    for (const cls of namespace.classes.values()) {
+        const renames = collectShadowRenamesForClass(cls, repository);
+        if (renames.length > 0) {
+            owners.set(toPascalCase(cls.name), renames);
+        }
+    }
+    return owners;
+};
+
 export const collectMethodShadowRenames = (repository: GirRepository): MethodShadowRenameMap => {
     const namespaces = new Map<string, Map<string, MethodShadowRename[]>>();
     for (const namespaceName of repository.getNamespaceNames()) {
         const namespace = repository.getNamespace(namespaceName);
         if (!namespace) continue;
-        const owners = new Map<string, MethodShadowRename[]>();
-        for (const cls of namespace.classes.values()) {
-            const parentMethodNames = collectParentMethodNames(cls, repository);
-            const renames: MethodShadowRename[] = [];
-            for (const method of cls.methods) {
-                if (method.name === "connect" || !parentMethodNames.has(method.name)) continue;
-                renames.push({
-                    original: toCamelCase(method.name),
-                    renamed: generateConflictingMethodName(cls.name, method.name),
-                    arity: declaredParameterCount(method),
-                });
-            }
-            if (renames.length > 0) {
-                owners.set(toPascalCase(cls.name), renames);
-            }
-        }
-        namespaces.set(namespaceName.toLowerCase(), owners);
+        namespaces.set(namespaceName.toLowerCase(), collectShadowRenamesForNamespace(namespace, repository));
     }
     return namespaces;
 };
@@ -571,13 +594,14 @@ const recordHashTableEntry = (
  * Records every keyed-`GHashTable` entry an owner's callables contribute,
  * mapping each callable through {@link buildHashTableEntry}.
  */
-const recordOwnerHashTableEntries = (
-    owners: Map<string, HashTableMemberEntry[]>,
-    owner: string,
-    callables: readonly AsyncCapableCallable[],
-    isFunction: boolean,
-    mapper: FfiMapper,
-): void => {
+const recordOwnerHashTableEntries = (opts: {
+    owners: Map<string, HashTableMemberEntry[]>;
+    owner: string;
+    callables: readonly AsyncCapableCallable[];
+    isFunction: boolean;
+    mapper: FfiMapper;
+}): void => {
+    const { owners, owner, callables, isFunction, mapper } = opts;
     for (const callable of callables) {
         recordHashTableEntry(
             owners,
@@ -597,21 +621,33 @@ export const collectHashTableMembers = (repository: GirRepository): HashTableMem
 
         for (const cls of namespace.classes.values()) {
             const owner = toPascalCase(cls.name);
-            recordOwnerHashTableEntries(owners, owner, cls.methods, false, mapper);
-            recordOwnerHashTableEntries(owners, owner, cls.staticFunctions, false, mapper);
+            recordOwnerHashTableEntries({ owners, owner, callables: cls.methods, isFunction: false, mapper });
+            recordOwnerHashTableEntries({ owners, owner, callables: cls.staticFunctions, isFunction: false, mapper });
         }
         for (const iface of namespace.interfaces.values()) {
             const owner = toPascalCase(iface.name);
             const flattened = collectInterfaceFlattenedMethods(repository, iface.qualifiedName);
-            recordOwnerHashTableEntries(owners, owner, flattened, false, mapper);
-            recordOwnerHashTableEntries(owners, owner, iface.staticFunctions, false, mapper);
+            recordOwnerHashTableEntries({ owners, owner, callables: flattened, isFunction: false, mapper });
+            recordOwnerHashTableEntries({
+                owners,
+                owner,
+                callables: iface.staticFunctions,
+                isFunction: false,
+                mapper,
+            });
         }
         for (const rec of namespace.records.values()) {
             const owner = toPascalCase(rec.name);
-            recordOwnerHashTableEntries(owners, owner, rec.methods, false, mapper);
-            recordOwnerHashTableEntries(owners, owner, rec.staticFunctions, false, mapper);
+            recordOwnerHashTableEntries({ owners, owner, callables: rec.methods, isFunction: false, mapper });
+            recordOwnerHashTableEntries({ owners, owner, callables: rec.staticFunctions, isFunction: false, mapper });
         }
-        recordOwnerHashTableEntries(owners, "", [...namespace.functions.values()], true, mapper);
+        recordOwnerHashTableEntries({
+            owners,
+            owner: "",
+            callables: [...namespace.functions.values()],
+            isFunction: true,
+            mapper,
+        });
 
         namespaces.set(namespaceName.toLowerCase(), owners);
     }

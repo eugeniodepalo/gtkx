@@ -184,25 +184,34 @@ export function renameShadowedMethods(source: string, renames?: NamespaceMethodS
     for (;;) {
         const header = TYPE_BLOCK_HEADER.exec(result);
         if (header === null) break;
-        const ownerName = header[2];
-        if (ownerName === undefined) continue;
-        const ownerRenames = renames.get(ownerName);
-        if (ownerRenames === undefined || ownerRenames.length === 0) continue;
-        const bodyStart = header.index + header[0].length;
-        const bodyEnd = findMatchingBrace(result, bodyStart);
-        if (bodyEnd < 0) continue;
-        const body = result.slice(bodyStart, bodyEnd);
-        let newBody = body;
-        for (const rename of ownerRenames) {
-            newBody = renameMethodOverload(newBody, rename);
-        }
-        if (newBody !== body) {
-            result = result.slice(0, bodyStart) + newBody + result.slice(bodyEnd);
-        }
-        TYPE_BLOCK_HEADER.lastIndex = bodyStart + newBody.length;
+        const next = applyShadowRenamesToHeader(result, header, renames);
+        if (next === null) continue;
+        result = next.result;
+        TYPE_BLOCK_HEADER.lastIndex = next.advanceTo;
     }
     return result;
 }
+
+const applyShadowRenamesToHeader = (
+    result: string,
+    header: RegExpExecArray,
+    renames: NamespaceMethodShadowRenames,
+): { result: string; advanceTo: number } | null => {
+    const ownerName = header[2];
+    if (ownerName === undefined) return null;
+    const ownerRenames = renames.get(ownerName);
+    if (ownerRenames === undefined || ownerRenames.length === 0) return null;
+    const bodyStart = header.index + header[0].length;
+    const bodyEnd = findMatchingBrace(result, bodyStart);
+    if (bodyEnd < 0) return null;
+    const body = result.slice(bodyStart, bodyEnd);
+    let newBody = body;
+    for (const rename of ownerRenames) {
+        newBody = renameMethodOverload(newBody, rename);
+    }
+    const next = newBody !== body ? result.slice(0, bodyStart) + newBody + result.slice(bodyEnd) : result;
+    return { result: next, advanceTo: bodyStart + newBody.length };
+};
 
 /**
  * Renames the single declaration of `rename.original` within a class body whose

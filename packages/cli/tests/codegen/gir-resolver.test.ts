@@ -1,7 +1,25 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveGirPath } from "../../src/codegen/gir-resolver.js";
 
+let originalGirPath: string | undefined;
+
+const setGirPath = (value: string | undefined): void => {
+    if (value === undefined) {
+        delete process.env.GTKX_GIR_PATH;
+    } else {
+        process.env.GTKX_GIR_PATH = value;
+    }
+};
+
 describe("resolveGirPath", () => {
+    beforeEach(() => {
+        originalGirPath = process.env.GTKX_GIR_PATH;
+    });
+
+    afterEach(() => {
+        setGirPath(originalGirPath);
+    });
+
     it("returns the configured paths when provided", () => {
         const result = resolveGirPath(["/custom/gir"]);
         expect(result).toContain("/custom/gir");
@@ -14,79 +32,36 @@ describe("resolveGirPath", () => {
     });
 
     it("includes paths from GTKX_GIR_PATH environment variable", () => {
-        const original = process.env.GTKX_GIR_PATH;
-        process.env.GTKX_GIR_PATH = "/env/gir1:/env/gir2";
-        try {
-            const result = resolveGirPath(undefined);
-            expect(result).toContain("/env/gir1");
-            expect(result).toContain("/env/gir2");
-        } finally {
-            if (original === undefined) {
-                delete process.env.GTKX_GIR_PATH;
-            } else {
-                process.env.GTKX_GIR_PATH = original;
-            }
-        }
+        setGirPath("/env/gir1:/env/gir2");
+        const result = resolveGirPath(undefined);
+        expect(result).toContain("/env/gir1");
+        expect(result).toContain("/env/gir2");
     });
 
     it("filters out empty entries from GTKX_GIR_PATH", () => {
-        const original = process.env.GTKX_GIR_PATH;
-        process.env.GTKX_GIR_PATH = "/env/gir1::/env/gir2:";
-        try {
-            const result = resolveGirPath(undefined);
-            expect(result).not.toContain("");
-            expect(result).toContain("/env/gir1");
-            expect(result).toContain("/env/gir2");
-        } finally {
-            if (original === undefined) {
-                delete process.env.GTKX_GIR_PATH;
-            } else {
-                process.env.GTKX_GIR_PATH = original;
-            }
-        }
+        setGirPath("/env/gir1::/env/gir2:");
+        const result = resolveGirPath(undefined);
+        expect(result).not.toContain("");
+        expect(result).toContain("/env/gir1");
+        expect(result).toContain("/env/gir2");
     });
 
     it("ignores GTKX_GIR_PATH when unset", () => {
-        const original = process.env.GTKX_GIR_PATH;
-        delete process.env.GTKX_GIR_PATH;
-        try {
-            const result = resolveGirPath(["/cfg"]);
-            expect(result).toEqual(expect.arrayContaining(["/cfg"]));
-        } finally {
-            if (original !== undefined) {
-                process.env.GTKX_GIR_PATH = original;
-            }
-        }
+        setGirPath(undefined);
+        const result = resolveGirPath(["/cfg"]);
+        expect(result).toEqual(expect.arrayContaining(["/cfg"]));
     });
 
     it("deduplicates overlapping entries across sources", () => {
-        const original = process.env.GTKX_GIR_PATH;
-        process.env.GTKX_GIR_PATH = "/dup/path";
-        try {
-            const result = resolveGirPath(["/dup/path"]);
-            const occurrences = result.filter((p) => p === "/dup/path").length;
-            expect(occurrences).toBe(1);
-        } finally {
-            if (original === undefined) {
-                delete process.env.GTKX_GIR_PATH;
-            } else {
-                process.env.GTKX_GIR_PATH = original;
-            }
-        }
+        setGirPath("/dup/path");
+        const result = resolveGirPath(["/dup/path"]);
+        const occurrences = result.filter((p) => p === "/dup/path").length;
+        expect(occurrences).toBe(1);
     });
 
     it("preserves config priority over environment variable", () => {
-        const original = process.env.GTKX_GIR_PATH;
-        process.env.GTKX_GIR_PATH = "/env";
-        try {
-            const result = resolveGirPath(["/cfg"]);
-            expect(result.indexOf("/cfg")).toBeLessThan(result.indexOf("/env"));
-        } finally {
-            if (original === undefined) {
-                delete process.env.GTKX_GIR_PATH;
-            } else {
-                process.env.GTKX_GIR_PATH = original;
-            }
-        }
+        setGirPath("/env");
+        const result = resolveGirPath(["/cfg"]);
+        expect(result.indexOf("/cfg")).toBeLessThan(result.indexOf("/env"));
     });
 });

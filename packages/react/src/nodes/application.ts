@@ -11,7 +11,9 @@ export class ApplicationNode extends Node<Gtk.Application, Props, Node, Node> {
     constructor(typeName: string, props: Props, container: Gtk.Application, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
-        this.menuController = new MenuChildController(new MenuModel("root", {}, rootContainer, container, application));
+        this.menuController = new MenuChildController(
+            new MenuModel({ type: "root", props: {}, rootContainer, actionMap: container, application }),
+        );
     }
 
     public override isValidChild(): boolean {

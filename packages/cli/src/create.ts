@@ -106,77 +106,83 @@ const checkCancelled = <T>(value: T | symbol): T => {
     return value as T;
 };
 
-const promptForOptions = async (options: CreateOptions): Promise<ResolvedOptions> => {
-    const name =
-        options.name ??
-        checkCancelled(
-            await p.text({
-                message: "Project name",
-                placeholder: "my-app",
-                validate: (value) => {
-                    if (!value) return "Project name is required";
-                    if (!isValidProjectName(value)) {
-                        return "Project name must be lowercase letters, numbers, and hyphens only";
-                    }
-                    if (existsSync(resolve(process.cwd(), value))) {
-                        return `Directory "${value}" already exists`;
-                    }
-                },
-            }),
-        );
+const validateProjectName = (value: string | undefined): string | undefined => {
+    if (!value) return "Project name is required";
+    if (!isValidProjectName(value)) {
+        return "Project name must be lowercase letters, numbers, and hyphens only";
+    }
+    if (existsSync(resolve(process.cwd(), value))) {
+        return `Directory "${value}" already exists`;
+    }
+    return undefined;
+};
 
+const validateAppIdInput = (value: string | undefined): string | undefined => {
+    if (!value) return "App ID is required";
+    if (!isValidAppId(value)) {
+        return "App ID must be reverse domain notation (e.g., com.example.myapp)";
+    }
+    return undefined;
+};
+
+const promptName = async (): Promise<string> =>
+    checkCancelled(
+        await p.text({
+            message: "Project name",
+            placeholder: "my-app",
+            validate: validateProjectName,
+        }),
+    );
+
+const promptAppId = async (name: string): Promise<string> => {
     const defaultAppId = suggestAppId(name);
+    return checkCancelled(
+        await p.text({
+            message: "App ID",
+            placeholder: defaultAppId,
+            initialValue: defaultAppId,
+            validate: validateAppIdInput,
+        }),
+    );
+};
 
-    const appId =
-        options.appId ??
-        checkCancelled(
-            await p.text({
-                message: "App ID",
-                placeholder: defaultAppId,
-                initialValue: defaultAppId,
-                validate: (value) => {
-                    if (!value) return "App ID is required";
-                    if (!isValidAppId(value)) {
-                        return "App ID must be reverse domain notation (e.g., com.example.myapp)";
-                    }
-                },
-            }),
-        );
+const promptPackageManager = async (): Promise<PackageManager> =>
+    checkCancelled(
+        await p.select({
+            message: "Package manager",
+            options: [
+                { value: "pnpm", label: "pnpm", hint: "recommended" },
+                { value: "npm", label: "npm" },
+                { value: "yarn", label: "yarn" },
+            ],
+            initialValue: "pnpm",
+        }),
+    ) as PackageManager;
 
-    const packageManager =
-        options.packageManager ??
-        checkCancelled(
-            await p.select({
-                message: "Package manager",
-                options: [
-                    { value: "pnpm", label: "pnpm", hint: "recommended" },
-                    { value: "npm", label: "npm" },
-                    { value: "yarn", label: "yarn" },
-                ],
-                initialValue: "pnpm",
-            }),
-        );
+const promptTesting = async (): Promise<TestingOption> => {
+    const enable = checkCancelled(
+        await p.confirm({
+            message: "Include testing setup (Vitest)?",
+            initialValue: true,
+        }),
+    );
+    return enable ? "vitest" : "none";
+};
 
-    const testing: TestingOption =
-        options.testing ??
-        (checkCancelled(
-            await p.confirm({
-                message: "Include testing setup (Vitest)?",
-                initialValue: true,
-            }),
-        )
-            ? "vitest"
-            : "none");
+const promptClaudeSkills = async (): Promise<boolean> =>
+    checkCancelled(
+        await p.confirm({
+            message: "Include Claude Code skills?",
+            initialValue: true,
+        }),
+    );
 
-    const claudeSkills =
-        options.claudeSkills ??
-        checkCancelled(
-            await p.confirm({
-                message: "Include Claude Code skills?",
-                initialValue: true,
-            }),
-        );
-
+const promptForOptions = async (options: CreateOptions): Promise<ResolvedOptions> => {
+    const name = options.name ?? (await promptName());
+    const appId = options.appId ?? (await promptAppId(name));
+    const packageManager = options.packageManager ?? (await promptPackageManager());
+    const testing = options.testing ?? (await promptTesting());
+    const claudeSkills = options.claudeSkills ?? (await promptClaudeSkills());
     return { name, appId, packageManager, testing, claudeSkills };
 };
 

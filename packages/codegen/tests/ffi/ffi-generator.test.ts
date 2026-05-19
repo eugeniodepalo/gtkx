@@ -49,7 +49,7 @@ describe("FfiGenerator constructor", () => {
     });
 });
 
-describe("FfiGenerator.generateNamespace", () => {
+describe("FfiGenerator.generateNamespace (1)", () => {
     it("throws when the target namespace is missing from the repository", () => {
         const repo = createMockRepository(baseNamespaces());
         const generator = new FfiGenerator({
@@ -90,7 +90,9 @@ describe("FfiGenerator.generateNamespace", () => {
 
         expect(() => generator.generateNamespace("Gtk")).toThrow(/Invalid shared library/);
     });
+});
 
+describe("FfiGenerator.generateNamespace (2)", () => {
     it("emits a single namespace file containing enum declarations", () => {
         const enumeration = createNormalizedEnumeration({ qualifiedName: "Gtk.Orientation" });
         const ns = createNormalizedNamespace({
@@ -132,7 +134,9 @@ describe("FfiGenerator.generateNamespace", () => {
         expect(file?.content).toContain("export const Orientation");
         expect(file?.content).toContain("export const DebugFlags");
     });
+});
 
+describe("FfiGenerator.generateNamespace (3)", () => {
     it("emits standalone functions into the namespace file", () => {
         const ns = createNormalizedNamespace({
             name: "Gtk",
@@ -178,7 +182,9 @@ describe("FfiGenerator.generateNamespace", () => {
         expect(file?.path).toBe("pango/pango.js");
         expect(file?.content).toBe("");
     });
+});
 
+describe("FfiGenerator.generateNamespace (4)", () => {
     it("emits each class once into the namespace file", () => {
         const widget = createWidgetClass();
         const button = createButtonClass();
@@ -217,7 +223,9 @@ describe("FfiGenerator.generateNamespace", () => {
         const file = namespaceFile(files, "Gtk");
         expect(file?.content).toContain("export class Orientable");
     });
+});
 
+describe("FfiGenerator.generateNamespace (5)", () => {
     it("emits Private-suffixed records that have marshalable public fields", () => {
         const privateRec = createNormalizedRecord({
             name: "WidgetPrivate",
@@ -239,7 +247,9 @@ describe("FfiGenerator.generateNamespace", () => {
         const file = namespaceFile(files, "Gtk");
         expect(file?.content).toContain("export class WidgetPrivate");
     });
+});
 
+describe("FfiGenerator.generateNamespace (6)", () => {
     it("routes records that end with Class through the class-struct generator", () => {
         const klass = createNormalizedRecord({
             name: "WidgetClass",
@@ -270,7 +280,9 @@ describe("FfiGenerator.generateNamespace", () => {
         const file = namespaceFile(files, "Gtk");
         expect(file?.content).toContain("const WidgetClass");
     });
+});
 
+describe("FfiGenerator.generateNamespace (7)", () => {
     it("routes records that end with Iface through the class-struct generator", () => {
         const iface = createNormalizedRecord({
             name: "OrientableIface",
@@ -301,7 +313,9 @@ describe("FfiGenerator.generateNamespace", () => {
         const file = namespaceFile(files, "Gtk");
         expect(file?.content).toContain("const OrientableIface");
     });
+});
 
+describe("FfiGenerator.generateNamespace (8)", () => {
     it("emits a full binding for opaque records that carry a glib type name", () => {
         const opaqueRecord = createNormalizedRecord({
             name: "Bytes",
@@ -330,7 +344,9 @@ describe("FfiGenerator.generateNamespace", () => {
         const file = namespaceFile(files, "GLib");
         expect(file?.content).toContain("export class Bytes");
     });
+});
 
+describe("FfiGenerator.generateNamespace (9)", () => {
     it("walks nested record fields when deciding whether to fully generate a record", () => {
         const inner = createNormalizedRecord({
             name: "Inner",
@@ -362,7 +378,9 @@ describe("FfiGenerator.generateNamespace", () => {
         expect(file?.content).toContain("export class Outer");
         expect(file?.content).toContain("export class Inner");
     });
+});
 
+describe("FfiGenerator.generateNamespace (10)", () => {
     it("emits stub classes for records whose fields recurse to an unmarshalable type", () => {
         const inner = createNormalizedRecord({
             name: "Inner",
@@ -394,7 +412,9 @@ describe("FfiGenerator.generateNamespace", () => {
         expect(file?.content).toContain("export class Outer");
         expect(file?.content).toContain("export class Inner");
     });
+});
 
+describe("FfiGenerator.generateNamespace (11)", () => {
     it("emits methods on opaque boxed records that expose safe instance methods", () => {
         const opaqueRecord = createNormalizedRecord({
             name: "Bytes",
@@ -431,7 +451,9 @@ describe("FfiGenerator.generateNamespace", () => {
         const file = namespaceFile(files, "GLib");
         expect(file?.content).toContain("getSize");
     });
+});
 
+describe("FfiGenerator.generateNamespace (12)", () => {
     it("generates records that have only primitive fields", () => {
         const record = createNormalizedRecord({
             name: "Rectangle",
@@ -462,7 +484,9 @@ describe("FfiGenerator.generateNamespace", () => {
         const file = namespaceFile(files, "Gdk");
         expect(file?.content).toContain("export class Rectangle");
     });
+});
 
+describe("FfiGenerator.generateNamespace (13)", () => {
     it("emits no class-struct registry for opaque core type-class records without vfuncs", () => {
         const typeClass = createNormalizedRecord({
             name: "TypeClass",
@@ -488,7 +512,9 @@ describe("FfiGenerator.generateNamespace", () => {
         const file = namespaceFile(files, "GObject");
         expect(file?.content).not.toContain("const TypeClass");
     });
+});
 
+describe("FfiGenerator.generateNamespace (14)", () => {
     it("topologically sorts classes so a parent declaration precedes its children", () => {
         const widget = createWidgetClass();
         const button = createButtonClass();
@@ -524,7 +550,9 @@ describe("FfiGenerator.generateNamespace", () => {
         expect(buttonIdx).toBeGreaterThan(widgetIdx);
         expect(toggleIdx).toBeGreaterThan(buttonIdx);
     });
+});
 
+describe("FfiGenerator.generateNamespace (15)", () => {
     it("produces the same file list across repeat invocations on the same generator", () => {
         const widget = createWidgetClass();
         const ns = createNormalizedNamespace({
@@ -550,68 +578,68 @@ describe("FfiGenerator.generateNamespace", () => {
     });
 });
 
+const asyncCallbackParameter = (closure = 2) =>
+    createNormalizedParameter({
+        name: "callback",
+        type: createNormalizedType({ name: "Gio.AsyncReadyCallback", nullable: true }),
+        scope: "async",
+        closure,
+        nullable: true,
+    });
+
+const buildGioNamespace = (className: string): GirNamespace => {
+    const classType = () => createNormalizedType({ name: qualifiedName("Gio", className) });
+    const asyncReadyCallback = createNormalizedCallback({
+        name: "AsyncReadyCallback",
+        qualifiedName: "Gio.AsyncReadyCallback",
+        parameters: [
+            createNormalizedParameter({
+                name: "source_object",
+                type: createNormalizedType({ name: qualifiedName("Gio", className), nullable: true }),
+                nullable: true,
+            }),
+            createNormalizedParameter({ name: "res", type: classType() }),
+        ],
+    });
+    const cls = createNormalizedClass({
+        name: className,
+        qualifiedName: qualifiedName("Gio", className),
+        parent: null,
+        methods: [
+            createNormalizedMethod({
+                name: "read_async",
+                cIdentifier: "g_input_stream_read_async",
+                finishFunc: "read_finish",
+                returnType: createNormalizedType({ name: "none" }),
+                parameters: [
+                    createNormalizedParameter({
+                        name: "io_priority",
+                        type: createNormalizedType({ name: "gint" }),
+                    }),
+                    asyncCallbackParameter(),
+                    createNormalizedParameter({
+                        name: "user_data",
+                        type: createNormalizedType({ name: "gpointer" }),
+                    }),
+                ],
+            }),
+            createNormalizedMethod({
+                name: "read_finish",
+                cIdentifier: "g_input_stream_read_finish",
+                returnType: createNormalizedType({ name: "gboolean" }),
+                parameters: [createNormalizedParameter({ name: "res", type: classType() })],
+            }),
+        ],
+    });
+    return createNormalizedNamespace({
+        name: "Gio",
+        sharedLibrary: "libgio-2.0.so.0",
+        classes: new Map([[cls.name, cls]]),
+        callbacks: new Map([[asyncReadyCallback.name, asyncReadyCallback]]),
+    });
+};
+
 describe("FfiGenerator async wrappers", () => {
-    const asyncCallbackParameter = (closure = 2) =>
-        createNormalizedParameter({
-            name: "callback",
-            type: createNormalizedType({ name: "Gio.AsyncReadyCallback", nullable: true }),
-            scope: "async",
-            closure,
-            nullable: true,
-        });
-
-    const buildGioNamespace = (className: string): GirNamespace => {
-        const classType = () => createNormalizedType({ name: qualifiedName("Gio", className) });
-        const asyncReadyCallback = createNormalizedCallback({
-            name: "AsyncReadyCallback",
-            qualifiedName: "Gio.AsyncReadyCallback",
-            parameters: [
-                createNormalizedParameter({
-                    name: "source_object",
-                    type: createNormalizedType({ name: qualifiedName("Gio", className), nullable: true }),
-                    nullable: true,
-                }),
-                createNormalizedParameter({ name: "res", type: classType() }),
-            ],
-        });
-        const cls = createNormalizedClass({
-            name: className,
-            qualifiedName: qualifiedName("Gio", className),
-            parent: null,
-            methods: [
-                createNormalizedMethod({
-                    name: "read_async",
-                    cIdentifier: "g_input_stream_read_async",
-                    finishFunc: "read_finish",
-                    returnType: createNormalizedType({ name: "none" }),
-                    parameters: [
-                        createNormalizedParameter({
-                            name: "io_priority",
-                            type: createNormalizedType({ name: "gint" }),
-                        }),
-                        asyncCallbackParameter(),
-                        createNormalizedParameter({
-                            name: "user_data",
-                            type: createNormalizedType({ name: "gpointer" }),
-                        }),
-                    ],
-                }),
-                createNormalizedMethod({
-                    name: "read_finish",
-                    cIdentifier: "g_input_stream_read_finish",
-                    returnType: createNormalizedType({ name: "gboolean" }),
-                    parameters: [createNormalizedParameter({ name: "res", type: classType() })],
-                }),
-            ],
-        });
-        return createNormalizedNamespace({
-            name: "Gio",
-            sharedLibrary: "libgio-2.0.so.0",
-            classes: new Map([[cls.name, cls]]),
-            callbacks: new Map([[asyncReadyCallback.name, asyncReadyCallback]]),
-        });
-    };
-
     it("emits a promisify-delegating wrapper for an async method", () => {
         const repo = createMockRepository(baseNamespaces({ Gio: buildGioNamespace("InputStream") }));
 
@@ -625,7 +653,7 @@ describe("FfiGenerator async wrappers", () => {
 
         expect(content).toContain("readAsync(ioPriority) {");
         expect(content).toContain(
-            "return promisify(g_input_stream_read_async, this.readFinish.bind(this), undefined, [getHandle(this), ioPriority]);",
+            "return promisify(g_input_stream_read_async, this.readFinish.bind(this), undefined, { leading: [getHandle(this), ioPriority] });",
         );
         expect(content).toMatch(/import \{[^}]*\bpromisify\b[^}]*\} from "\.\.\/\.\.\/runtime\.js";/);
         expect(content).not.toContain("new Promise");
@@ -644,73 +672,78 @@ describe("FfiGenerator async wrappers", () => {
         expect(content).toContain("readFinish(res) {");
         expect(content).toContain("g_input_stream_read_finish(");
     });
+});
 
-    const buildCancellableGioNamespace = (): GirNamespace => {
-        const classType = () => createNormalizedType({ name: "Gio.InputStream" });
-        const asyncReadyCallback = createNormalizedCallback({
-            name: "AsyncReadyCallback",
-            qualifiedName: "Gio.AsyncReadyCallback",
-            parameters: [
-                createNormalizedParameter({
-                    name: "source_object",
-                    type: createNormalizedType({ name: "Gio.InputStream", nullable: true }),
-                    nullable: true,
-                }),
-                createNormalizedParameter({ name: "res", type: classType() }),
-            ],
-        });
-        const cancellable = createNormalizedClass({
-            name: "Cancellable",
-            qualifiedName: "Gio.Cancellable",
-            parent: null,
-            methods: [],
-        });
-        const cls = createNormalizedClass({
-            name: "InputStream",
-            qualifiedName: "Gio.InputStream",
-            parent: null,
-            methods: [
-                createNormalizedMethod({
-                    name: "read_async",
-                    cIdentifier: "g_input_stream_read_async",
-                    finishFunc: "read_finish",
-                    returnType: createNormalizedType({ name: "none" }),
-                    parameters: [
-                        createNormalizedParameter({
-                            name: "io_priority",
-                            type: createNormalizedType({ name: "gint" }),
-                        }),
-                        createNormalizedParameter({
-                            name: "cancellable",
-                            type: createNormalizedType({ name: "Gio.Cancellable", nullable: true }),
-                            nullable: true,
-                        }),
-                        asyncCallbackParameter(3),
-                        createNormalizedParameter({
-                            name: "user_data",
-                            type: createNormalizedType({ name: "gpointer" }),
-                        }),
-                    ],
-                }),
-                createNormalizedMethod({
-                    name: "read_finish",
-                    cIdentifier: "g_input_stream_read_finish",
-                    returnType: createNormalizedType({ name: "gboolean" }),
-                    parameters: [createNormalizedParameter({ name: "res", type: classType() })],
-                }),
-            ],
-        });
-        return createNormalizedNamespace({
-            name: "Gio",
-            sharedLibrary: "libgio-2.0.so.0",
-            classes: new Map([
-                [cls.name, cls],
-                [cancellable.name, cancellable],
-            ]),
-            callbacks: new Map([[asyncReadyCallback.name, asyncReadyCallback]]),
-        });
-    };
+const buildCancellableReadAsyncMethod = () =>
+    createNormalizedMethod({
+        name: "read_async",
+        cIdentifier: "g_input_stream_read_async",
+        finishFunc: "read_finish",
+        returnType: createNormalizedType({ name: "none" }),
+        parameters: [
+            createNormalizedParameter({
+                name: "io_priority",
+                type: createNormalizedType({ name: "gint" }),
+            }),
+            createNormalizedParameter({
+                name: "cancellable",
+                type: createNormalizedType({ name: "Gio.Cancellable", nullable: true }),
+                nullable: true,
+            }),
+            asyncCallbackParameter(3),
+            createNormalizedParameter({
+                name: "user_data",
+                type: createNormalizedType({ name: "gpointer" }),
+            }),
+        ],
+    });
 
+const buildCancellableGioNamespace = (): GirNamespace => {
+    const classType = () => createNormalizedType({ name: "Gio.InputStream" });
+    const asyncReadyCallback = createNormalizedCallback({
+        name: "AsyncReadyCallback",
+        qualifiedName: "Gio.AsyncReadyCallback",
+        parameters: [
+            createNormalizedParameter({
+                name: "source_object",
+                type: createNormalizedType({ name: "Gio.InputStream", nullable: true }),
+                nullable: true,
+            }),
+            createNormalizedParameter({ name: "res", type: classType() }),
+        ],
+    });
+    const cancellable = createNormalizedClass({
+        name: "Cancellable",
+        qualifiedName: "Gio.Cancellable",
+        parent: null,
+        methods: [],
+    });
+    const cls = createNormalizedClass({
+        name: "InputStream",
+        qualifiedName: "Gio.InputStream",
+        parent: null,
+        methods: [
+            buildCancellableReadAsyncMethod(),
+            createNormalizedMethod({
+                name: "read_finish",
+                cIdentifier: "g_input_stream_read_finish",
+                returnType: createNormalizedType({ name: "gboolean" }),
+                parameters: [createNormalizedParameter({ name: "res", type: classType() })],
+            }),
+        ],
+    });
+    return createNormalizedNamespace({
+        name: "Gio",
+        sharedLibrary: "libgio-2.0.so.0",
+        classes: new Map([
+            [cls.name, cls],
+            [cancellable.name, cancellable],
+        ]),
+        callbacks: new Map([[asyncReadyCallback.name, asyncReadyCallback]]),
+    });
+};
+
+describe("FfiGenerator async wrappers cancellable", () => {
     it("passes the cancellable as its own promisify argument", () => {
         const repo = createMockRepository(baseNamespaces({ Gio: buildCancellableGioNamespace() }));
 
@@ -723,7 +756,7 @@ describe("FfiGenerator async wrappers", () => {
 
         expect(content).toContain("readAsync(ioPriority, cancellable) {");
         expect(content).toContain(
-            "return promisify(g_input_stream_read_async, this.readFinish.bind(this), cancellable, [getHandle(this), ioPriority]);",
+            "return promisify(g_input_stream_read_async, this.readFinish.bind(this), cancellable, { leading: [getHandle(this), ioPriority] });",
         );
     });
 });

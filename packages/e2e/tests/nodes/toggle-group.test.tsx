@@ -12,8 +12,8 @@ const buildToggleGroup = (ref: RefObject<Adw.ToggleGroup | null>) => (toggles: T
     <AdwToggleGroup ref={ref} toggles={toggles} />
 );
 
-describe("render - ToggleGroup", () => {
-    describe("ToggleGroupNode", () => {
+describe("render - ToggleGroup (1)", () => {
+    describe("ToggleGroupNode (1)", () => {
         it("creates ToggleGroup widget without toggles", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
@@ -60,7 +60,11 @@ describe("render - ToggleGroup", () => {
             expect(ref.current?.getToggleByName("enabled")?.getEnabled()).toBe(true);
             expect(ref.current?.getToggleByName("disabled")?.getEnabled()).toBe(false);
         });
+    });
+});
 
+describe("render - ToggleGroup (2)", () => {
+    describe("ToggleGroupNode (2)", () => {
         it("updates toggle props", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
@@ -90,7 +94,11 @@ describe("render - ToggleGroup", () => {
             expect(ref.current?.getToggleByName("always")).not.toBeNull();
             expect(ref.current?.getToggleByName("extra")).toBeNull();
         });
+    });
+});
 
+describe("render - ToggleGroup (3)", () => {
+    describe("ToggleGroupNode (3)", () => {
         it("handles inserting toggles dynamically", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
@@ -112,8 +120,10 @@ describe("render - ToggleGroup", () => {
             expect(ref.current?.getToggleByName("middle")).not.toBeNull();
         });
     });
+});
 
-    describe("user interactions", () => {
+describe("render - ToggleGroup (4)", () => {
+    describe("user interactions (1)", () => {
         it("clicks toggle to activate it", async () => {
             const ref = createRef<Adw.ToggleGroup>();
 
@@ -156,7 +166,11 @@ describe("render - ToggleGroup", () => {
                 expect(ref.current?.getActive()).toBe(1);
             });
         });
+    });
+});
 
+describe("render - ToggleGroup (5)", () => {
+    describe("user interactions (2)", () => {
         it("finds all toggles by role in a toggle group", async () => {
             await render(
                 <AdwToggleGroup

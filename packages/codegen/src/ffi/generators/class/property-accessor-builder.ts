@@ -68,19 +68,39 @@ export type InterfacePropertySource = {
     readonly virtualMethodNames: ReadonlySet<string>;
 };
 
+/**
+ * Options for {@link PropertyAccessorBuilder}.
+ */
+export type PropertyAccessorBuilderOptions = {
+    cls: GirClass | null;
+    ffiMapper: FfiMapper;
+    imports: ImportCollector;
+    repository: GirRepository;
+    options: FfiGeneratorOptions;
+    selfNames?: ReadonlySet<string>;
+    interfaceSource?: InterfacePropertySource | null;
+};
+
 export class PropertyAccessorBuilder {
     private readonly parentMethodNames: ReadonlySet<string>;
     private readonly conflictingVirtualMethodNames: ReadonlySet<string>;
+    private readonly cls: GirClass | null;
+    private readonly ffiMapper: FfiMapper;
+    private readonly imports: ImportCollector;
+    private readonly repository: GirRepository;
+    private readonly options: FfiGeneratorOptions;
+    private readonly selfNames: ReadonlySet<string>;
+    private readonly interfaceSource: InterfacePropertySource | null;
 
-    constructor(
-        private readonly cls: GirClass | null,
-        private readonly ffiMapper: FfiMapper,
-        private readonly imports: ImportCollector,
-        private readonly repository: GirRepository,
-        private readonly options: FfiGeneratorOptions,
-        private readonly selfNames: ReadonlySet<string> = new Set(),
-        private readonly interfaceSource: InterfacePropertySource | null = null,
-    ) {
+    constructor(opts: PropertyAccessorBuilderOptions) {
+        const { cls, ffiMapper, imports, repository, options, selfNames = new Set(), interfaceSource = null } = opts;
+        this.cls = cls;
+        this.ffiMapper = ffiMapper;
+        this.imports = imports;
+        this.repository = repository;
+        this.options = options;
+        this.selfNames = selfNames;
+        this.interfaceSource = interfaceSource;
         this.parentMethodNames = cls === null ? new Set() : collectParentMethodNames(cls, repository);
         this.conflictingVirtualMethodNames =
             cls === null

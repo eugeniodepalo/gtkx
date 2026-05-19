@@ -15,7 +15,7 @@ const buildIdStack = (ref: RefObject<Gtk.Stack | null>) => (pages: string[]) => 
     </GtkStack>
 );
 
-describe("render - Stack", () => {
+describe("render - Stack (1)", () => {
     describe("GtkStack", () => {
         it("creates Stack widget", { timeout: 10000 }, async () => {
             const ref = createRef<Gtk.Stack>();
@@ -26,7 +26,7 @@ describe("render - Stack", () => {
         });
     });
 
-    describe("StackPage", () => {
+    describe("StackPage (1)", () => {
         it("adds named page", async () => {
             await render(
                 <GtkStack>
@@ -63,7 +63,11 @@ describe("render - Stack", () => {
 
             expect(await screen.findByText("Unnamed Page")).toBeDefined();
         });
+    });
+});
 
+describe("render - Stack (2)", () => {
+    describe("StackPage (2)", () => {
         it("sets page properties (iconName, needsAttention, etc.)", async () => {
             const stackRef = createRef<Gtk.Stack>();
 
@@ -83,7 +87,9 @@ describe("render - Stack", () => {
             expect(page?.getNeedsAttention()).toBe(true);
         });
     });
+});
 
+describe("render - Stack (3)", () => {
     describe("page management", () => {
         it("inserts page before existing page", async () => {
             const stackRef = createRef<Gtk.Stack>();
@@ -134,7 +140,9 @@ describe("render - Stack", () => {
             expect(page?.getIconName()).toBe("dialog-warning");
         });
     });
+});
 
+describe("render - Stack (4)", () => {
     describe("visibleChild", () => {
         it("sets visible child by name", async () => {
             const stackRef = createRef<Gtk.Stack>();
@@ -173,7 +181,9 @@ describe("render - Stack", () => {
             });
         });
     });
+});
 
+describe("render - Stack (5)", () => {
     describe("page navigation with waitFor", () => {
         it("changes visible page with controlled state", async () => {
             const stackRef = createRef<Gtk.Stack>();

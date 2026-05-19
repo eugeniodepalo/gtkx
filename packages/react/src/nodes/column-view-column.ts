@@ -23,7 +23,7 @@ export class ColumnViewColumnNode extends VirtualNode<ColumnViewColumnProps, Wid
     constructor(typeName: string, props: ColumnViewColumnProps, container: undefined, rootContainer: Container) {
         super(typeName, props, container, rootContainer);
         this.actionGroup = new Gio.SimpleActionGroup();
-        const menu = new MenuModel("root", {}, rootContainer, this.actionGroup);
+        const menu = new MenuModel({ type: "root", props: {}, rootContainer, actionMap: this.actionGroup });
         menu.setActionMap(this.actionGroup, props.id);
         this.menuController = new MenuChildController(menu);
     }

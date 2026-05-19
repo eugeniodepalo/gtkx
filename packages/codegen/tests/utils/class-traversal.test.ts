@@ -104,7 +104,7 @@ describe("collectParentSignalNames", () => {
     });
 });
 
-describe("collectParentMethodNames", () => {
+describe("collectParentMethodNames (1)", () => {
     it("returns empty set for class without parent", () => {
         const cls = createNormalizedClass({ parent: null });
         const repo = createMockRepository();
@@ -137,7 +137,9 @@ describe("collectParentMethodNames", () => {
         expect(result.has("show")).toBe(true);
         expect(result.has("hide")).toBe(true);
     });
+});
 
+describe("collectParentMethodNames (2)", () => {
     it("collects method names from parent interfaces", () => {
         const iface = createNormalizedInterface({
             name: "Orientable",
@@ -183,7 +185,7 @@ describe("collectParentMethodNames", () => {
     });
 });
 
-describe("collectDirectMembers", () => {
+describe("collectDirectMembers (1)", () => {
     it("returns direct properties only", () => {
         const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
         const parent = createNormalizedClass(
@@ -223,7 +225,9 @@ describe("collectDirectMembers", () => {
         expect(result.map((p) => p.name)).toContain("icon-name");
         expect(result.map((p) => p.name)).not.toContain("visible");
     });
+});
 
+describe("collectDirectMembers (2)", () => {
     it("excludes hidden members", () => {
         const cls = createNormalizedClass({
             parent: null,
@@ -257,7 +261,9 @@ describe("collectDirectMembers", () => {
         expect(result).toHaveLength(1);
         expect(result[0]?.name).toBe("visible");
     });
+});
 
+describe("collectDirectMembers (3)", () => {
     it("includes members from directly implemented interfaces", () => {
         const iface = createNormalizedInterface({
             name: "Actionable",
@@ -291,7 +297,9 @@ describe("collectDirectMembers", () => {
         expect(result.map((p) => p.name)).toContain("label");
         expect(result.map((p) => p.name)).toContain("action-name");
     });
+});
 
+describe("collectDirectMembers (4)", () => {
     it("excludes members from parent-implemented interfaces", () => {
         const iface = createNormalizedInterface({
             name: "Orientable",

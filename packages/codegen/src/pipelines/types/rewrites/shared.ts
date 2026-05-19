@@ -52,23 +52,28 @@ export const skipBlockComment = (source: string, start: number): number => {
  * delimiter immediately before `from`, treating strings and comments as
  * opaque. Returns `-1` when no matching delimiter is found.
  */
+/**
+ * Returns the index past any opaque region (string literal or comment) that
+ * starts at `i`, or `i` itself when no such region begins there.
+ */
+const skipOpaqueRegion = (source: string, i: number): number => {
+    const ch = source[i];
+    if (ch === '"' || ch === "'" || ch === "`") return skipStringLiteral(source, i, ch);
+    if (ch === "/" && source[i + 1] === "/") return skipLineComment(source, i);
+    if (ch === "/" && source[i + 1] === "*") return skipBlockComment(source, i);
+    return i;
+};
+
 const findMatchingDelimiter = (source: string, from: number, open: string, close: string): number => {
     let depth = 1;
     let i = from;
     while (i < source.length) {
+        const skipped = skipOpaqueRegion(source, i);
+        if (skipped !== i) {
+            i = skipped;
+            continue;
+        }
         const ch = source[i];
-        if (ch === '"' || ch === "'" || ch === "`") {
-            i = skipStringLiteral(source, i, ch);
-            continue;
-        }
-        if (ch === "/" && source[i + 1] === "/") {
-            i = skipLineComment(source, i);
-            continue;
-        }
-        if (ch === "/" && source[i + 1] === "*") {
-            i = skipBlockComment(source, i);
-            continue;
-        }
         if (ch === open) depth++;
         else if (ch === close) {
             depth--;

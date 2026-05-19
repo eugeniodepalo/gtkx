@@ -85,9 +85,6 @@ export class FfiGenerator {
             throw new Error(`Namespace ${namespaceName} not found in repository`);
         }
 
-        const glibLibrary = this.getNamespaceLibrary("GLib");
-        const gobjectLibrary = this.getNamespaceLibrary("GObject");
-
         this.ffiMapper.clearSkippedClasses();
         this.registerRecords(namespace);
         this.registerInterfaces(namespace);
@@ -95,23 +92,39 @@ export class FfiGenerator {
         const generatorOptions: FfiGeneratorOptions = {
             namespace: this.options.namespace,
             sharedLibrary: namespace.sharedLibrary,
-            glibLibrary,
-            gobjectLibrary,
+            glibLibrary: this.getNamespaceLibrary("GLib"),
+            gobjectLibrary: this.getNamespaceLibrary("GObject"),
         };
 
         const file = fileBuilder();
         file.setMode("js");
 
-        const allEnums = [...namespace.enumerations.values(), ...namespace.bitfields.values()];
-        if (allEnums.length > 0) {
-            const enumGenerator = new EnumGenerator(file, { namespace: this.options.namespace });
-            enumGenerator.addEnums(allEnums);
-        }
-
+        this.emitEnums(namespace, file);
         this.generateRecords(namespace, generatorOptions, file);
         this.generateClasses(namespace, generatorOptions, file);
         this.generateClassStructs(namespace, generatorOptions, file);
+        this.emitInterfaces(namespace, generatorOptions, file);
+        this.emitStandaloneFunctions(namespace, generatorOptions, file);
+        this.emitConstants(namespace, file);
+        this.emitAliases(namespace, file);
+        this.emitCallbacks(namespace, file);
 
+        const path = `${this.namespaceDir}/${this.namespaceDir}.js`;
+        const trailer = this.namespaceBootstrap(namespace, file);
+        const content = trailer ? `${stringify(file)}\n${trailer}\n` : stringify(file);
+        const files: GeneratedFile[] = [{ path, content }];
+
+        return { files, metadata: this.metadata };
+    }
+
+    private emitEnums(namespace: GirNamespace, file: FileBuilder): void {
+        const allEnums = [...namespace.enumerations.values(), ...namespace.bitfields.values()];
+        if (allEnums.length === 0) return;
+        const enumGenerator = new EnumGenerator(file, { namespace: this.options.namespace });
+        enumGenerator.addEnums(allEnums);
+    }
+
+    private emitInterfaces(namespace: GirNamespace, generatorOptions: FfiGeneratorOptions, file: FileBuilder): void {
         for (const [, iface] of namespace.interfaces) {
             const interfaceGenerator = new InterfaceGenerator(
                 this.ffiMapper,
@@ -121,34 +134,35 @@ export class FfiGenerator {
             );
             interfaceGenerator.generate(iface);
         }
+    }
 
+    private emitStandaloneFunctions(
+        namespace: GirNamespace,
+        generatorOptions: FfiGeneratorOptions,
+        file: FileBuilder,
+    ): void {
         const standaloneFunctions = [...namespace.functions.values()];
-        if (standaloneFunctions.length > 0) {
-            const functionGenerator = new FunctionGenerator(this.ffiMapper, file, generatorOptions);
-            functionGenerator.generate(standaloneFunctions);
-        }
+        if (standaloneFunctions.length === 0) return;
+        const functionGenerator = new FunctionGenerator(this.ffiMapper, file, generatorOptions);
+        functionGenerator.generate(standaloneFunctions);
+    }
 
-        if (namespace.constants.size > 0) {
-            const constantGenerator = new ConstantGenerator(file, { namespace: this.options.namespace });
-            constantGenerator.addConstants([...namespace.constants.values()]);
-        }
+    private emitConstants(namespace: GirNamespace, file: FileBuilder): void {
+        if (namespace.constants.size === 0) return;
+        const constantGenerator = new ConstantGenerator(file, { namespace: this.options.namespace });
+        constantGenerator.addConstants([...namespace.constants.values()]);
+    }
 
-        if (namespace.aliases.size > 0 || AliasGenerator.hasOverrides(this.options.namespace)) {
-            const aliasGenerator = new AliasGenerator(file, { namespace: this.options.namespace });
-            aliasGenerator.addAliases([...namespace.aliases.values()]);
-        }
+    private emitAliases(namespace: GirNamespace, file: FileBuilder): void {
+        if (namespace.aliases.size === 0 && !AliasGenerator.hasOverrides(this.options.namespace)) return;
+        const aliasGenerator = new AliasGenerator(file, { namespace: this.options.namespace });
+        aliasGenerator.addAliases([...namespace.aliases.values()]);
+    }
 
-        if (namespace.callbacks.size > 0) {
-            const callbackGenerator = new CallbackGenerator(file, { namespace: this.options.namespace });
-            callbackGenerator.addCallbacks([...namespace.callbacks.values()]);
-        }
-
-        const path = `${this.namespaceDir}/${this.namespaceDir}.js`;
-        const trailer = this.namespaceBootstrap(namespace, file);
-        const content = trailer ? `${stringify(file)}\n${trailer}\n` : stringify(file);
-        const files: GeneratedFile[] = [{ path, content }];
-
-        return { files, metadata: this.metadata };
+    private emitCallbacks(namespace: GirNamespace, file: FileBuilder): void {
+        if (namespace.callbacks.size === 0) return;
+        const callbackGenerator = new CallbackGenerator(file, { namespace: this.options.namespace });
+        callbackGenerator.addCallbacks([...namespace.callbacks.values()]);
     }
 
     /**
@@ -201,7 +215,12 @@ export class FfiGenerator {
     ): void {
         for (const [, record] of namespace.records) {
             if (!isClassVtable(record)) continue;
-            const generator = new ClassStructGenerator(this.ffiMapper, file, generatorOptions, this.options.repository);
+            const generator = new ClassStructGenerator({
+                ffiMapper: this.ffiMapper,
+                file,
+                options: generatorOptions,
+                repo: this.options.repository,
+            });
             generator.generate(record);
         }
     }
@@ -209,13 +228,13 @@ export class FfiGenerator {
     private generateClasses(namespace: GirNamespace, generatorOptions: FfiGeneratorOptions, file: FileBuilder): void {
         const sortedClasses = this.topologicalSortClasses([...namespace.classes.values()]);
         for (const cls of sortedClasses) {
-            const classGenerator = new ClassGenerator(
+            const classGenerator = new ClassGenerator({
                 cls,
-                this.ffiMapper,
+                ffiMapper: this.ffiMapper,
                 file,
-                this.options.repository,
-                generatorOptions,
-            );
+                repository: this.options.repository,
+                options: generatorOptions,
+            });
 
             const result = classGenerator.generate();
 

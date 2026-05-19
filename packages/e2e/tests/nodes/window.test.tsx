@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 
 const render = (element: ReactNode) => baseRender(element, { wrapper: false });
 
-describe("render - Window", () => {
+describe("render - Window (1)", () => {
     describe("creation", () => {
         it("creates Gtk.ApplicationWindow with current app", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
@@ -28,7 +28,9 @@ describe("render - Window", () => {
             expect(ref.current?.getApplication()).not.toBeNull();
         });
     });
+});
 
+describe("render - Window (2)", () => {
     describe("defaultSize", () => {
         it("sets default size via defaultWidth/defaultHeight", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
@@ -76,7 +78,9 @@ describe("render - Window", () => {
             expect(height).toBeGreaterThanOrEqual(200);
         });
     });
+});
 
+describe("render - Window (3)", () => {
     describe("lifecycle", () => {
         it("presents window on mount", async () => {
             const ref = createRef<Gtk.ApplicationWindow>();
@@ -101,7 +105,9 @@ describe("render - Window", () => {
             await rerender(<App show={false} />);
         });
     });
+});
 
+describe("render - Window (4)", () => {
     describe("children", () => {
         it("sets child widget", async () => {
             const windowRef = createRef<Gtk.ApplicationWindow>();

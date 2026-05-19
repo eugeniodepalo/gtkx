@@ -240,92 +240,102 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         this.factory = new Gtk.SignalListItemFactory();
         const isTree = this.isTreeMode();
 
-        this.factory.connect("setup", (obj: GObject.Object) => {
-            const listItem = asLifecycleItem<Gtk.ListItem>(obj);
-
-            if (isTree) {
-                const expander = new Gtk.TreeExpander();
-                listItem.setChild(expander);
-                this.containers.set(expander, UNBOUND_POSITION);
-                this.containerKeys.set(expander, widgetIdOf(expander));
-                this.treeExpanders.set(listItem, expander);
-            } else {
-                const { width, height } = this.getEstimatedItemSize();
-                if (width !== -1 || height !== -1) {
-                    const placeholder = new Gtk.Box();
-                    placeholder.setSizeRequest(width, height);
-                    listItem.setChild(placeholder);
-                }
-                this.containers.set(listItem, UNBOUND_POSITION);
-                this.containerKeys.set(listItem, widgetIdOf(listItem));
-            }
-        });
-
-        this.factory.connect("bind", (obj: GObject.Object) => {
-            if (this.disposed) return;
-            const listItem = asLifecycleItem<Gtk.ListItem>(obj);
-            const position = listItem.getPosition();
-
-            if (isTree) {
-                const expander = this.treeExpanders.get(listItem);
-                const row = listItem.getItem() as Gtk.TreeListRow;
-                if (expander) {
-                    expander.setListRow(row);
-                    this.applyEstimatedItemSize(expander);
-
-                    const treeItem = this.resolveTreeItem(row);
-                    if (treeItem) {
-                        this.applyTreeExpanderProps(expander, treeItem);
-                    }
-
-                    this.containers.set(expander, position);
-                }
-            } else {
-                this.containers.set(listItem, position);
-            }
-
-            this.scheduleBoundItemsUpdate();
-        });
-
-        this.factory.connect("unbind", (obj: GObject.Object) => {
-            if (this.disposed) return;
-            const listItem = asLifecycleItem<Gtk.ListItem>(obj);
-
-            if (isTree) {
-                const expander = this.treeExpanders.get(listItem);
-                if (expander) {
-                    this.containers.set(expander, UNBOUND_POSITION);
-                    expander.setListRow(null);
-                }
-            } else {
-                this.containers.set(listItem, UNBOUND_POSITION);
-            }
-
-            this.scheduleBoundItemsUpdate();
-        });
-
-        this.factory.connect("teardown", (obj: GObject.Object) => {
-            if (this.disposed) return;
-            const listItem = asLifecycleItem<Gtk.ListItem>(obj);
-
-            if (isTree) {
-                const expander = this.treeExpanders.get(listItem);
-                if (expander) {
-                    this.containers.delete(expander);
-                    this.containerKeys.delete(expander);
-                }
-                this.treeExpanders.delete(listItem);
-            } else {
-                this.containers.delete(listItem);
-                this.containerKeys.delete(listItem);
-            }
-
-            listItem.setChild(null);
-        });
+        this.factory.connect("setup", (obj: GObject.Object) => this.onFactorySetup(obj, isTree));
+        this.factory.connect("bind", (obj: GObject.Object) => this.onFactoryBind(obj, isTree));
+        this.factory.connect("unbind", (obj: GObject.Object) => this.onFactoryUnbind(obj, isTree));
+        this.factory.connect("teardown", (obj: GObject.Object) => this.onFactoryTeardown(obj, isTree));
 
         if (this.props.renderListItem && this.isDropDown()) {
             this.setupListFactory();
         }
+    }
+
+    private onFactorySetup(obj: GObject.Object, isTree: boolean): void {
+        const listItem = asLifecycleItem<Gtk.ListItem>(obj);
+
+        if (isTree) {
+            const expander = new Gtk.TreeExpander();
+            listItem.setChild(expander);
+            this.containers.set(expander, UNBOUND_POSITION);
+            this.containerKeys.set(expander, widgetIdOf(expander));
+            this.treeExpanders.set(listItem, expander);
+            return;
+        }
+
+        const { width, height } = this.getEstimatedItemSize();
+        if (width !== -1 || height !== -1) {
+            const placeholder = new Gtk.Box();
+            placeholder.setSizeRequest(width, height);
+            listItem.setChild(placeholder);
+        }
+        this.containers.set(listItem, UNBOUND_POSITION);
+        this.containerKeys.set(listItem, widgetIdOf(listItem));
+    }
+
+    private onFactoryBind(obj: GObject.Object, isTree: boolean): void {
+        if (this.disposed) return;
+        const listItem = asLifecycleItem<Gtk.ListItem>(obj);
+        const position = listItem.getPosition();
+
+        if (isTree) {
+            this.bindTreeListItem(listItem, position);
+        } else {
+            this.containers.set(listItem, position);
+        }
+
+        this.scheduleBoundItemsUpdate();
+    }
+
+    private bindTreeListItem(listItem: Gtk.ListItem, position: number): void {
+        const expander = this.treeExpanders.get(listItem);
+        if (!expander) return;
+
+        const row = listItem.getItem() as Gtk.TreeListRow;
+        expander.setListRow(row);
+        this.applyEstimatedItemSize(expander);
+
+        const treeItem = this.resolveTreeItem(row);
+        if (treeItem) {
+            this.applyTreeExpanderProps(expander, treeItem);
+        }
+
+        this.containers.set(expander, position);
+    }
+
+    private onFactoryUnbind(obj: GObject.Object, isTree: boolean): void {
+        if (this.disposed) return;
+        const listItem = asLifecycleItem<Gtk.ListItem>(obj);
+
+        if (isTree) {
+            const expander = this.treeExpanders.get(listItem);
+            if (expander) {
+                this.containers.set(expander, UNBOUND_POSITION);
+                expander.setListRow(null);
+            }
+        } else {
+            this.containers.set(listItem, UNBOUND_POSITION);
+        }
+
+        this.scheduleBoundItemsUpdate();
+    }
+
+    private onFactoryTeardown(obj: GObject.Object, isTree: boolean): void {
+        if (this.disposed) return;
+        const listItem = asLifecycleItem<Gtk.ListItem>(obj);
+
+        if (isTree) {
+            const expander = this.treeExpanders.get(listItem);
+            if (expander) {
+                this.containers.delete(expander);
+                this.containerKeys.delete(expander);
+            }
+            this.treeExpanders.delete(listItem);
+        } else {
+            this.containers.delete(listItem);
+            this.containerKeys.delete(listItem);
+        }
+
+        listItem.setChild(null);
     }
 
     private setupListFactory(): void {
@@ -620,17 +630,21 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
     }
 
     private resolveTreeItem(row: Gtk.TreeListRow): ListItem | null {
-        const rootItems = this.collectRootItems();
-        const depth = row.getDepth();
-
-        if (depth === 0) {
-            const rootItem = row.getItem();
-            if (!rootItem) return null;
-            const pos = this.findStringObjectPosition(rootItem);
-            if (pos === null) return null;
-            return rootItems[pos] ?? null;
+        if (row.getDepth() === 0) {
+            return this.resolveRootTreeItem(row);
         }
+        return this.resolveChildTreeItem(row);
+    }
 
+    private resolveRootTreeItem(row: Gtk.TreeListRow): ListItem | null {
+        const rootItem = row.getItem();
+        if (!rootItem) return null;
+        const pos = this.findStringObjectPosition(rootItem);
+        if (pos === null) return null;
+        return this.collectRootItems()[pos] ?? null;
+    }
+
+    private resolveChildTreeItem(row: Gtk.TreeListRow): ListItem | null {
         const parentRow = row.getParent();
         if (!parentRow) return null;
 
@@ -640,16 +654,21 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const childItem = row.getItem();
         if (!childItem) return null;
 
+        return this.findChildItemInRow(parentRow, parentItem.children, childItem);
+    }
+
+    private findChildItemInRow(
+        parentRow: Gtk.TreeListRow,
+        siblings: readonly ListItem[],
+        childItem: GObject.Object,
+    ): ListItem | null {
         const childModel = parentRow.getChildren();
-        if (childModel) {
-            for (let j = 0; j < childModel.getNItems(); j++) {
-                const obj = childModel.getItem(j);
-                if (obj === childItem) {
-                    return parentItem.children[j] ?? null;
-                }
+        if (!childModel) return null;
+        for (let j = 0; j < childModel.getNItems(); j++) {
+            if (childModel.getItem(j) === childItem) {
+                return siblings[j] ?? null;
             }
         }
-
         return null;
     }
 
@@ -840,7 +859,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         if (this.isDropDown()) {
             const handler = onSelectionChanged ? this.buildDropDownSelectionHandler(onSelectionChanged) : undefined;
-            this.signalStore.set(this, this.container, "notify::selected", handler);
+            this.signalStore.set({ owner: this, obj: this.container, signal: "notify::selected", handler });
             return;
         }
 
@@ -848,7 +867,11 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
 
         const handler = onSelectionChanged ? this.buildMultiSelectionHandler(onSelectionChanged) : undefined;
 
-        this.signalStore.set(this, this.selectionModel, "selection-changed", handler, {
+        this.signalStore.set({
+            owner: this,
+            obj: this.selectionModel,
+            signal: "selection-changed",
+            handler,
             blockable: false,
         });
     }
@@ -875,7 +898,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
               }
             : undefined;
 
-        this.signalStore.set(this, sorter, "changed", handler, { blockable: false });
+        this.signalStore.set({ owner: this, obj: sorter, signal: "changed", handler, blockable: false });
     }
 
     private applySortColumn(props: ListProps): void {
@@ -951,18 +974,24 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const stringifyItem = (item: unknown): string => (typeof item === "string" ? item : "");
         const renderFn = renderItem ?? (this.isDropDown() ? stringifyItem : null);
 
-        if (renderFn) {
-            this.collectContainerBoundItems(this.containers, this.containerKeys, flatItems, renderFn, newBoundItems);
+        if (renderFn !== null) {
+            this.collectContainerBoundItems({
+                containers: this.containers,
+                containerKeys: this.containerKeys,
+                flatItems,
+                renderFn,
+                out: newBoundItems,
+            });
         }
 
         if (renderListItem && this.isDropDown()) {
-            this.collectContainerBoundItems(
-                this.listContainers,
-                this.listContainerKeys,
+            this.collectContainerBoundItems({
+                containers: this.listContainers,
+                containerKeys: this.listContainerKeys,
                 flatItems,
-                renderListItem,
-                newBoundItems,
-            );
+                renderFn: renderListItem,
+                out: newBoundItems,
+            });
         }
 
         return newBoundItems;
@@ -1014,13 +1043,14 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         __rerender();
     }
 
-    private collectContainerBoundItems(
-        containers: Map<Container, number>,
-        containerKeys: Map<Container, string>,
-        flatItems: ListItem[],
-        renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode,
-        out: BoundItem[],
-    ): void {
+    private collectContainerBoundItems(args: {
+        containers: Map<Container, number>;
+        containerKeys: Map<Container, string>;
+        flatItems: ListItem[];
+        renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
+        out: BoundItem[];
+    }): void {
+        const { containers, containerKeys, flatItems, renderFn, out } = args;
         const isTree = this.treeModel !== null;
 
         for (const [container, position] of containers) {
@@ -1029,19 +1059,20 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
             if (!key) continue;
 
             if (isTree) {
-                this.appendTreeBoundItem(container, key, renderFn, out);
+                this.appendTreeBoundItem({ container, key, renderFn, out });
             } else {
-                this.appendFlatBoundItem(container, position, key, flatItems, renderFn, out);
+                this.appendFlatBoundItem({ container, position, key, flatItems, renderFn, out });
             }
         }
     }
 
-    private appendTreeBoundItem(
-        container: Container,
-        key: string,
-        renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode,
-        out: BoundItem[],
-    ): void {
+    private appendTreeBoundItem(args: {
+        container: Container;
+        key: string;
+        renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
+        out: BoundItem[];
+    }): void {
+        const { container, key, renderFn, out } = args;
         const expander = container as Gtk.TreeExpander;
         const row = expander.getListRow() ?? null;
         if (!row) return;
@@ -1050,14 +1081,15 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         out.push([renderFn(item.value, row), container, key]);
     }
 
-    private appendFlatBoundItem(
-        container: Container,
-        position: number,
-        key: string,
-        flatItems: ListItem[],
-        renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode,
-        out: BoundItem[],
-    ): void {
+    private appendFlatBoundItem(args: {
+        container: Container;
+        position: number;
+        key: string;
+        flatItems: ListItem[];
+        renderFn: (item: unknown, row?: Gtk.TreeListRow | null) => ReactNode;
+        out: BoundItem[];
+    }): void {
+        const { container, position, key, flatItems, renderFn, out } = args;
         const item = flatItems[position];
         if (!item) return;
         out.push([renderFn(item.value), container, key]);

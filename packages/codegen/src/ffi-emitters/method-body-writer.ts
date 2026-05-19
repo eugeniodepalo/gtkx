@@ -467,22 +467,24 @@ export class MethodBodyWriter {
      * member would, so its call-convention shape — parameter arity — still
      * matches the declared contract; only the body differs.
      *
-     * @param memberName - The TypeScript member name to emit.
-     * @param qualifiedName - The fully qualified `Namespace.Class.member` name used in the error message.
-     * @param doc - Optional GIR documentation text for the member.
-     * @param namespace - Current namespace for documentation links.
-     * @param isStatic - Whether the member is a static function.
-     * @param parameters - The GIR parameters whose JS-visible arity the stub reproduces.
+     * @param opts - Stub configuration.
+     * @param opts.memberName - The TypeScript member name to emit.
+     * @param opts.qualifiedName - The fully qualified `Namespace.Class.member` name used in the error message.
+     * @param opts.doc - Optional GIR documentation text for the member.
+     * @param opts.namespace - Current namespace for documentation links.
+     * @param opts.isStatic - Whether the member is a static function.
+     * @param opts.parameters - The GIR parameters whose JS-visible arity the stub reproduces.
      * @returns A MethodStructure whose body throws a descriptive error.
      */
-    buildStubStructure(
-        memberName: string,
-        qualifiedName: string,
-        doc: string | undefined,
-        namespace: string,
-        isStatic: boolean,
-        parameters: readonly GirParameter[] = [],
-    ): MethodStructure {
+    buildStubStructure(opts: {
+        memberName: string;
+        qualifiedName: string;
+        doc: string | undefined;
+        namespace: string;
+        isStatic: boolean;
+        parameters?: readonly GirParameter[];
+    }): MethodStructure {
+        const { memberName, qualifiedName, doc, namespace, isStatic, parameters = [] } = opts;
         const message = `${qualifiedName} is not callable through the @gtkx/ffi runtime`;
         this.imports.addImport("../../native.js", ["throwUnsupported"]);
         return {

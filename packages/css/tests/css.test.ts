@@ -90,6 +90,33 @@ describe("cx", () => {
         expect(result).toEqual(["class-a", "class-b", "class-c"]);
     });
 
+    it("works with css function output", () => {
+        const style1 = css`
+            color: red;
+        `;
+        const style2 = css`
+            color: blue;
+        `;
+        const result = cx(style1, style2);
+
+        expect(result).toHaveLength(2);
+        expect(result[0]).toMatch(/^gtkx-/);
+        expect(result[1]).toMatch(/^gtkx-/);
+    });
+
+    it("handles conditional composition", () => {
+        const baseStyle = "base-class";
+        const activeStyle = "active-class";
+        const isActive = true;
+        const isDisabled = false;
+
+        const result = cx(baseStyle, isActive && activeStyle, isDisabled && "disabled-class");
+
+        expect(result).toEqual(["base-class", "active-class"]);
+    });
+});
+
+describe("cx falsy filtering", () => {
     it("filters out false values", () => {
         const isActive = false;
         const result = cx("base", isActive && "active");
@@ -116,56 +143,31 @@ describe("cx", () => {
 
         expect(result).toEqual(["base", "other"]);
     });
+});
 
-    it("works with css function output", () => {
-        const style1 = css`
-            color: red;
-        `;
-        const style2 = css`
-            color: blue;
-        `;
-        const result = cx(style1, style2);
+describe("cx edge cases", () => {
+    it("returns empty array when given no arguments", () => {
+        const result = cx();
 
-        expect(result).toHaveLength(2);
-        expect(result[0]).toMatch(/^gtkx-/);
-        expect(result[1]).toMatch(/^gtkx-/);
+        expect(result).toEqual([]);
     });
 
-    it("handles conditional composition", () => {
-        const baseStyle = "base-class";
-        const activeStyle = "active-class";
-        const isActive = true;
-        const isDisabled = false;
+    it("returns empty array when all values are falsy", () => {
+        const result = cx(false, undefined, null, "");
 
-        const result = cx(baseStyle, isActive && activeStyle, isDisabled && "disabled-class");
-
-        expect(result).toEqual(["base-class", "active-class"]);
+        expect(result).toEqual([]);
     });
 
-    describe("edge cases", () => {
-        it("returns empty array when given no arguments", () => {
-            const result = cx();
+    it("handles single class name", () => {
+        const result = cx("single");
 
-            expect(result).toEqual([]);
-        });
+        expect(result).toEqual(["single"]);
+    });
 
-        it("returns empty array when all values are falsy", () => {
-            const result = cx(false, undefined, null, "");
+    it("handles many class names", () => {
+        const result = cx("a", "b", "c", "d", "e", "f", "g");
 
-            expect(result).toEqual([]);
-        });
-
-        it("handles single class name", () => {
-            const result = cx("single");
-
-            expect(result).toEqual(["single"]);
-        });
-
-        it("handles many class names", () => {
-            const result = cx("a", "b", "c", "d", "e", "f", "g");
-
-            expect(result).toEqual(["a", "b", "c", "d", "e", "f", "g"]);
-        });
+        expect(result).toEqual(["a", "b", "c", "d", "e", "f", "g"]);
     });
 });
 

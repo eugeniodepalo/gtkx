@@ -34,19 +34,31 @@ import { toCamelCase, toValidMemberName } from "../../../utils/naming.js";
 const CLASS_STRUCT_STATIC_EXCLUDED: ReadonlySet<string> = new Set(["GObject.Object"]);
 
 /**
+ * Options for {@link ClassStructStaticBuilder}.
+ */
+export type ClassStructStaticBuilderOptions = {
+    cls: GirClass;
+    ffiMapper: FfiMapper;
+    imports: ImportCollector;
+    repository: GirRepository;
+    options: FfiGeneratorOptions;
+    selfNames?: ReadonlySet<string>;
+};
+
+/**
  * Builds static methods on a class from its gtype-struct record's methods.
  */
 export class ClassStructStaticBuilder {
     private readonly methodBody: MethodBodyWriter;
+    private readonly cls: GirClass;
+    private readonly repository: GirRepository;
+    private readonly options: FfiGeneratorOptions;
 
-    constructor(
-        private readonly cls: GirClass,
-        ffiMapper: FfiMapper,
-        imports: ImportCollector,
-        private readonly repository: GirRepository,
-        private readonly options: FfiGeneratorOptions,
-        selfNames?: ReadonlySet<string>,
-    ) {
+    constructor(opts: ClassStructStaticBuilderOptions) {
+        const { cls, ffiMapper, imports, repository, options, selfNames } = opts;
+        this.cls = cls;
+        this.repository = repository;
+        this.options = options;
         this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
             sharedLibrary: options.sharedLibrary,
             glibLibrary: options.glibLibrary,
@@ -85,14 +97,14 @@ export class ClassStructStaticBuilder {
     }
 
     private buildStub(method: GirMethod): MethodStructure {
-        return this.methodBody.buildStubStructure(
-            toValidMemberName(toCamelCase(method.name)),
-            `${this.options.namespace}.${this.cls.name}.${method.name}`,
-            method.doc,
-            this.options.namespace,
-            true,
-            method.parameters,
-        );
+        return this.methodBody.buildStubStructure({
+            memberName: toValidMemberName(toCamelCase(method.name)),
+            qualifiedName: `${this.options.namespace}.${this.cls.name}.${method.name}`,
+            doc: method.doc,
+            namespace: this.options.namespace,
+            isStatic: true,
+            parameters: method.parameters,
+        });
     }
 
     private findClassStructRecord(): GirRecord | null {

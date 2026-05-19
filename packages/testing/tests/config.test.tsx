@@ -4,10 +4,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import { resetConfig } from "../src/config.js";
 import { configure, findByRole, getConfig, render } from "../src/index.js";
 
-describe("configure", () => {
+function setupConfigReset() {
     afterEach(() => {
         resetConfig();
     });
+}
+
+describe("configure defaults", () => {
+    setupConfigReset();
 
     it("has default configuration", () => {
         const config = getConfig();
@@ -15,6 +19,10 @@ describe("configure", () => {
         expect(config.showSuggestions).toBe(true);
         expect(config.getElementError).toBeDefined();
     });
+});
+
+describe("configure updates", () => {
+    setupConfigReset();
 
     it("updates configuration with partial object", () => {
         configure({ showSuggestions: false });
@@ -31,6 +39,10 @@ describe("configure", () => {
         const config = getConfig();
         expect(config.showSuggestions).toBe(false);
     });
+});
+
+describe("configure suggestions", () => {
+    setupConfigReset();
 
     it("disables suggestions in error messages when showSuggestions is false", async () => {
         configure({ showSuggestions: false });
@@ -57,6 +69,10 @@ describe("configure", () => {
             expect(message).toContain("Here are the accessible roles:");
         }
     });
+});
+
+describe("configure error factory", () => {
+    setupConfigReset();
 
     it("allows custom error factory for query errors", async () => {
         class CustomError extends Error {

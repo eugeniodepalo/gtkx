@@ -234,14 +234,15 @@ const recordMapping = (
     }
 };
 
-const handleInputParam = (
-    acc: ShapeAccumulator,
-    ctx: ParamContext,
-    filteredParams: GirParameter[],
-    lengthToDataIndex: Map<number, number>,
-    ffiMapper: FfiMapper,
-    sizeParamOffset: number,
-): void => {
+const handleInputParam = (opts: {
+    acc: ShapeAccumulator;
+    ctx: ParamContext;
+    filteredParams: GirParameter[];
+    lengthToDataIndex: Map<number, number>;
+    ffiMapper: FfiMapper;
+    sizeParamOffset: number;
+}): void => {
+    const { acc, ctx, filteredParams, lengthToDataIndex, ffiMapper, sizeParamOffset } = opts;
     if (ctx.isLengthParam) {
         const dataIndex = lengthToDataIndex.get(ctx.girIndex);
         const dataParam = dataIndex === undefined ? undefined : filteredParams[dataIndex];
@@ -414,75 +415,60 @@ const dispatchOutParam = (acc: ShapeAccumulator, ctx: ParamContext): void => {
     handleAllocStructOut(acc, ctx);
 };
 
-export const buildCallableShape = (input: CallableShapeInput): CallableShape => {
-    const { parameters, returnTypeMapping, returnNullable, sizeParamOffset, ffiMapper } = input;
-
-    const filteredParams = parameters.filter((p) => !isVararg(p) && !ffiMapper.isClosureTarget(p, parameters));
-
-    const { lengthIndices, lengthToDataIndex } = collectLengthParamIndices(
-        parameters,
-        filteredParams,
-        returnTypeMapping,
-        ffiMapper,
-        sizeParamOffset,
-    );
-
-    const acc: ShapeAccumulator = {
-        imports: [],
-        paramMappings: [],
-        signatureParams: [],
-        hiddenOuts: [],
-        callArgs: [],
-        tupleOuts: [],
-    };
-
+const collectTrailingOptional = (filteredParams: readonly GirParameter[]): Set<number> => {
     const trailingOptional = new Set<number>();
     for (let i = filteredParams.length - 1; i >= 0; i--) {
         const param = filteredParams[i];
         if (!param?.optional) break;
         trailingOptional.add(i);
     }
+    return trailingOptional;
+};
 
-    filteredParams.forEach((param, girIndex) => {
-        const mapped = ffiMapper.mapParameter(param, sizeParamOffset);
-        acc.imports.push(...mapped.imports);
+const buildParamContext = (opts: {
+    param: GirParameter;
+    girIndex: number;
+    ffiMapper: FfiMapper;
+    sizeParamOffset: number;
+    trailingOptional: Set<number>;
+    lengthIndices: Set<number>;
+}): ParamContext => {
+    const { param, girIndex, ffiMapper, sizeParamOffset, trailingOptional, lengthIndices } = opts;
+    const mapped = ffiMapper.mapParameter(param, sizeParamOffset);
+    const isOut = param.direction === "out" || param.direction === "inout";
+    const isOpaque =
+        isOut &&
+        param.callerAllocates &&
+        isBoxedOrStructFfi(mapped.ffi) &&
+        !ffiMapper.canAllocateLocally(param.type.name);
+    return {
+        param,
+        girIndex,
+        mapped,
+        jsName: toValidIdentifier(toCamelCase(param.name)),
+        isNullable: param.nullable,
+        isOptional: trailingOptional.has(girIndex),
+        isOut,
+        isInout: param.direction === "inout",
+        isLengthParam: lengthIndices.has(girIndex),
+        isOpaqueCallerAllocates: isOpaque,
+        isCallerAllocatesStruct: isOut && param.callerAllocates && isBoxedOrStructFfi(mapped.ffi) && !isOpaque,
+        factoryCIdentifier: isOpaque ? (ffiMapper.findFactoryCIdentifier(param.type.name) ?? undefined) : undefined,
+        tsType: formatNullableType(
+            mapped.ts,
+            param.nullable,
+            mapped.ffi.type === "callback" || mapped.ffi.type === "trampoline",
+        ),
+    };
+};
 
-        const isOut = param.direction === "out" || param.direction === "inout";
-        const isOpaque =
-            isOut &&
-            param.callerAllocates &&
-            isBoxedOrStructFfi(mapped.ffi) &&
-            !ffiMapper.canAllocateLocally(param.type.name);
-        const ctx: ParamContext = {
-            param,
-            girIndex,
-            mapped,
-            jsName: toValidIdentifier(toCamelCase(param.name)),
-            isNullable: param.nullable,
-            isOptional: trailingOptional.has(girIndex),
-            isOut,
-            isInout: param.direction === "inout",
-            isLengthParam: lengthIndices.has(girIndex),
-            isOpaqueCallerAllocates: isOpaque,
-            isCallerAllocatesStruct: isOut && param.callerAllocates && isBoxedOrStructFfi(mapped.ffi) && !isOpaque,
-            factoryCIdentifier: isOpaque ? (ffiMapper.findFactoryCIdentifier(param.type.name) ?? undefined) : undefined,
-            tsType: formatNullableType(
-                mapped.ts,
-                param.nullable,
-                mapped.ffi.type === "callback" || mapped.ffi.type === "trampoline",
-            ),
-        };
-
-        if (!ctx.isOut) {
-            handleInputParam(acc, ctx, filteredParams, lengthToDataIndex, ffiMapper, sizeParamOffset);
-            return;
-        }
-        dispatchOutParam(acc, ctx);
-    });
-
-    const { imports, paramMappings, signatureParams, hiddenOuts, callArgs, tupleOuts } = acc;
-
-    const hasOriginalReturn = returnTypeMapping.ts !== "void";
+const buildReturnTupleEntries = (opts: {
+    tupleOuts: ShapeAccumulator["tupleOuts"];
+    returnTypeMapping: MappedType;
+    returnNullable: boolean;
+    hasOriginalReturn: boolean;
+}): ReturnTupleEntry[] => {
+    const { tupleOuts, returnTypeMapping, returnNullable, hasOriginalReturn } = opts;
     const returnTupleEntries: ReturnTupleEntry[] = [];
 
     if (hasOriginalReturn && tupleOuts.length > 0) {
@@ -502,6 +488,76 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
             nullable: tupleNullable,
         });
     }
+    return returnTupleEntries;
+};
+
+const processFilteredParams = (opts: {
+    filteredParams: GirParameter[];
+    ffiMapper: FfiMapper;
+    sizeParamOffset: number;
+    lengthIndices: Set<number>;
+    lengthToDataIndex: Map<number, number>;
+}): ShapeAccumulator => {
+    const { filteredParams, ffiMapper, sizeParamOffset, lengthIndices, lengthToDataIndex } = opts;
+    const acc: ShapeAccumulator = {
+        imports: [],
+        paramMappings: [],
+        signatureParams: [],
+        hiddenOuts: [],
+        callArgs: [],
+        tupleOuts: [],
+    };
+    const trailingOptional = collectTrailingOptional(filteredParams);
+
+    filteredParams.forEach((param, girIndex) => {
+        const ctx = buildParamContext({
+            param,
+            girIndex,
+            ffiMapper,
+            sizeParamOffset,
+            trailingOptional,
+            lengthIndices,
+        });
+        acc.imports.push(...ctx.mapped.imports);
+
+        if (!ctx.isOut) {
+            handleInputParam({ acc, ctx, filteredParams, lengthToDataIndex, ffiMapper, sizeParamOffset });
+            return;
+        }
+        dispatchOutParam(acc, ctx);
+    });
+    return acc;
+};
+
+export const buildCallableShape = (input: CallableShapeInput): CallableShape => {
+    const { parameters, returnTypeMapping, returnNullable, sizeParamOffset, ffiMapper } = input;
+
+    const filteredParams = parameters.filter((p) => !isVararg(p) && !ffiMapper.isClosureTarget(p, parameters));
+
+    const { lengthIndices, lengthToDataIndex } = collectLengthParamIndices({
+        parameters,
+        filteredParams,
+        returnTypeMapping,
+        ffiMapper,
+        sizeParamOffset,
+    });
+
+    const acc = processFilteredParams({
+        filteredParams,
+        ffiMapper,
+        sizeParamOffset,
+        lengthIndices,
+        lengthToDataIndex,
+    });
+
+    const { imports, paramMappings, signatureParams, hiddenOuts, callArgs, tupleOuts } = acc;
+    const hasOriginalReturn = returnTypeMapping.ts !== "void";
+    const returnTupleEntries = buildReturnTupleEntries({
+        tupleOuts,
+        returnTypeMapping,
+        returnNullable,
+        hasOriginalReturn,
+    });
 
     return {
         signatureParams,
@@ -517,13 +573,14 @@ export const buildCallableShape = (input: CallableShapeInput): CallableShape => 
     };
 };
 
-const collectLengthParamIndices = (
-    parameters: readonly GirParameter[],
-    filteredParams: readonly GirParameter[],
-    returnTypeMapping: MappedType,
-    ffiMapper: FfiMapper,
-    sizeParamOffset: number,
-): { lengthIndices: Set<number>; lengthToDataIndex: Map<number, number> } => {
+const collectLengthParamIndices = (opts: {
+    parameters: readonly GirParameter[];
+    filteredParams: readonly GirParameter[];
+    returnTypeMapping: MappedType;
+    ffiMapper: FfiMapper;
+    sizeParamOffset: number;
+}): { lengthIndices: Set<number>; lengthToDataIndex: Map<number, number> } => {
+    const { parameters, filteredParams, returnTypeMapping, ffiMapper, sizeParamOffset } = opts;
     const lengthIndices = new Set<number>();
     const lengthToDataIndex = new Map<number, number>();
 

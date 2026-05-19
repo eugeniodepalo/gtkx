@@ -152,13 +152,14 @@ export class FfiMapper {
         return undefined;
     }
 
-    private mapArrayType(
-        type: GirType,
-        isReturn: boolean,
-        parentTransferOwnership: string | undefined,
-        sizeParamOffset: number,
-        imports: TypeImport[],
-    ): MappedType {
+    private mapArrayType(opts: {
+        type: GirType;
+        isReturn: boolean;
+        parentTransferOwnership: string | undefined;
+        sizeParamOffset: number;
+        imports: TypeImport[];
+    }): MappedType {
+        const { type, isReturn, parentTransferOwnership, sizeParamOffset, imports } = opts;
         const transferFull = this.computeTransferFull(isReturn, type.transferOwnership ?? parentTransferOwnership);
         const listType = this.resolveArrayListType(type);
         const adjustedSizeParamIndex =
@@ -167,7 +168,10 @@ export class FfiMapper {
         if (!type.elementType) {
             return {
                 ts: "unknown[]",
-                ffi: arrayType(FFI_VOID, listType, transferFull, adjustedSizeParamIndex, type.fixedSize),
+                ffi: arrayType(FFI_VOID, listType, transferFull, {
+                    sizeParamIndex: adjustedSizeParamIndex,
+                    fixedSize: type.fixedSize,
+                }),
                 imports,
                 unsafe: true,
             };
@@ -181,14 +185,11 @@ export class FfiMapper {
         return withInheritedUnsafe(
             {
                 ts: `${elementResult.ts}[]`,
-                ffi: arrayType(
-                    elementResult.ffi,
-                    listType,
-                    transferFull,
-                    adjustedSizeParamIndex,
-                    type.fixedSize,
+                ffi: arrayType(elementResult.ffi, listType, transferFull, {
+                    sizeParamIndex: adjustedSizeParamIndex,
+                    fixedSize: type.fixedSize,
                     elementSize,
-                ),
+                }),
                 imports,
                 itemKind: elementResult.kind,
             },
@@ -208,37 +209,16 @@ export class FfiMapper {
         }
 
         if (type.isArray) {
-            return this.mapArrayType(type, isReturn, parentTransferOwnership, sizeParamOffset, imports);
+            return this.mapArrayType({ type, isReturn, parentTransferOwnership, sizeParamOffset, imports });
         }
 
         if (isStringType(type.name)) {
-            const effectiveTransferOwnership = type.transferOwnership ?? parentTransferOwnership;
-            return {
-                ts: "string",
-                ffi: stringType(effectiveTransferOwnership !== "none"),
-                imports,
-            };
+            return this.mapStringType(type, parentTransferOwnership, imports);
         }
 
         const primitive = PRIMITIVE_TYPE_MAP.get(type.name);
         if (primitive) {
-            if (type.name === "GType") {
-                const isExternal = this.currentNamespace !== "GObject";
-                imports.push({
-                    kind: "alias",
-                    name: "GType",
-                    namespace: "GObject",
-                    transformedName: "GType",
-                    isExternal,
-                });
-                return {
-                    ts: isExternal ? "GObject.GType" : "GType",
-                    ffi: primitive.ffi,
-                    imports,
-                };
-            }
-            const base: MappedType = { ...primitive, imports };
-            return UNSAFE_PRIMITIVE_NAMES.has(type.name) ? { ...base, unsafe: true } : base;
+            return this.mapPrimitiveType(type, primitive, imports);
         }
 
         const resolved = this.resolveType(type.name);
@@ -253,6 +233,43 @@ export class FfiMapper {
             imports,
             unsafe: true,
         };
+    }
+
+    private mapStringType(
+        type: GirType,
+        parentTransferOwnership: string | undefined,
+        imports: TypeImport[],
+    ): MappedType {
+        const effectiveTransferOwnership = type.transferOwnership ?? parentTransferOwnership;
+        return {
+            ts: "string",
+            ffi: stringType(effectiveTransferOwnership !== "none"),
+            imports,
+        };
+    }
+
+    private mapPrimitiveType(
+        type: GirType,
+        primitive: { ts: string; ffi: FfiTypeDescriptor },
+        imports: TypeImport[],
+    ): MappedType {
+        if (type.name === "GType") {
+            const isExternal = this.currentNamespace !== "GObject";
+            imports.push({
+                kind: "alias",
+                name: "GType",
+                namespace: "GObject",
+                transformedName: "GType",
+                isExternal,
+            });
+            return {
+                ts: isExternal ? "GObject.GType" : "GType",
+                ffi: primitive.ffi,
+                imports,
+            };
+        }
+        const base: MappedType = { ...primitive, imports };
+        return UNSAFE_PRIMITIVE_NAMES.has(type.name) ? { ...base, unsafe: true } : base;
     }
 
     /**
@@ -514,100 +531,32 @@ export class FfiMapper {
         namespace: string,
         isExternal: boolean,
     ): ResolvedType | null {
-        const cls = ns.classes.get(name);
-        if (cls) {
-            return {
-                kind: "class",
-                name,
-                namespace,
-                transformedName: normalizeClassName(name),
-                isExternal,
-                glibTypeName: cls.glibTypeName,
-                glibGetType: cls.glibGetType,
-                isFundamental: cls.isFundamental(),
-                refFunc: cls.refFunc,
-                unrefFunc: cls.unrefFunc,
-            };
-        }
+        return (
+            resolveClassEntry(ns, name, namespace, isExternal) ??
+            resolveInterfaceEntry(ns, name, namespace, isExternal) ??
+            resolveRecordEntry(ns, name, namespace, isExternal) ??
+            resolveEnumEntry(ns, name, namespace, isExternal) ??
+            resolveBitfieldEntry(ns, name, namespace, isExternal) ??
+            resolveCallbackEntry(ns, name, namespace, isExternal) ??
+            this.resolveAliasEntry(ns, name, namespace, isExternal)
+        );
+    }
 
-        const iface = ns.interfaces.get(name);
-        if (iface) {
-            return {
-                kind: "interface",
-                name,
-                namespace,
-                transformedName: normalizeClassName(name),
-                isExternal,
-                glibTypeName: iface.glibTypeName,
-            };
-        }
-
-        const record = ns.records.get(name);
-        if (record) {
-            return {
-                kind: "record",
-                name,
-                namespace,
-                transformedName: normalizeClassName(name),
-                isExternal,
-                glibTypeName: record.glibTypeName,
-                glibGetType: record.glibGetType,
-                isPlainStruct: record.isPlainStruct(),
-                isFundamental: record.isFundamental(),
-                copyFunction: record.copyFunction,
-                freeFunction: record.freeFunction,
-            };
-        }
-
-        const enumeration = ns.enumerations.get(name);
-        if (enumeration) {
-            const signed = enumeration.members.some((m) => m.value.startsWith("-"));
-            return {
-                kind: "enum",
-                name,
-                namespace,
-                transformedName: toPascalCase(name),
-                isExternal,
-                glibGetType: enumeration.glibGetType,
-                signed,
-            };
-        }
-
-        const bitfield = ns.bitfields.get(name);
-        if (bitfield) {
-            const signed = bitfield.members.some((m) => m.value.startsWith("-"));
-            return {
-                kind: "flags",
-                name,
-                namespace,
-                transformedName: toPascalCase(name),
-                isExternal,
-                glibGetType: bitfield.glibGetType,
-                signed,
-            };
-        }
-
-        if (ns.callbacks.has(name)) {
-            return {
-                kind: "callback",
-                name,
-                namespace,
-                transformedName: toPascalCase(name),
-                isExternal,
-            };
-        }
-
+    private resolveAliasEntry(
+        ns: GirNamespace,
+        name: string,
+        namespace: string,
+        isExternal: boolean,
+    ): ResolvedType | null {
         const alias = ns.aliases?.get(name);
-        if (alias) {
-            const targetTypeName = alias.targetType.name;
-            if (typeof targetTypeName === "string" && !targetTypeName.includes(".")) {
-                return this.resolveFromNamespace(ns, targetTypeName, namespace, isExternal);
-            }
-            if (typeof targetTypeName === "string" && targetTypeName.includes(".")) {
-                return this.resolveQualifiedType(targetTypeName);
-            }
+        if (!alias) return null;
+        const targetTypeName = alias.targetType.name;
+        if (typeof targetTypeName === "string" && !targetTypeName.includes(".")) {
+            return this.resolveFromNamespace(ns, targetTypeName, namespace, isExternal);
         }
-
+        if (typeof targetTypeName === "string" && targetTypeName.includes(".")) {
+            return this.resolveQualifiedType(targetTypeName);
+        }
         return null;
     }
 
@@ -693,13 +642,13 @@ export class FfiMapper {
             if (sharedLib) {
                 return {
                     ts: qualifiedName,
-                    ffi: fundamentalType(
-                        sharedLib,
-                        resolved.copyFunction,
-                        resolved.freeFunction,
+                    ffi: fundamentalType({
+                        lib: sharedLib,
+                        refFn: resolved.copyFunction,
+                        unrefFn: resolved.freeFunction,
                         transferFull,
-                        resolved.glibTypeName,
-                    ),
+                        typeName: resolved.glibTypeName,
+                    }),
                     imports,
                     kind: "record",
                 };
@@ -736,13 +685,13 @@ export class FfiMapper {
             if (sharedLib) {
                 return {
                     ts: qualifiedName,
-                    ffi: fundamentalType(
-                        sharedLib,
-                        resolved.refFunc,
-                        resolved.unrefFunc,
+                    ffi: fundamentalType({
+                        lib: sharedLib,
+                        refFn: resolved.refFunc,
+                        unrefFn: resolved.unrefFunc,
                         transferFull,
-                        resolved.glibTypeName,
-                    ),
+                        typeName: resolved.glibTypeName,
+                    }),
                     imports,
                     kind: resolved.kind,
                 };
@@ -784,6 +733,17 @@ export class FfiMapper {
             isExternal: resolved.isExternal,
         });
 
+        return this.dispatchResolvedType({ resolved, qualifiedName, isReturn, imports, transferOwnership });
+    }
+
+    private dispatchResolvedType(opts: {
+        resolved: ResolvedType;
+        qualifiedName: string;
+        isReturn: boolean;
+        imports: TypeImport[];
+        transferOwnership: string | undefined;
+    }): MappedType {
+        const { resolved, qualifiedName, isReturn, imports, transferOwnership } = opts;
         switch (resolved.kind) {
             case "enum":
             case "flags":
@@ -1086,6 +1046,125 @@ export class FfiMapper {
         return 8;
     }
 }
+
+const resolveClassEntry = (
+    ns: GirNamespace,
+    name: string,
+    namespace: string,
+    isExternal: boolean,
+): ResolvedType | null => {
+    const cls = ns.classes.get(name);
+    if (!cls) return null;
+    return {
+        kind: "class",
+        name,
+        namespace,
+        transformedName: normalizeClassName(name),
+        isExternal,
+        glibTypeName: cls.glibTypeName,
+        glibGetType: cls.glibGetType,
+        isFundamental: cls.isFundamental(),
+        refFunc: cls.refFunc,
+        unrefFunc: cls.unrefFunc,
+    };
+};
+
+const resolveInterfaceEntry = (
+    ns: GirNamespace,
+    name: string,
+    namespace: string,
+    isExternal: boolean,
+): ResolvedType | null => {
+    const iface = ns.interfaces.get(name);
+    if (!iface) return null;
+    return {
+        kind: "interface",
+        name,
+        namespace,
+        transformedName: normalizeClassName(name),
+        isExternal,
+        glibTypeName: iface.glibTypeName,
+    };
+};
+
+const resolveRecordEntry = (
+    ns: GirNamespace,
+    name: string,
+    namespace: string,
+    isExternal: boolean,
+): ResolvedType | null => {
+    const record = ns.records.get(name);
+    if (!record) return null;
+    return {
+        kind: "record",
+        name,
+        namespace,
+        transformedName: normalizeClassName(name),
+        isExternal,
+        glibTypeName: record.glibTypeName,
+        glibGetType: record.glibGetType,
+        isPlainStruct: record.isPlainStruct(),
+        isFundamental: record.isFundamental(),
+        copyFunction: record.copyFunction,
+        freeFunction: record.freeFunction,
+    };
+};
+
+const resolveEnumEntry = (
+    ns: GirNamespace,
+    name: string,
+    namespace: string,
+    isExternal: boolean,
+): ResolvedType | null => {
+    const enumeration = ns.enumerations.get(name);
+    if (!enumeration) return null;
+    const signed = enumeration.members.some((m) => m.value.startsWith("-"));
+    return {
+        kind: "enum",
+        name,
+        namespace,
+        transformedName: toPascalCase(name),
+        isExternal,
+        glibGetType: enumeration.glibGetType,
+        signed,
+    };
+};
+
+const resolveBitfieldEntry = (
+    ns: GirNamespace,
+    name: string,
+    namespace: string,
+    isExternal: boolean,
+): ResolvedType | null => {
+    const bitfield = ns.bitfields.get(name);
+    if (!bitfield) return null;
+    const signed = bitfield.members.some((m) => m.value.startsWith("-"));
+    return {
+        kind: "flags",
+        name,
+        namespace,
+        transformedName: toPascalCase(name),
+        isExternal,
+        glibGetType: bitfield.glibGetType,
+        signed,
+    };
+};
+
+const resolveCallbackEntry = (
+    ns: GirNamespace,
+    name: string,
+    namespace: string,
+    isExternal: boolean,
+): ResolvedType | null => {
+    if (!ns.callbacks.has(name)) return null;
+    return {
+        kind: "callback",
+        name,
+        namespace,
+        transformedName: toPascalCase(name),
+        isExternal,
+    };
+};
 
 /**
  * Internal type for resolved type information.

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderGridView, renderListView } from "../helpers/list-fixtures.js";
 import { getChildTexts } from "../helpers/widget-text.js";
 
-describe("render - ListView", () => {
+describe("render - ListView (1)", () => {
     describe("GtkListView", () => {
         it("creates ListView widget", async () => {
             const { ref } = await renderListView([{ id: "1", value: { name: "First" } }]);
@@ -13,7 +13,7 @@ describe("render - ListView", () => {
         });
     });
 
-    describe("ListItem", () => {
+    describe("ListItem (1)", () => {
         it("adds item to list model", async () => {
             await renderListView([
                 { id: "1", value: { name: "First" } },
@@ -43,7 +43,11 @@ describe("render - ListView", () => {
             expect(screen.queryAllByText("Second")).toHaveLength(1);
             expect(screen.queryAllByText("Third")).toHaveLength(1);
         });
+    });
+});
 
+describe("render - ListView (2)", () => {
+    describe("ListItem (2)", () => {
         it("removes item from list model", async () => {
             const { rerender } = await renderListView([
                 { id: "1", value: { name: "A" } },
@@ -87,7 +91,9 @@ describe("render - ListView", () => {
             expect(screen.queryAllByText("Initial")).toHaveLength(0);
         });
     });
+});
 
+describe("render - ListView (3)", () => {
     describe("renderItem", () => {
         it("receives item data in renderItem", async () => {
             const renderItem = vi.fn((item: { name: string }) => <GtkLabel label={item.name} />);
@@ -125,8 +131,10 @@ describe("render - ListView", () => {
             expect(ref.current?.getSingleClickActivate()).toBe(true);
         });
     });
+});
 
-    describe("item reordering", () => {
+describe("render - ListView (4)", () => {
+    describe("item reordering (1)", () => {
         it("respects React declaration order on initial render", async () => {
             const { ref } = await renderListView(["C", "A", "B"]);
 
@@ -172,7 +180,11 @@ describe("render - ListView", () => {
             await rerender(["X", "A", "Y"]);
             expect(getChildTexts(ref.current)).toEqual(["X", "A", "Y"]);
         });
+    });
+});
 
+describe("render - ListView (5)", () => {
+    describe("item reordering (2)", () => {
         it("handles rapid reordering", async () => {
             const { ref, rerender } = await renderListView(["A", "B", "C"]);
             await rerender(["C", "A", "B"]);
@@ -220,7 +232,11 @@ describe("render - ListView", () => {
             await rerender(["A", "C", "B", "D"]);
             expect(getChildTexts(ref.current)).toEqual(["A", "C", "B", "D"]);
         });
+    });
+});
 
+describe("render - ListView (6)", () => {
+    describe("item reordering (3)", () => {
         it("handles filtered view reordering", async () => {
             type Item = { id: string; active: boolean };
 
@@ -264,7 +280,11 @@ describe("render - ListView", () => {
             ]);
             expect(getChildTexts(ref.current)).toEqual(["Alice Updated", "Bob Updated", "Charlie Updated"]);
         });
+    });
+});
 
+describe("render - ListView (7)", () => {
+    describe("item reordering (4)", () => {
         it("preserves order when updating a single item value", async () => {
             type Item = { name: string; count: number };
             const renderItem = (item: Item) => <GtkLabel label={`${item.name}: ${item.count}`} />;
@@ -308,7 +328,9 @@ describe("render - ListView", () => {
             }
         });
     });
+});
 
+describe("render - ListView (8)", () => {
     describe("GridView item reordering", () => {
         it("handles complete reversal of items", async () => {
             const { ref, rerender } = await renderGridView(["A", "B", "C", "D", "E"]);

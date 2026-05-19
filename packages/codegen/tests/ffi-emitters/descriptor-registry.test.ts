@@ -8,7 +8,7 @@ function dump(registry: FfiDescriptorRegistry): string {
     return writer.toString();
 }
 
-describe("FfiDescriptorRegistry", () => {
+describe("FfiDescriptorRegistry (1)", () => {
     it("starts empty", () => {
         const registry = new FfiDescriptorRegistry();
         expect(registry.isEmpty).toBe(true);
@@ -44,7 +44,9 @@ describe("FfiDescriptorRegistry", () => {
         expect(result).toEqual({ varargs: true });
         expect(registry.isEmpty).toBe(true);
     });
+});
 
+describe("FfiDescriptorRegistry (2)", () => {
     it("appends a numeric suffix when same cIdentifier has a different descriptor", () => {
         const registry = new FfiDescriptorRegistry();
         const a = registry.register({
@@ -84,7 +86,9 @@ describe("FfiDescriptorRegistry", () => {
         const out = dump(registry);
         expect(out).toContain('{ type: t.string("borrowed"), optional: true }');
     });
+});
 
+describe("FfiDescriptorRegistry (3)", () => {
     it("emits one fn() declaration per registered descriptor in registration order", () => {
         const registry = new FfiDescriptorRegistry();
         registry.register({

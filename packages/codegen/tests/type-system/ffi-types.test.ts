@@ -22,7 +22,7 @@ import {
     type TypeImport,
 } from "../../src/type-system/ffi-types.js";
 
-describe("PRIMITIVE_TYPE_MAP", () => {
+describe("PRIMITIVE_TYPE_MAP (1)", () => {
     it("maps void types correctly", () => {
         expect(PRIMITIVE_TYPE_MAP.get("void")).toEqual({ ts: "void", ffi: { type: "void" } });
         expect(PRIMITIVE_TYPE_MAP.get("none")).toEqual({ ts: "void", ffi: { type: "void" } });
@@ -75,20 +75,19 @@ describe("PRIMITIVE_TYPE_MAP", () => {
         expect(PRIMITIVE_TYPE_MAP.get("gsize")?.ffi).toEqual({ type: "uint64" });
         expect(PRIMITIVE_TYPE_MAP.get("gssize")?.ffi).toEqual({ type: "int64" });
     });
+});
 
+describe("PRIMITIVE_TYPE_MAP (2)", () => {
     it("maps all primitives to number TypeScript type except boolean, void, gunichar, and GType", () => {
+        const expectedTs: Record<string, string> = {
+            gboolean: "boolean",
+            void: "void",
+            none: "void",
+            gunichar: "string",
+            GType: "GType",
+        };
         for (const [name, { ts }] of PRIMITIVE_TYPE_MAP) {
-            if (name === "gboolean") {
-                expect(ts).toBe("boolean");
-            } else if (name === "void" || name === "none") {
-                expect(ts).toBe("void");
-            } else if (name === "gunichar") {
-                expect(ts).toBe("string");
-            } else if (name === "GType") {
-                expect(ts).toBe("GType");
-            } else {
-                expect(ts).toBe("number");
-            }
+            expect(ts).toBe(expectedTs[name] ?? "number");
         }
     });
 });
@@ -228,7 +227,13 @@ describe("Self type descriptors", () => {
     });
 
     it("fundamentalSelfType creates fundamental self type", () => {
-        expect(fundamentalSelfType("libgobject-2.0.so.0", "g_param_spec_ref_sink", "g_param_spec_unref")).toEqual({
+        expect(
+            fundamentalSelfType({
+                library: "libgobject-2.0.so.0",
+                refFn: "g_param_spec_ref_sink",
+                unrefFn: "g_param_spec_unref",
+            }),
+        ).toEqual({
             type: "fundamental",
             ownership: "borrowed",
             library: "libgobject-2.0.so.0",

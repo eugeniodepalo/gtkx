@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { alloc, call, getNativeId, type NativeHandle } from "../../index.js";
 import { GDK_LIB, GTK_LIB } from "./utils.js";
 
-describe("getNativeId", () => {
+describe("getNativeId - id properties", () => {
     it("returns a number identifier for a GObject", () => {
         const label = call(
             GTK_LIB,
@@ -36,7 +36,9 @@ describe("getNativeId", () => {
 
         expect(getNativeId(label)).toBe(getNativeId(label));
     });
+});
 
+describe("getNativeId - usage", () => {
     it("returns different ids for different objects", () => {
         const label1 = call(
             GTK_LIB,

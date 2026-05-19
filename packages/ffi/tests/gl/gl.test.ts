@@ -151,7 +151,7 @@ describe("program operations", () => {
     });
 });
 
-describe("uniform operations", () => {
+describe("uniform operations — lookup and scalars", () => {
     let program: number;
 
     beforeAll(() => {
@@ -179,6 +179,23 @@ describe("uniform operations", () => {
         expect(gl.getError()).toBe(gl.NO_ERROR);
     });
 
+    it("sets an int uniform", () => {
+        if (!glReady) return;
+        const loc = gl.getUniformLocation(program, "uInt");
+        gl.uniform1i(loc, 42);
+        expect(gl.getError()).toBe(gl.NO_ERROR);
+    });
+});
+
+describe("uniform operations — vectors and matrices", () => {
+    let program: number;
+
+    beforeAll(() => {
+        if (!glReady) return;
+        program = compileShaderPair(UNIFORM_VERT, BASIC_FRAG);
+        gl.useProgram(program);
+    });
+
     it("sets a vec2 uniform", () => {
         if (!glReady) return;
         const loc = gl.getUniformLocation(program, "uVec2");
@@ -196,14 +213,7 @@ describe("uniform operations", () => {
     it("sets a vec4 uniform", () => {
         if (!glReady) return;
         const loc = gl.getUniformLocation(program, "uVec4");
-        gl.uniform4f(loc, 1.0, 2.0, 3.0, 4.0);
-        expect(gl.getError()).toBe(gl.NO_ERROR);
-    });
-
-    it("sets an int uniform", () => {
-        if (!glReady) return;
-        const loc = gl.getUniformLocation(program, "uInt");
-        gl.uniform1i(loc, 42);
+        gl.uniform4f(loc, { v0: 1.0, v1: 2.0, v2: 3.0, v3: 4.0 });
         expect(gl.getError()).toBe(gl.NO_ERROR);
     });
 
@@ -270,7 +280,7 @@ describe("vertex attributes", () => {
         gl.bindVertexArray(vao);
         gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
         gl.bufferData(gl.ARRAY_BUFFER, [-1, -1, 0, 1, -1, 0, 0, 1, 0], gl.STATIC_DRAW);
-        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(0, { size: 3, type: gl.FLOAT, normalized: false, stride: 0, offset: 0 });
         gl.enableVertexAttribArray(0);
         expect(gl.getError()).toBe(gl.NO_ERROR);
 
@@ -318,7 +328,7 @@ describe("vertex attributes", () => {
     });
 });
 
-describe("drawing operations", () => {
+describe("drawing operations — state", () => {
     it("clears the color buffer", () => {
         if (!glReady) return;
         gl.clearColor(0, 0, 0, 1);
@@ -339,7 +349,9 @@ describe("drawing operations", () => {
         gl.disable(gl.DEPTH_TEST);
         expect(gl.getError()).toBe(gl.NO_ERROR);
     });
+});
 
+describe("drawing operations — draw calls", () => {
     it("draws arrays", () => {
         if (!glReady) return;
         const vao = gl.genVertexArray();
@@ -348,7 +360,7 @@ describe("drawing operations", () => {
         const vbo = gl.genBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
         gl.bufferData(gl.ARRAY_BUFFER, [-1, -1, 0, 1, -1, 0, 0, 1, 0], gl.STATIC_DRAW);
-        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(0, { size: 3, type: gl.FLOAT, normalized: false, stride: 0, offset: 0 });
         gl.enableVertexAttribArray(0);
 
         gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -367,7 +379,7 @@ describe("drawing operations", () => {
         const vbo = gl.genBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
         gl.bufferData(gl.ARRAY_BUFFER, [-1, -1, 0, 1, -1, 0, 0, 1, 0], gl.STATIC_DRAW);
-        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(0, { size: 3, type: gl.FLOAT, normalized: false, stride: 0, offset: 0 });
         gl.enableVertexAttribArray(0);
 
         const ebo = gl.genBuffer();

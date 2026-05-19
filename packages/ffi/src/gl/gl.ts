@@ -341,15 +341,17 @@ export function uniform3f(location: number, v0: number, v1: number, v2: number):
 }
 
 /**
+ * Four components of a vec4 uniform value.
+ */
+export type Vec4Components = { v0: number; v1: number; v2: number; v3: number };
+
+/**
  * Sets a vec4 uniform variable.
  * @param location - The uniform location
- * @param v0 - The first component
- * @param v1 - The second component
- * @param v2 - The third component
- * @param v3 - The fourth component
+ * @param components - The four components of the vector
  */
-export function uniform4f(location: number, v0: number, v1: number, v2: number, v3: number): void {
-    glUniform4f(location, v0, v1, v2, v3);
+export function uniform4f(location: number, components: Vec4Components): void {
+    glUniform4f(location, components.v0, components.v1, components.v2, components.v3);
 }
 
 /**
@@ -436,23 +438,28 @@ export function bufferData(target: number, data: number[], usage: number): void 
 }
 
 /**
+ * Layout descriptor for a generic vertex attribute pointer.
+ */
+export type VertexAttribLayout = {
+    /** Number of components per attribute (1, 2, 3, or 4). */
+    size: number;
+    /** Data type of each component (e.g., GL_FLOAT). */
+    type: number;
+    /** Whether to normalize fixed-point data. */
+    normalized: boolean;
+    /** Byte offset between consecutive attributes. */
+    stride: number;
+    /** Byte offset to the first attribute in the buffer. */
+    offset: number;
+};
+
+/**
  * Defines an array of generic vertex attribute data.
  * @param index - The attribute index
- * @param size - Number of components per attribute (1, 2, 3, or 4)
- * @param type - Data type of each component (e.g., GL_FLOAT)
- * @param normalized - Whether to normalize fixed-point data
- * @param stride - Byte offset between consecutive attributes
- * @param offset - Byte offset to the first attribute in the buffer
+ * @param layout - Layout describing component count, type, normalization, stride, and offset
  */
-export function vertexAttribPointer(
-    index: number,
-    size: number,
-    type: number,
-    normalized: boolean,
-    stride: number,
-    offset: number,
-): void {
-    glVertexAttribPointer(index, size, type, normalized, stride, offset);
+export function vertexAttribPointer(index: number, layout: VertexAttribLayout): void {
+    glVertexAttribPointer(index, layout.size, layout.type, layout.normalized, layout.stride, layout.offset);
 }
 
 /**

@@ -107,7 +107,7 @@ function configureMocks(options: {
     );
 }
 
-describe("CodegenOrchestrator", () => {
+describe("CodegenOrchestrator (1)", () => {
     beforeEach(() => {
         ffiGenerateMock.mockReset();
         reactGenerateMock.mockReset();
@@ -119,63 +119,77 @@ describe("CodegenOrchestrator", () => {
             expect(() => new CodegenOrchestrator({ repository: makeRepository(["Gtk"]) })).not.toThrow();
         });
     });
+});
 
-    describe("generate", () => {
-        it("runs FFI per namespace and runs React with the collected metadata", () => {
-            configureMocks({
-                widgetsByNamespace: {
-                    Gtk: [makeWidgetMeta("GtkButton")],
-                    Adw: [makeWidgetMeta("AdwAvatar", "Adw")],
-                },
-                controllersByNamespace: { Gtk: [makeControllerMeta("GtkGestureClick")] },
-                ffiFiles: ["a.ts", "b.ts"],
-                reactFiles: ["x.ts"],
-            });
+describe("CodegenOrchestrator (2) / generate (1)", () => {
+    beforeEach(() => {
+        ffiGenerateMock.mockReset();
+        reactGenerateMock.mockReset();
+        reactCtorSpy.mockReset();
+    });
 
-            const orchestrator = new CodegenOrchestrator({ repository: makeRepository(["Gtk", "Adw"]) });
-
-            const result = orchestrator.generate();
-
-            expect(ffiGenerateMock).toHaveBeenCalledTimes(2);
-            expect(reactGenerateMock).toHaveBeenCalledTimes(1);
-            expect(result.stats).toEqual({
-                namespaces: 2,
-                widgets: 2,
-                totalFiles: result.ffiFiles.size + result.reactFiles.size,
-                duration: expect.any(Number),
-            });
-            expect(result.stats.duration).toBeGreaterThanOrEqual(0);
-            expect(result.ffiFiles.size).toBe(2);
-            expect(result.reactFiles.size).toBe(1);
+    it("runs FFI per namespace and runs React with the collected metadata", () => {
+        configureMocks({
+            widgetsByNamespace: {
+                Gtk: [makeWidgetMeta("GtkButton")],
+                Adw: [makeWidgetMeta("AdwAvatar", "Adw")],
+            },
+            controllersByNamespace: { Gtk: [makeControllerMeta("GtkGestureClick")] },
+            ffiFiles: ["a.ts", "b.ts"],
+            reactFiles: ["x.ts"],
         });
 
-        it("skips React generation when no widget metadata was collected", () => {
-            configureMocks({ widgetsByNamespace: { Gtk: [] } });
+        const orchestrator = new CodegenOrchestrator({ repository: makeRepository(["Gtk", "Adw"]) });
 
-            const orchestrator = new CodegenOrchestrator({ repository: makeRepository(["Gtk"]) });
+        const result = orchestrator.generate();
 
-            const result = orchestrator.generate();
+        expect(ffiGenerateMock).toHaveBeenCalledTimes(2);
+        expect(reactGenerateMock).toHaveBeenCalledTimes(1);
+        expect(result.stats).toEqual({
+            namespaces: 2,
+            widgets: 2,
+            totalFiles: result.ffiFiles.size + result.reactFiles.size,
+            duration: expect.any(Number),
+        });
+        expect(result.stats.duration).toBeGreaterThanOrEqual(0);
+        expect(result.ffiFiles.size).toBe(2);
+        expect(result.reactFiles.size).toBe(1);
+    });
 
-            expect(reactGenerateMock).not.toHaveBeenCalled();
-            expect(result.reactFiles.size).toBe(0);
-            expect(result.stats.widgets).toBe(0);
+    it("skips React generation when no widget metadata was collected", () => {
+        configureMocks({ widgetsByNamespace: { Gtk: [] } });
+
+        const orchestrator = new CodegenOrchestrator({ repository: makeRepository(["Gtk"]) });
+
+        const result = orchestrator.generate();
+
+        expect(reactGenerateMock).not.toHaveBeenCalled();
+        expect(result.reactFiles.size).toBe(0);
+        expect(result.stats.widgets).toBe(0);
+    });
+});
+
+describe("CodegenOrchestrator (2) / generate (2)", () => {
+    beforeEach(() => {
+        ffiGenerateMock.mockReset();
+        reactGenerateMock.mockReset();
+        reactCtorSpy.mockReset();
+    });
+
+    it("deduplicates namespaces collected from widgets when calling the React generator", () => {
+        configureMocks({
+            widgetsByNamespace: {
+                Gtk: [makeWidgetMeta("GtkA", "Gtk"), makeWidgetMeta("GtkB", "Gtk")],
+                Adw: [makeWidgetMeta("AdwC", "Adw")],
+            },
         });
 
-        it("deduplicates namespaces collected from widgets when calling the React generator", () => {
-            configureMocks({
-                widgetsByNamespace: {
-                    Gtk: [makeWidgetMeta("GtkA", "Gtk"), makeWidgetMeta("GtkB", "Gtk")],
-                    Adw: [makeWidgetMeta("AdwC", "Adw")],
-                },
-            });
+        const orchestrator = new CodegenOrchestrator({ repository: makeRepository(["Gtk", "Adw"]) });
 
-            const orchestrator = new CodegenOrchestrator({ repository: makeRepository(["Gtk", "Adw"]) });
+        orchestrator.generate();
 
-            orchestrator.generate();
-
-            const reactCall = reactCtorSpy.mock.calls[0];
-            if (!reactCall) throw new Error("ReactGenerator was not constructed");
-            expect(new Set(reactCall[2] as string[])).toEqual(new Set(["Gtk", "Adw"]));
-        });
+        const reactCall = reactCtorSpy.mock.calls[0];
+        if (!reactCall) throw new Error("ReactGenerator was not constructed");
+        expect(new Set(reactCall[2] as string[])).toEqual(new Set(["Gtk", "Adw"]));
     });
 });

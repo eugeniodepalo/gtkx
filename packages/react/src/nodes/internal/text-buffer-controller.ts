@@ -103,11 +103,12 @@ export class TextBufferController<TBuffer extends Gtk.TextBuffer = Gtk.TextBuffe
         const buffer = this.buffer;
         const handlers = this.buildBufferSignalHandlers(buffer, callbacks);
 
-        this.owner.signalStore.set(this.owner, buffer, "changed", handlers.changed);
-        this.owner.signalStore.set(this.owner, buffer, "insert-text", handlers.insertText);
-        this.owner.signalStore.set(this.owner, buffer, "delete-range", handlers.deleteRange);
-        this.owner.signalStore.set(this.owner, buffer, "notify::can-undo", handlers.canUndo);
-        this.owner.signalStore.set(this.owner, buffer, "notify::can-redo", handlers.canRedo);
+        const owner = this.owner;
+        owner.signalStore.set({ owner, obj: buffer, signal: "changed", handler: handlers.changed });
+        owner.signalStore.set({ owner, obj: buffer, signal: "insert-text", handler: handlers.insertText });
+        owner.signalStore.set({ owner, obj: buffer, signal: "delete-range", handler: handlers.deleteRange });
+        owner.signalStore.set({ owner, obj: buffer, signal: "notify::can-undo", handler: handlers.canUndo });
+        owner.signalStore.set({ owner, obj: buffer, signal: "notify::can-redo", handler: handlers.canRedo });
     }
 
     isTextContentChild(child: Node): child is TextContentChild {

@@ -22,12 +22,12 @@ export class SpinRowNode extends WidgetNode<Adw.SpinRow, SpinRowProps> {
     private applyOwnProps(oldProps: SpinRowProps | null, newProps: SpinRowProps): void {
         if (hasChanged(oldProps, newProps, "onValueChanged")) {
             const { onValueChanged } = newProps;
-            this.signalStore.set(
-                this,
-                this.container,
-                "notify::value",
-                onValueChanged ? () => onValueChanged(this.container.getValue()) : undefined,
-            );
+            this.signalStore.set({
+                owner: this,
+                obj: this.container,
+                signal: "notify::value",
+                handler: onValueChanged ? () => onValueChanged(this.container.getValue()) : undefined,
+            });
         }
 
         this.adjustmentController.apply(oldProps, newProps);

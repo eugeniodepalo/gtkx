@@ -200,6 +200,51 @@ function resolveBoxedGType(ffiType: FfiType): GType {
     throw new Error(`resolveBoxedGType: unsupported FFI type '${ffiType.type}'`);
 }
 
+type FfiEnumOrFlagsType = Extract<FfiType, { type: "enum" | "flags" }>;
+type FfiArrayType = Extract<FfiType, { type: "array" }>;
+type FfiFundamentalType = Extract<FfiType, { type: "fundamental" }>;
+
+function newFromEnumOrFlagsFfi(ffiType: FfiEnumOrFlagsType, value: unknown): Value {
+    const gtype = gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
+    if (ffiType.type === "flags" || typeFundamental(gtype) === Type.FLAGS) {
+        return newFromFlags(gtype, value as number);
+    }
+    return newFromEnum(gtype, value as number);
+}
+
+function newFromIntegerFfi(ffiTypeName: string, value: unknown): Value {
+    switch (ffiTypeName) {
+        case "int8":
+        case "int16":
+        case "int32":
+            return newFromInt(value as number);
+        case "uint8":
+        case "uint16":
+        case "uint32":
+            return newFromUint(value as number);
+        case "int64":
+            return newFromInt64(value as number);
+        case "uint64":
+            return newFromUint64(value as number);
+        default:
+            throw new Error(`newFromIntegerFfi: not an integer type '${ffiTypeName}'`);
+    }
+}
+
+function newFromArrayFfi(ffiType: FfiArrayType, value: unknown): Value {
+    if (ffiType.itemType.type === "string" && ffiType.kind === "array") {
+        return newFromStrv(value as string[]);
+    }
+    throw new Error(`Unsupported array type for GValue conversion: ${ffiType.kind} of ${ffiType.itemType.type}`);
+}
+
+function newFromFundamentalFfi(ffiType: FfiFundamentalType, value: unknown): Value {
+    if (ffiType.refFn === "g_variant_ref_sink") {
+        return newFromVariant(value as GLib.Variant);
+    }
+    return newFromBoxed(value as NativeObject, resolveBoxedGType(ffiType));
+}
+
 /**
  * Builds a `GValue` from an FFI type descriptor and a JavaScript value,
  * dispatching on `ffiType.type`.
@@ -208,67 +253,32 @@ export function newFrom(ffiType: FfiType, value: unknown): Value {
     switch (ffiType.type) {
         case "boolean":
             return newFromBoolean(value as boolean);
-
         case "string":
             return newFromString(value as string | null);
-
-        case "enum": {
-            const gtype = gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
-            const fundamental = typeFundamental(gtype);
-            if (fundamental === Type.FLAGS) {
-                return newFromFlags(gtype, value as number);
-            }
-            return newFromEnum(gtype, value as number);
-        }
-
-        case "flags": {
-            const gtype = gtypeFromFfi(call(ffiType.library, ffiType.getTypeFn, [], t.uint64));
-            return newFromFlags(gtype, value as number);
-        }
-
+        case "enum":
+        case "flags":
+            return newFromEnumOrFlagsFfi(ffiType, value);
         case "int8":
         case "int16":
         case "int32":
-            return newFromInt(value as number);
-
         case "uint8":
         case "uint16":
         case "uint32":
-            return newFromUint(value as number);
-
         case "int64":
-            return newFromInt64(value as number);
-
         case "uint64":
-            return newFromUint64(value as number);
-
+            return newFromIntegerFfi(ffiType.type, value);
         case "float32":
             return newFromFloat(value as number);
-
         case "float64":
             return newFromDouble(value as number);
-
         case "gobject":
             return newFromObject(value as GObject | null);
-
         case "boxed":
             return newFromBoxed(value as NativeObject, resolveBoxedGType(ffiType));
-
-        case "array": {
-            if (ffiType.itemType.type === "string" && ffiType.kind === "array") {
-                return newFromStrv(value as string[]);
-            }
-            throw new Error(
-                `Unsupported array type for GValue conversion: ${ffiType.kind} of ${ffiType.itemType.type}`,
-            );
-        }
-
+        case "array":
+            return newFromArrayFfi(ffiType, value);
         case "fundamental":
-            if (ffiType.refFn === "g_variant_ref_sink") {
-                return newFromVariant(value as GLib.Variant);
-            }
-            return newFromBoxed(value as NativeObject, resolveBoxedGType(ffiType));
-
+            return newFromFundamentalFfi(ffiType, value);
         default:
             throw new Error(`Unsupported FFI type for GValue conversion: ${(ffiType as { type: string }).type}`);
     }

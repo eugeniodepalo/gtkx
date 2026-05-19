@@ -51,14 +51,24 @@ declare module "../generated/cairo/cairo.js" {
     namespace Surface {
         function createSimilar(other: Surface, content: Content, width: number, height: number): Surface;
         function createSimilarImage(other: Surface, format: Format, width: number, height: number): Surface;
-        function createForRectangle(target: Surface, x: number, y: number, width: number, height: number): Surface;
+        function createForRectangle(target: Surface, rectangle: SubSurfaceRectangle): Surface;
     }
 }
+
+/**
+ * Offset and size in user-space units used by {@link Surface.createForRectangle}.
+ */
+export type SubSurfaceRectangle = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+};
 
 type SurfaceStatic = {
     createSimilar(other: Surface, content: Content, width: number, height: number): Surface;
     createSimilarImage(other: Surface, format: Format, width: number, height: number): Surface;
-    createForRectangle(target: Surface, x: number, y: number, width: number, height: number): Surface;
+    createForRectangle(target: Surface, rectangle: SubSurfaceRectangle): Surface;
 };
 
 const SurfaceWithStatics = Surface as typeof Surface & SurfaceStatic;
@@ -98,13 +108,7 @@ const cairo_surface_create_for_rectangle = fn(
     ],
     SURFACE_T,
 );
-SurfaceWithStatics.createForRectangle = (
-    target: Surface,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-): Surface => {
+SurfaceWithStatics.createForRectangle = (target: Surface, { x, y, width, height }: SubSurfaceRectangle): Surface => {
     return wrapHandle(
         Surface,
         cairo_surface_create_for_rectangle(getHandle(target), x, y, width, height) as NativeHandle,

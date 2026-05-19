@@ -23,7 +23,7 @@ function makeParam(overrides: Partial<ConstructorParameters<typeof GirParameter>
     });
 }
 
-describe("GirParameter", () => {
+describe("GirParameter (1)", () => {
     it("defaults varargs to false when omitted", () => {
         expect(makeParam().varargs).toBe(false);
     });
@@ -64,7 +64,9 @@ describe("GirParameter", () => {
             expect(makeParam().isCallback()).toBe(false);
         });
     });
+});
 
+describe("GirParameter (2)", () => {
     describe("isClosureData", () => {
         it("is true when closure is set, even to 0", () => {
             expect(makeParam({ closure: 0 }).isClosureData()).toBe(true);

@@ -2,12 +2,12 @@ import type * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkBox, GtkLabel, GtkListView, GtkScrolledWindow } from "@gtkx/react";
 import { render, screen, tick, userEvent } from "@gtkx/testing";
-import { createRef, useState } from "react";
+import { createRef, type RefObject, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderListView } from "../helpers/list-fixtures.js";
 
-describe("render - ListView - selection", () => {
-    describe("single", () => {
+describe("render - ListView - selection (1)", () => {
+    describe("single (1)", () => {
         it("sets selected item via selected prop", async () => {
             await renderListView(
                 [
@@ -54,7 +54,11 @@ describe("render - ListView - selection", () => {
 
             expect(onSelectionChanged).toHaveBeenCalledWith(["item-99"]);
         });
+    });
+});
 
+describe("render - ListView - selection (2)", () => {
+    describe("single (2)", () => {
         it("handles unselect (empty selection)", async () => {
             const { rerender } = await renderListView([{ id: "1", value: { name: "First" } }], { selected: ["1"] });
 
@@ -63,7 +67,9 @@ describe("render - ListView - selection", () => {
             expect(screen.queryAllByText("First")).toHaveLength(1);
         });
     });
+});
 
+describe("render - ListView - selection (3)", () => {
     describe("multiple", () => {
         it("enables multi-select with selectionMode", async () => {
             await renderListView(
@@ -108,8 +114,10 @@ describe("render - ListView - selection", () => {
             expect(onSelectionChanged).toHaveBeenCalledWith(["1", "2"]);
         });
     });
+});
 
-    describe("tree - single", () => {
+describe("render - ListView - selection (4)", () => {
+    describe("tree - single (1)", () => {
         it("sets selected item via selected prop", async () => {
             const onSelectionChanged = vi.fn();
 
@@ -156,7 +164,11 @@ describe("render - ListView - selection", () => {
 
             expect(onSelectionChanged).toHaveBeenCalledWith(["1"]);
         });
+    });
+});
 
+describe("render - ListView - selection (5)", () => {
+    describe("tree - single (2)", () => {
         it("handles unselect (empty selection)", async () => {
             const { rerender } = await renderListView([{ id: "1", value: { name: "First" } }], { selected: ["1"] });
 
@@ -202,118 +214,132 @@ describe("render - ListView - selection", () => {
 
             expect(onSelectionChanged).toHaveBeenCalledWith(["group-19-child-4"]);
         });
-
-        it("preserves tree state and scroll position when selecting after scrolling down", async () => {
-            const ref = createRef<Gtk.ListView>();
-            const scrollRef = createRef<Gtk.ScrolledWindow>();
-
-            interface Item {
-                id: string;
-                name: string;
-                children?: Item[];
-            }
-
-            const data: Item[] = [
-                { id: "intro", name: "Introduction" },
-                ...Array.from({ length: 20 }, (_, gi) => ({
-                    id: `cat-${gi}`,
-                    name: `Category ${gi}`,
-                    children: Array.from({ length: 5 }, (_, ci) => ({
-                        id: `cat-${gi}-demo-${ci}`,
-                        name: `Cat ${gi} Demo ${ci}`,
-                    })),
-                })),
-            ];
-
-            function toListItems(items: Item[]) {
-                return items.map((item) => ({
-                    id: item.id,
-                    value: item,
-                    hideExpander: !item.children,
-                    children: item.children?.map((child) => ({
-                        id: child.id,
-                        value: child,
-                        hideExpander: true,
-                    })),
-                }));
-            }
-
-            function Sidebar({ selectedId, onSelect }: { selectedId: string | null; onSelect: (id: string) => void }) {
-                return (
-                    <GtkScrolledWindow
-                        ref={scrollRef}
-                        minContentHeight={200}
-                        maxContentHeight={200}
-                        minContentWidth={200}
-                    >
-                        <GtkListView
-                            ref={ref}
-                            cssClasses={["navigation-sidebar"]}
-                            autoexpand
-                            selectionMode={Gtk.SelectionMode.SINGLE}
-                            items={toListItems(data)}
-                            selected={selectedId ? [selectedId] : []}
-                            onSelectionChanged={(ids: string[]) => {
-                                const id = ids[0];
-                                if (id) onSelect(id);
-                            }}
-                            renderItem={(item: Item) => <GtkLabel label={item.name} />}
-                        />
-                    </GtkScrolledWindow>
-                );
-            }
-
-            function App() {
-                const [selectedId, setSelectedId] = useState<string | null>("intro");
-                const selectedItem = data.flatMap((d) => [d, ...(d.children ?? [])]).find((d) => d.id === selectedId);
-
-                return (
-                    <GtkBox orientation={Gtk.Orientation.HORIZONTAL}>
-                        <Sidebar selectedId={selectedId} onSelect={setSelectedId} />
-                        <GtkLabel label={selectedItem?.name ?? "None"} vexpand hexpand />
-                    </GtkBox>
-                );
-            }
-
-            await render(<App />);
-            await tick();
-
-            const listView = ref.current as Gtk.ListView;
-            const selectionModel = listView.getModel() as Gtk.SingleSelection;
-            const totalItems = selectionModel.getNItems();
-
-            const targetPosition = totalItems - 1;
-            const scrolledWindow = scrollRef.current as Gtk.ScrolledWindow;
-            const vadj = scrolledWindow.getVadjustment();
-
-            listView.scrollTo(targetPosition, Gtk.ListScrollFlags.FOCUS, null);
-            await tick();
-            await tick();
-            await tick();
-
-            if (vadj.getValue() === 0 && vadj.getUpper() > vadj.getPageSize()) {
-                vadj.setValue(vadj.getUpper() - vadj.getPageSize());
-                await tick();
-                await tick();
-            }
-
-            const scrollPosBefore = vadj.getValue();
-            expect(scrollPosBefore).toBeGreaterThan(0);
-
-            await userEvent.selectOptions(listView, targetPosition);
-            await tick();
-            await tick();
-            await tick();
-            await tick();
-            await tick();
-
-            expect(selectionModel.getSelected()).toBe(targetPosition);
-
-            const scrollPosAfter = vadj.getValue();
-            expect(scrollPosAfter).toBe(scrollPosBefore);
-        });
     });
+});
 
+interface SidebarItem {
+    id: string;
+    name: string;
+    children?: SidebarItem[];
+}
+
+const sidebarData: SidebarItem[] = [
+    { id: "intro", name: "Introduction" },
+    ...Array.from({ length: 20 }, (_, gi) => ({
+        id: `cat-${gi}`,
+        name: `Category ${gi}`,
+        children: Array.from({ length: 5 }, (_, ci) => ({
+            id: `cat-${gi}-demo-${ci}`,
+            name: `Cat ${gi} Demo ${ci}`,
+        })),
+    })),
+];
+
+const toSidebarListItems = (items: SidebarItem[]) =>
+    items.map((item) => ({
+        id: item.id,
+        value: item,
+        hideExpander: !item.children,
+        children: item.children?.map((child) => ({
+            id: child.id,
+            value: child,
+            hideExpander: true,
+        })),
+    }));
+
+function SidebarTree({
+    listRef,
+    scrollRef,
+    selectedId,
+    onSelect,
+}: {
+    listRef: RefObject<Gtk.ListView | null>;
+    scrollRef: RefObject<Gtk.ScrolledWindow | null>;
+    selectedId: string | null;
+    onSelect: (id: string) => void;
+}) {
+    return (
+        <GtkScrolledWindow ref={scrollRef} minContentHeight={200} maxContentHeight={200} minContentWidth={200}>
+            <GtkListView
+                ref={listRef}
+                cssClasses={["navigation-sidebar"]}
+                autoexpand
+                selectionMode={Gtk.SelectionMode.SINGLE}
+                items={toSidebarListItems(sidebarData)}
+                selected={selectedId ? [selectedId] : []}
+                onSelectionChanged={(ids: string[]) => {
+                    const id = ids[0];
+                    if (id) onSelect(id);
+                }}
+                renderItem={(item: SidebarItem) => <GtkLabel label={item.name} />}
+            />
+        </GtkScrolledWindow>
+    );
+}
+
+function SidebarApp({
+    listRef,
+    scrollRef,
+}: {
+    listRef: RefObject<Gtk.ListView | null>;
+    scrollRef: RefObject<Gtk.ScrolledWindow | null>;
+}) {
+    const [selectedId, setSelectedId] = useState<string | null>("intro");
+    const selectedItem = sidebarData.flatMap((d) => [d, ...(d.children ?? [])]).find((d) => d.id === selectedId);
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.HORIZONTAL}>
+            <SidebarTree listRef={listRef} scrollRef={scrollRef} selectedId={selectedId} onSelect={setSelectedId} />
+            <GtkLabel label={selectedItem?.name ?? "None"} vexpand hexpand />
+        </GtkBox>
+    );
+}
+
+describe("render - ListView - selection (6) > tree - single (3)", () => {
+    it("preserves tree state and scroll position when selecting after scrolling down", async () => {
+        const ref = createRef<Gtk.ListView>();
+        const scrollRef = createRef<Gtk.ScrolledWindow>();
+
+        await render(<SidebarApp listRef={ref} scrollRef={scrollRef} />);
+        await tick();
+
+        const listView = ref.current as Gtk.ListView;
+        const selectionModel = listView.getModel() as Gtk.SingleSelection;
+        const totalItems = selectionModel.getNItems();
+
+        const targetPosition = totalItems - 1;
+        const scrolledWindow = scrollRef.current as Gtk.ScrolledWindow;
+        const vadj = scrolledWindow.getVadjustment();
+
+        listView.scrollTo(targetPosition, Gtk.ListScrollFlags.FOCUS, null);
+        await tick();
+        await tick();
+        await tick();
+
+        if (vadj.getValue() === 0 && vadj.getUpper() > vadj.getPageSize()) {
+            vadj.setValue(vadj.getUpper() - vadj.getPageSize());
+            await tick();
+            await tick();
+        }
+
+        const scrollPosBefore = vadj.getValue();
+        expect(scrollPosBefore).toBeGreaterThan(0);
+
+        await userEvent.selectOptions(listView, targetPosition);
+        await tick();
+        await tick();
+        await tick();
+        await tick();
+        await tick();
+
+        expect(selectionModel.getSelected()).toBe(targetPosition);
+
+        const scrollPosAfter = vadj.getValue();
+        expect(scrollPosAfter).toBe(scrollPosBefore);
+    });
+});
+
+describe("render - ListView - selection (7)", () => {
     describe("tree - multiple", () => {
         it("enables multi-select with selectionMode", async () => {
             await renderListView(

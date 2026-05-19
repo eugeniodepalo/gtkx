@@ -59,7 +59,7 @@ describe("Object.setProperty / getProperty auto-marshalling", () => {
     });
 });
 
-describe("Object.emit() typed signal emission", () => {
+describe("Object.emit() typed signal emission — basic dispatch", () => {
     it("emits a void signal with no arguments and invokes connected handlers", () => {
         const button = new Gtk.Button();
         const handler = vi.fn();
@@ -90,7 +90,9 @@ describe("Object.emit() typed signal emission", () => {
 
         expect(result).toBeUndefined();
     });
+});
 
+describe("Object.emit() typed signal emission — inheritance and errors", () => {
     it("emits an inherited signal via super.emit fallthrough", () => {
         const button = new Gtk.Button();
         const handler = vi.fn();

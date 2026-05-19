@@ -53,23 +53,12 @@ export const createNode = (
 ): Node => {
     const gtype: GType = existingContainer ? existingContainer.__gtype__ : typeFromName(elementType);
 
-    const nodeClass = resolveNodeClass(elementType, gtype);
-    if (!nodeClass) {
+    const NodeClass = resolveNodeClass(elementType, gtype);
+    if (!NodeClass) {
         throw new Error(`Unable to find node class for type '${elementType}'`);
     }
 
     const containerClass = existingContainer ? null : resolveContainerClass(elementType);
-    return instantiateNode(nodeClass, elementType, props, existingContainer, containerClass, rootContainer);
-};
-
-const instantiateNode = (
-    NodeClass: NodeClass,
-    elementType: string,
-    props: Props,
-    existingContainer: Container | undefined,
-    containerClass: ContainerClass | null,
-    rootContainer: Container,
-): Node => {
     const container =
         existingContainer ??
         (containerClass && NodeClass.createContainer(elementType, props, containerClass, rootContainer));

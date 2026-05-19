@@ -4,7 +4,7 @@ import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { render, screen, userEvent, waitFor, waitForElementToBeRemoved } from "../src/index.js";
 
-describe("waitFor", () => {
+describe("waitFor resolves", () => {
     it("resolves when callback succeeds", async () => {
         let value = 0;
         setTimeout(() => {
@@ -30,7 +30,9 @@ describe("waitFor", () => {
 
         expect(attempts).toBeGreaterThanOrEqual(3);
     });
+});
 
+describe("waitFor timing", () => {
     it("respects custom timeout", async () => {
         const start = Date.now();
 
@@ -80,22 +82,22 @@ describe("waitFor", () => {
             ),
         ).rejects.toThrow("Custom timeout message");
     });
+});
 
-    describe("error handling", () => {
-        it("includes last error message in timeout error", async () => {
-            await expect(
-                waitFor(
-                    () => {
-                        throw new Error("Specific failure reason");
-                    },
-                    { timeout: 100 },
-                ),
-            ).rejects.toThrow("Specific failure reason");
-        });
+describe("waitFor error handling", () => {
+    it("includes last error message in timeout error", async () => {
+        await expect(
+            waitFor(
+                () => {
+                    throw new Error("Specific failure reason");
+                },
+                { timeout: 100 },
+            ),
+        ).rejects.toThrow("Specific failure reason");
     });
 });
 
-describe("waitForElementToBeRemoved", () => {
+describe("waitForElementToBeRemoved widget", () => {
     it("resolves when element is removed from tree", async () => {
         const DynamicComponent = () => {
             const [showLabel, setShowLabel] = useState(true);
@@ -147,7 +149,9 @@ describe("waitForElementToBeRemoved", () => {
         await userEvent.click(removeButton);
         await expect(removalPromise).resolves.toBeUndefined();
     });
+});
 
+describe("waitForElementToBeRemoved timeout", () => {
     it("respects custom timeout", async () => {
         await render(<GtkButton label="Permanent" />);
 
@@ -155,18 +159,18 @@ describe("waitForElementToBeRemoved", () => {
 
         await expect(waitForElementToBeRemoved(widget, { timeout: 100 })).rejects.toThrow("Timed out");
     });
+});
 
-    describe("error handling", () => {
-        it("throws immediately if element is already removed", async () => {
-            await render("Test");
+describe("waitForElementToBeRemoved error handling", () => {
+    it("throws immediately if element is already removed", async () => {
+        await render("Test");
 
-            await expect(waitForElementToBeRemoved(null as never)).rejects.toThrow("already removed");
-        });
+        await expect(waitForElementToBeRemoved(null as never)).rejects.toThrow("already removed");
+    });
 
-        it("throws if callback returns null initially", async () => {
-            await render("Test");
+    it("throws if callback returns null initially", async () => {
+        await render("Test");
 
-            await expect(waitForElementToBeRemoved(() => null)).rejects.toThrow("already removed");
-        });
+        await expect(waitForElementToBeRemoved(() => null)).rejects.toThrow("already removed");
     });
 });

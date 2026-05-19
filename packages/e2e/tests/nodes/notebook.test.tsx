@@ -30,7 +30,7 @@ const getPageLabels = (notebook: Gtk.Notebook): string[] => {
     return labels;
 };
 
-describe("render - Notebook", () => {
+describe("render - Notebook (1)", () => {
     describe("GtkNotebook", () => {
         it("creates Notebook widget", async () => {
             const ref = createRef<Gtk.Notebook>();
@@ -56,7 +56,9 @@ describe("render - Notebook", () => {
             expect(labels).toEqual(["Tab 1"]);
         });
     });
+});
 
+describe("render - Notebook (2)", () => {
     describe("page management", () => {
         it("inserts page before existing page", async () => {
             const notebookRef = createRef<Gtk.Notebook>();

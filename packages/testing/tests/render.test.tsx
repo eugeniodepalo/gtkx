@@ -4,7 +4,7 @@ import type { Ref } from "react";
 import { describe, expect, it } from "vitest";
 import { cleanup, render, type WrapperComponent } from "../src/index.js";
 
-describe("render", () => {
+describe("render basics", () => {
     it("renders a simple element", async () => {
         const { findByRole } = await render(<GtkButton label="Click me" />);
         const button = await findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click me" });
@@ -37,7 +37,9 @@ describe("render", () => {
         expect(baseElement).toBeDefined();
         expect((baseElement as Gtk.Application).getApplicationId()).toMatch(/org\.gtkx\.testing/);
     });
+});
 
+describe("render wrapper", () => {
     it("wraps element in ApplicationWindow by default", async () => {
         const { findByRole } = await render(<GtkButton label="Test" />);
         const window = await findByRole(Gtk.AccessibleRole.WINDOW);
@@ -68,7 +70,9 @@ describe("render", () => {
         expect(window).toBeDefined();
         expect(container).toBeInstanceOf(Gtk.ApplicationWindow);
     });
+});
 
+describe("render lifecycle", () => {
     it("provides rerender function to update content", async () => {
         const { findByText, rerender } = await render("Initial");
 

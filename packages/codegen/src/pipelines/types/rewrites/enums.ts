@@ -135,8 +135,26 @@ type EnumReplacementInput = {
     isBitfield: boolean;
 };
 
-const renderEnumReplacement = (input: EnumReplacementInput): string => {
-    const { lineStart, indent, exportKw, leadingDoc, name, body, memberValues, isErrorDomain, isBitfield } = input;
+const resolveEnumMemberLiteral = (
+    memberName: string,
+    initializer: string | undefined,
+    nextOrdinal: number,
+    memberValues?: ReadonlyMap<string, number>,
+): { literal: string; nextOrdinal: number } => {
+    const knownValue =
+        memberValues?.get(memberName) ??
+        (memberName.startsWith("TODO_") ? memberValues?.get(memberName.slice("TODO_".length)) : undefined);
+    if (knownValue !== undefined) {
+        return { literal: String(knownValue), nextOrdinal: knownValue + 1 };
+    }
+    if (initializer === undefined) {
+        return { literal: String(nextOrdinal), nextOrdinal: nextOrdinal + 1 };
+    }
+    const numeric = parseNumericLiteral(initializer);
+    return { literal: initializer, nextOrdinal: numeric !== null ? numeric + 1 : nextOrdinal };
+};
+
+const buildEnumMemberLines = (body: string, memberValues?: ReadonlyMap<string, number>): string[] => {
     const stripped = body.replace(BLOCK_COMMENT_PATTERN, "").replace(LINE_COMMENT_PATTERN, "");
     let nextOrdinal = 0;
     const memberLines: string[] = [];
@@ -145,24 +163,16 @@ const renderEnumReplacement = (input: EnumReplacementInput): string => {
         if (member.length === 0) continue;
         const [memberName, initializer] = splitEnumMember(member);
         if (!memberName || !/^[A-Za-z_]\w*$/.test(memberName)) continue;
-        let literal: string;
-        const knownValue =
-            memberValues?.get(memberName) ??
-            (memberName.startsWith("TODO_") ? memberValues?.get(memberName.slice("TODO_".length)) : undefined);
-        if (knownValue !== undefined) {
-            literal = String(knownValue);
-            nextOrdinal = knownValue + 1;
-        } else if (initializer === undefined) {
-            literal = String(nextOrdinal);
-            nextOrdinal += 1;
-        } else {
-            literal = initializer;
-            const numeric = parseNumericLiteral(initializer);
-            if (numeric !== null) nextOrdinal = numeric + 1;
-        }
-        memberLines.push(`    readonly ${memberName}: ${literal};`);
+        const resolved = resolveEnumMemberLiteral(memberName, initializer, nextOrdinal, memberValues);
+        nextOrdinal = resolved.nextOrdinal;
+        memberLines.push(`    readonly ${memberName}: ${resolved.literal};`);
     }
-    const memberBlock = memberLines.join("\n");
+    return memberLines;
+};
+
+const renderEnumReplacement = (input: EnumReplacementInput): string => {
+    const { lineStart, indent, exportKw, leadingDoc, name, body, memberValues, isErrorDomain, isBitfield } = input;
+    const memberBlock = buildEnumMemberLines(body, memberValues).join("\n");
     if (isErrorDomain) {
         const hasInstance =
             "{ readonly [Symbol.hasInstance]: (value: unknown) =>" +

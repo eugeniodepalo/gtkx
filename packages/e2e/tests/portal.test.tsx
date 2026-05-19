@@ -10,7 +10,7 @@ const Portal = ({ children, portalKey }: { children: ReactNode; portalKey?: stri
     return <>{createPortal(children, app, portalKey)}</>;
 };
 
-describe("createPortal", () => {
+describe("createPortal (1)", () => {
     it("renders children at root level when no container specified", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
 
@@ -58,7 +58,9 @@ describe("createPortal", () => {
         expect(windowRef.current).not.toBeNull();
         expect(windowRef.current?.getTitle()).toBe("Keyed Window");
     });
+});
 
+describe("createPortal (2)", () => {
     it("unmounts portal children when portal is removed", async () => {
         const windowRef = createRef<Gtk.ApplicationWindow>();
 
@@ -89,7 +91,9 @@ describe("createPortal", () => {
         await render(<App title="Second" />);
         expect(windowRef.current?.getTitle()).toBe("Second");
     });
+});
 
+describe("createPortal (3)", () => {
     it("handles multiple portals to same container", async () => {
         const boxRef = createRef<Gtk.Box>();
         const label1Ref = createRef<Gtk.Label>();

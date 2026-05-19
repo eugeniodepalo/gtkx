@@ -29,14 +29,17 @@ function getViteConfig(): ViteConfigSnapshot {
     return call[0];
 }
 
-describe("build", () => {
-    beforeEach(() => {
-        viteBuildMock.mockClear();
-    });
+const resetBuildMocks = (): void => {
+    viteBuildMock.mockClear();
+};
 
-    afterEach(() => {
-        vi.restoreAllMocks();
-    });
+const restoreSpies = (): void => {
+    vi.restoreAllMocks();
+};
+
+describe("build (core config)", () => {
+    beforeEach(resetBuildMocks);
+    afterEach(restoreSpies);
 
     it("invokes vite with the entry as the SSR target and bundle.js as the entry filename", async () => {
         await build({ entry: "src/index.tsx" });
@@ -53,6 +56,21 @@ describe("build", () => {
         expect(config.define["process.env.NODE_ENV"]).toBe(JSON.stringify("production"));
     });
 
+    it("respects a custom outDir from user vite config", async () => {
+        await build({ entry: "src/index.tsx", vite: { build: { outDir: "build" } } });
+        expect(getViteConfig().build.outDir).toBe("build");
+    });
+
+    it("forces ssr.noExternal=true regardless of user ssr config", async () => {
+        await build({ entry: "src/index.tsx", vite: { ssr: { noExternal: ["other-pkg"] } } });
+        expect(getViteConfig().ssr.noExternal).toBe(true);
+    });
+});
+
+describe("build (plugins)", () => {
+    beforeEach(resetBuildMocks);
+    afterEach(restoreSpies);
+
     it("registers all four gtkx vite plugins in order", async () => {
         await build({ entry: "src/index.tsx" });
 
@@ -67,11 +85,6 @@ describe("build", () => {
         const pluginNames = getViteConfig().plugins.map((p) => p?.name);
         expect(pluginNames[0]).toBe("user-plugin");
         expect(pluginNames.slice(1)).toEqual(["gtkx:gsettings", "gtkx:assets", "gtkx:built-url", "gtkx:native"]);
-    });
-
-    it("respects a custom outDir from user vite config", async () => {
-        await build({ entry: "src/index.tsx", vite: { build: { outDir: "build" } } });
-        expect(getViteConfig().build.outDir).toBe("build");
     });
 
     it("falls back to process.cwd() for the gtkx-native plugin when no vite root is given", async () => {
@@ -100,6 +113,11 @@ describe("build", () => {
         const builtUrlPlugin = getViteConfig().plugins.find((p) => p?.name === "gtkx:built-url");
         expect(builtUrlPlugin).toBeDefined();
     });
+});
+
+describe("build (define and rolldown)", () => {
+    beforeEach(resetBuildMocks);
+    afterEach(restoreSpies);
 
     it("merges user-supplied define entries while forcing NODE_ENV to production", async () => {
         await build({
@@ -123,11 +141,5 @@ describe("build", () => {
         expect(output.format).toBe("es");
         expect(output.sourcemap).toBe(true);
         expect(output.entryFileNames).toBe("bundle.js");
-    });
-
-    it("forces ssr.noExternal=true regardless of user ssr config", async () => {
-        await build({ entry: "src/index.tsx", vite: { ssr: { noExternal: ["other-pkg"] } } });
-
-        expect(getViteConfig().ssr.noExternal).toBe(true);
     });
 });

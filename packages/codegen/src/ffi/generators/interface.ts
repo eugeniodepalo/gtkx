@@ -68,17 +68,9 @@ export class InterfaceGenerator {
         const interfaceName = toPascalCase(iface.name);
         this.methodBody.setSelfNames(new Set([interfaceName]));
 
-        const interfaceMethodNames = new Set(iface.methods.map((m) => m.name));
-        const prerequisiteMethods = this.collectPrerequisiteMethods(iface, interfaceMethodNames);
+        const prerequisiteMethods = this.collectPrerequisiteMethods(iface, new Set(iface.methods.map((m) => m.name)));
 
-        const isGObjectNamespace = this.options.namespace === "GObject";
-        const extendsExpr = isGObjectNamespace ? "Object" : "GObject.Object";
-        if (isGObjectNamespace) {
-            this.file.addImport("./object.js", ["Object"]);
-        } else {
-            this.file.addNamespaceImport("../gobject/gobject.js", "GObject");
-        }
-
+        const extendsExpr = this.resolveExtendsExpression();
         const doc = buildJsDocStructure(iface.doc, this.options.namespace);
         const cls = classDecl(interfaceName, {
             exported: true,
@@ -88,14 +80,7 @@ export class InterfaceGenerator {
 
         this.emitConstructorPropertiesNamespace(iface, interfaceName);
 
-        const gobjectMethodNames = collectGObjectMethodNames(this.repository);
-        const properties = this.collectInterfaceProperties(iface);
-        const propertyNames = new Set(properties.map((prop) => toCamelCase(prop.name)));
-        const isPropertyCollision = (m: GirMethod) => propertyNames.has(toCamelCase(m.name));
-        const isGObjectBaseMethod = (m: GirMethod) =>
-            m.name !== "connect" && gobjectMethodNames.has(toCamelCase(m.name));
-        const ownMethods = iface.methods.filter((m) => !isPropertyCollision(m));
-        const inheritedMethods = prerequisiteMethods.filter((m) => !isPropertyCollision(m) && !isGObjectBaseMethod(m));
+        const { ownMethods, inheritedMethods, properties } = this.partitionInterfaceMembers(iface, prerequisiteMethods);
 
         for (const method of [...ownMethods, ...inheritedMethods]) {
             if (method.name === "connect") {
@@ -109,33 +94,58 @@ export class InterfaceGenerator {
             ...this.buildMethodStructures(inheritedMethods, finishCandidateMethods),
             ...this.buildStaticFunctionStructures(iface),
         ];
-
         for (const struct of methodStructures) {
             addMethodStructure(cls, struct);
         }
 
         const reachableMethods = [...iface.methods, ...prerequisiteMethods];
-        const accessorEmissions = this.buildPropertyAccessors(iface, interfaceName, reachableMethods, properties);
-        for (const { accessor } of accessorEmissions) {
+        for (const { accessor } of this.buildPropertyAccessors(iface, interfaceName, reachableMethods, properties)) {
             cls.addAccessor(accessor);
         }
 
         this.file.add(cls);
-
-        if (iface.glibGetType) {
-            this.file.descriptors.register({
-                sharedLibrary: this.options.sharedLibrary,
-                cIdentifier: iface.glibGetType,
-                args: [],
-                returnType: { type: "uint64" },
-                exported: true,
-            });
-            this.file.addImport("../../native.js", ["t"]);
-            this.file.addImport("../../registry.js", ["registerNativeInterface"]);
-            this.file.addStatement(`\nregisterNativeInterface(${interfaceName}, ${iface.glibGetType}());`);
-        }
+        this.registerInterfaceGType(iface, interfaceName);
 
         return true;
+    }
+
+    private resolveExtendsExpression(): string {
+        const isGObjectNamespace = this.options.namespace === "GObject";
+        if (isGObjectNamespace) {
+            this.file.addImport("./object.js", ["Object"]);
+            return "Object";
+        }
+        this.file.addNamespaceImport("../gobject/gobject.js", "GObject");
+        return "GObject.Object";
+    }
+
+    private partitionInterfaceMembers(
+        iface: GirInterface,
+        prerequisiteMethods: GirMethod[],
+    ): { ownMethods: GirMethod[]; inheritedMethods: GirMethod[]; properties: GirProperty[] } {
+        const gobjectMethodNames = collectGObjectMethodNames(this.repository);
+        const properties = this.collectInterfaceProperties(iface);
+        const propertyNames = new Set(properties.map((prop) => toCamelCase(prop.name)));
+        const isPropertyCollision = (m: GirMethod) => propertyNames.has(toCamelCase(m.name));
+        const isGObjectBaseMethod = (m: GirMethod) =>
+            m.name !== "connect" && gobjectMethodNames.has(toCamelCase(m.name));
+        const ownMethods = iface.methods.filter((m) => !isPropertyCollision(m));
+        const inheritedMethods = prerequisiteMethods.filter((m) => !isPropertyCollision(m) && !isGObjectBaseMethod(m));
+        return { ownMethods, inheritedMethods, properties };
+    }
+
+    private registerInterfaceGType(iface: GirInterface, interfaceName: string): void {
+        if (!iface.glibGetType) return;
+        this.file.descriptors.register({
+            sharedLibrary: this.options.sharedLibrary,
+            cIdentifier: iface.glibGetType,
+            args: [],
+            returnType: { type: "uint64" },
+            exported: true,
+        });
+        this.file.addImport("../../native.js", ["t"]);
+        this.file.addImport("../../registry.js", ["registerNativeInterface"]);
+        this.file.addStatement(`\nregisterNativeInterface(${interfaceName}, ${iface.glibGetType}());`);
     }
 
     private emitConstructorPropertiesNamespace(iface: GirInterface, interfaceName: string): void {
@@ -229,20 +239,20 @@ export class InterfaceGenerator {
             methodsByCIdentifier.set(method.cIdentifier, method);
             methodsByCIdentifier.set(method.name, method);
         }
-        const builder = new PropertyAccessorBuilder(
-            null,
-            this.ffiMapper,
-            this.file,
-            this.repository,
-            this.options,
-            new Set([interfaceName]),
-            {
+        const builder = new PropertyAccessorBuilder({
+            cls: null,
+            ffiMapper: this.ffiMapper,
+            imports: this.file,
+            repository: this.repository,
+            options: this.options,
+            selfNames: new Set([interfaceName]),
+            interfaceSource: {
                 ownerName: interfaceName,
                 properties,
                 methodsByCIdentifier,
                 virtualMethodNames: collectInterfaceReachableVirtualMethodNames(iface, this.repository),
             },
-        );
+        });
         return builder.buildAccessors();
     }
 

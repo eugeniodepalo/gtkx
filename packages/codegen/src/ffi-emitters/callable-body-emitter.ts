@@ -70,6 +70,14 @@ export type CallableBodyOptions = {
     hasVarargs?: boolean;
 };
 
+type CallableBodyContext = {
+    options: CallableBodyOptions;
+    callArguments: CallArgument[];
+    wrapInfo: ObjectWrapInfo;
+    ownClassName: string | undefined;
+    hasReturnValue: boolean;
+};
+
 /**
  * Options for building a Promise-returning wrapper for a GIO-style async
  * callable.
@@ -252,14 +260,13 @@ export class CallableBodyEmitter {
             for (const hidden of shape.hiddenOuts) {
                 this.writeHiddenOutDeclaration(writer, hidden);
             }
-            writer.write(
-                `return promisify(${split.asyncFnExpression}, ${finishExpression}, ${split.cancellableExpression}, ` +
-                    `[${split.leadingArgs.join(", ")}]`,
-            );
+            const argFields = [`leading: [${split.leadingArgs.join(", ")}]`];
             if (split.trailingArgs.length > 0) {
-                writer.write(`, [${split.trailingArgs.join(", ")}]`);
+                argFields.push(`trailing: [${split.trailingArgs.join(", ")}]`);
             }
-            writer.writeLine(");");
+            writer.writeLine(
+                `return promisify(${split.asyncFnExpression}, ${finishExpression}, ${split.cancellableExpression}, { ${argFields.join(", ")} });`,
+            );
         };
     }
 
@@ -394,27 +401,19 @@ export class CallableBodyEmitter {
 
         return (writer) => {
             const callArguments = this.buildShapeCallArguments(shape, options.parameters);
-            this.writeCallableBodyContent(
-                writer,
+            this.writeCallableBodyContent(writer, {
                 options,
-                shape,
                 callArguments,
                 wrapInfo,
                 ownClassName,
                 hasReturnValue,
-            );
+            });
         };
     }
 
-    private writeCallableBodyContent(
-        writer: Writer,
-        options: CallableBodyOptions,
-        shape: CallableShape,
-        callArguments: CallArgument[],
-        wrapInfo: ObjectWrapInfo,
-        ownClassName: string | undefined,
-        hasReturnValue: boolean,
-    ): void {
+    private writeCallableBodyContent(writer: Writer, ctx: CallableBodyContext): void {
+        const { options, callArguments, wrapInfo, ownClassName, hasReturnValue } = ctx;
+        const shape = options.shape;
         this.writeCallbackWrapperDeclarations(writer, callArguments);
 
         if (options.throws) {
@@ -435,11 +434,11 @@ export class CallableBodyEmitter {
         const returnTupleNeedsBuild = shape.returnTupleEntries.length > 0;
         const hasRefHandleHidden = shape.hiddenOuts.some((h) => h.kind === "ref-handle");
         if (returnTupleNeedsBuild || options.throws || hasRefHandleHidden) {
-            this.emitTupleReturningBody(writer, options, shape, callArguments, wrapInfo, ownClassName);
+            this.emitTupleReturningBody(writer, ctx);
             return;
         }
 
-        const writeCall = this.makeCallEmitter(writer, options, shape, callArguments);
+        const writeCall = this.makeCallEmitter(writer, options, callArguments);
         const hasOwnClassReturn = ownClassName !== undefined;
         const hasObjectWrapReturn = wrapInfo.needsWrap && hasReturnValue;
 
@@ -465,24 +464,19 @@ export class CallableBodyEmitter {
             return;
         }
 
-        this.writeSimpleCall(writer, options, shape, callArguments, ownClassName, hasReturnValue);
+        this.writeSimpleCall(writer, ctx);
     }
 
     /**
      * Emits the FFI call expression for a callable into `writer`, without a
      * trailing statement terminator.
      */
-    private emitFfiCall(
-        writer: Writer,
-        options: CallableBodyOptions,
-        shape: CallableShape,
-        callArguments: CallArgument[],
-    ): void {
+    private emitFfiCall(writer: Writer, options: CallableBodyOptions, callArguments: CallArgument[]): void {
         this.callExpression.toWriter({
             sharedLibrary: options.sharedLibrary,
             cIdentifier: options.cIdentifier,
             args: callArguments,
-            returnType: shape.returnTypeMapping.ffi,
+            returnType: options.shape.returnTypeMapping.ffi,
             selfArg: options.self,
             hasVarargs: options.hasVarargs,
         })(writer);
@@ -491,7 +485,6 @@ export class CallableBodyEmitter {
     private makeCallEmitter(
         writer: Writer,
         options: CallableBodyOptions,
-        shape: CallableShape,
         callArguments: CallArgument[],
     ): (target: string | null, cast: string | null) => void {
         return (target, _cast) => {
@@ -500,7 +493,7 @@ export class CallableBodyEmitter {
             } else {
                 writer.write(`const ${target} = `);
             }
-            this.emitFfiCall(writer, options, shape, callArguments);
+            this.emitFfiCall(writer, options, callArguments);
             writer.write(";");
             writer.newLine();
         };
@@ -542,30 +535,18 @@ export class CallableBodyEmitter {
         }
     }
 
-    private writeSimpleCall(
-        writer: Writer,
-        options: CallableBodyOptions,
-        shape: CallableShape,
-        callArguments: CallArgument[],
-        _ownClassName: string | undefined,
-        hasReturnValue: boolean,
-    ): void {
-        if (hasReturnValue) {
+    private writeSimpleCall(writer: Writer, ctx: CallableBodyContext): void {
+        if (ctx.hasReturnValue) {
             writer.write("return ");
         }
-        this.emitFfiCall(writer, options, shape, callArguments);
+        this.emitFfiCall(writer, ctx.options, ctx.callArguments);
         writer.write(";");
         writer.newLine();
     }
 
-    private emitTupleReturningBody(
-        writer: Writer,
-        options: CallableBodyOptions,
-        shape: CallableShape,
-        callArguments: CallArgument[],
-        wrapInfo: ObjectWrapInfo,
-        ownClassName: string | undefined,
-    ): void {
+    private emitTupleReturningBody(writer: Writer, ctx: CallableBodyContext): void {
+        const { options, callArguments, wrapInfo, ownClassName } = ctx;
+        const shape = options.shape;
         const baseReturnType = ownClassName ?? shape.originalReturnTsType;
         const tsReturnType = formatNullableReturn(baseReturnType, shape.originalReturnNullable);
         const hasReturnValue = shape.hasOriginalReturn;
@@ -574,7 +555,7 @@ export class CallableBodyEmitter {
         const needsArrayWrapVar = hasReturnValue && wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType !== undefined;
         const needsHashTableVar = hasReturnValue && wrapInfo.needsHashTableWrap;
 
-        const resultExpression = this.emitTupleCallStatement(writer, options, shape, callArguments, {
+        const resultExpression = this.emitTupleCallStatement(writer, options, callArguments, {
             hasReturnValue,
             needsResultPtr,
             needsArrayWrapVar,
@@ -608,7 +589,6 @@ export class CallableBodyEmitter {
     private emitTupleCallStatement(
         writer: Writer,
         options: CallableBodyOptions,
-        shape: CallableShape,
         callArguments: CallArgument[],
         info: {
             hasReturnValue: boolean;
@@ -619,7 +599,7 @@ export class CallableBodyEmitter {
         },
     ): string | null {
         const writeCall = () => {
-            this.emitFfiCall(writer, options, shape, callArguments);
+            this.emitFfiCall(writer, options, callArguments);
         };
 
         if (!info.hasReturnValue) {
@@ -629,7 +609,7 @@ export class CallableBodyEmitter {
             return null;
         }
 
-        const baseVar = this.uniqueResultVarName(shape, "result");
+        const baseVar = this.uniqueResultVarName(options.shape, "result");
         const suffix = computeResultSuffix(info.needsResultPtr, info.needsArrayWrapVar, info.needsHashTableVar);
         const resultExpression = `${baseVar}${suffix}`;
         writer.write(`const ${resultExpression} = `);

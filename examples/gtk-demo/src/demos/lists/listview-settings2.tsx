@@ -35,63 +35,62 @@ interface SchemaKeys {
     keys: KeyItem[];
 }
 
+const loadKeyItem = (schemaId: string, schema: Gio.SettingsSchema, settings: Gio.Settings, name: string): KeyItem => {
+    try {
+        const variant = settings.getValue(name);
+        const valueStr = variant.print(false) ?? "";
+        const schemaKey = schema.getKey(name);
+        return {
+            id: `${schemaId}/${name}`,
+            name,
+            value: valueStr,
+            defaultValue: schemaKey.getDefaultValue().print(false) ?? "",
+            description: schemaKey.getDescription() ?? "",
+            schemaId,
+            summary: schemaKey.getSummary() ?? "",
+            valueType: schemaKey.getValueType().dupString() ?? "",
+        };
+    } catch {
+        return {
+            id: `${schemaId}/${name}`,
+            name,
+            value: "<error>",
+            defaultValue: "",
+            description: "",
+            schemaId,
+            summary: "",
+            valueType: "",
+        };
+    }
+};
+
+const loadSchemaKeysFor = (source: Gio.SettingsSchemaSource, schemaId: string): KeyItem[] | null => {
+    try {
+        const schema = source.lookup(schemaId, true);
+        if (!schema) return null;
+
+        const settings = Gio.Settings.new(schemaId);
+        const keys = schema.listKeys().map((name) => loadKeyItem(schemaId, schema, settings, name));
+        keys.sort((a, b) => a.name.localeCompare(b.name));
+        return keys;
+    } catch {
+        return null;
+    }
+};
+
 function loadAllSchemaKeys(): SchemaKeys[] {
     const source = Gio.SettingsSchemaSource.getDefault();
     if (!source) return [];
 
     const [nonRelocatable] = source.listSchemas(true);
-
     const schemaIds = nonRelocatable.slice().sort();
     const result: SchemaKeys[] = [];
 
     for (const schemaId of schemaIds) {
-        try {
-            const schema = source.lookup(schemaId, true);
-            if (!schema) continue;
-
-            const settings = Gio.Settings.new(schemaId);
-            const keyNames = schema.listKeys();
-            const keys: KeyItem[] = [];
-
-            for (const name of keyNames) {
-                try {
-                    const variant = settings.getValue(name);
-                    const valueStr = variant.print(false) ?? "";
-                    const schemaKey = schema.getKey(name);
-                    const summary = schemaKey.getSummary() ?? "";
-                    const description = schemaKey.getDescription() ?? "";
-                    const defaultValue = schemaKey.getDefaultValue().print(false) ?? "";
-                    const valueType = schemaKey.getValueType().dupString() ?? "";
-
-                    keys.push({
-                        id: `${schemaId}/${name}`,
-                        name,
-                        value: valueStr,
-                        defaultValue,
-                        description,
-                        schemaId,
-                        summary,
-                        valueType,
-                    });
-                } catch {
-                    keys.push({
-                        id: `${schemaId}/${name}`,
-                        name,
-                        value: "<error>",
-                        defaultValue: "",
-                        description: "",
-                        schemaId,
-                        summary: "",
-                        valueType: "",
-                    });
-                }
-            }
-
-            keys.sort((a, b) => a.name.localeCompare(b.name));
-            if (keys.length > 0) {
-                result.push({ schemaId, keys });
-            }
-        } catch {}
+        const schemaKeys = loadSchemaKeysFor(source, schemaId);
+        if (schemaKeys && schemaKeys.length > 0) {
+            result.push({ schemaId, keys: schemaKeys });
+        }
     }
 
     return result;
@@ -109,65 +108,103 @@ function getSearchString(key: KeyItem): string {
     return `${key.name} ${key.summary} ${key.schemaId}`.toLowerCase();
 }
 
+const filterSchemaKeys = (searchText: string): SchemaKeys[] => {
+    if (!searchText) return getAllSchemaKeys();
+    return getAllSchemaKeys()
+        .map((schema) => {
+            const matchingKeys = schema.keys.filter((k) => getSearchString(k).includes(searchText));
+            if (matchingKeys.length === 0) return null;
+            return { schemaId: schema.schemaId, keys: matchingKeys };
+        })
+        .filter((s): s is SchemaKeys => s !== null);
+};
+
+const revertEntry = (entry: Gtk.Entry, key: KeyItem, keysState: React.RefObject<Map<string, string>>) => {
+    entry.errorBell();
+    entry.setText(keysState.current.get(key.id) ?? key.value);
+};
+
+const validateAgainstSchema = (variant: GLib.Variant, key: KeyItem): boolean => {
+    const source = Gio.SettingsSchemaSource.getDefault();
+    if (!source) return true;
+    const schema = source.lookup(key.schemaId, true);
+    if (!schema) return true;
+    const schemaKey = schema.getKey(key.name);
+    return schemaKey.rangeCheck(variant);
+};
+
+const commitSettingValue = (key: KeyItem, entry: Gtk.Entry, keysState: React.RefObject<Map<string, string>>) => {
+    const text = entry.getText();
+    if (!key.valueType) return;
+    try {
+        const variantType = GLib.VariantType.new(key.valueType);
+        const variant = GLib.variantParse(variantType, text, null, null);
+        if (!variant || !validateAgainstSchema(variant, key)) {
+            revertEntry(entry, key, keysState);
+            return;
+        }
+        const settings = Gio.Settings.new(key.schemaId);
+        settings.setValue(key.name, variant);
+        keysState.current.set(key.id, variant.print(false) ?? "");
+    } catch {
+        revertEntry(entry, key, keysState);
+    }
+};
+
+interface SchemaKeysListViewProps {
+    filteredSchemaKeys: SchemaKeys[];
+    keysState: React.RefObject<Map<string, string>>;
+    onValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
+}
+
+const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: SchemaKeysListViewProps) => (
+    <GtkScrolledWindow>
+        <GtkListView
+            vexpand
+            cssClasses={["rich-list"]}
+            renderItem={(key: KeyItem) => (
+                <GtkBox>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                        <GtkLabel label={key.name} xalign={0} />
+                        <GtkLabel label={key.summary} cssClasses={["dim-label"]} xalign={0} ellipsize={3} />
+                    </GtkBox>
+                    <GtkEntry
+                        text={keysState.current.get(key.id) ?? key.value}
+                        halign={Gtk.Align.END}
+                        hexpand
+                        onChanged={(entry: Gtk.Entry) => onValueEdit(key, entry)}
+                    />
+                </GtkBox>
+            )}
+            renderHeader={(schemaId: string) => <GtkLabel label={schemaId} xalign={0} />}
+            items={filteredSchemaKeys.map((schema) => ({
+                id: schema.schemaId,
+                value: schema.schemaId,
+                section: true,
+                children: schema.keys.map((key) => ({ id: key.id, value: key })),
+            }))}
+        />
+    </GtkScrolledWindow>
+);
+
 const ListViewSettings2Demo = () => {
     const [searchText, setSearchText] = useState("");
     const [searchMode, setSearchMode] = useState(false);
     const keysState = useRef(new Map<string, string>());
 
-    const handleSearchChanged = useCallback((entry: Gtk.SearchEntry) => {
-        setSearchText(entry.getText().toLowerCase());
-    }, []);
+    const handleSearchChanged = useCallback(
+        (entry: Gtk.SearchEntry) => setSearchText(entry.getText().toLowerCase()),
+        [],
+    );
 
-    const handleStopSearch = useCallback(() => {
-        setSearchText("");
-    }, []);
+    const handleStopSearch = useCallback(() => setSearchText(""), []);
 
-    const filteredSchemaKeys = useMemo(() => {
-        if (!searchText) return getAllSchemaKeys();
+    const filteredSchemaKeys = useMemo(() => filterSchemaKeys(searchText), [searchText]);
 
-        return getAllSchemaKeys()
-            .map((schema) => {
-                const matchingKeys = schema.keys.filter((k) => getSearchString(k).includes(searchText));
-                if (matchingKeys.length === 0) return null;
-                return { schemaId: schema.schemaId, keys: matchingKeys };
-            })
-            .filter((s): s is SchemaKeys => s !== null);
-    }, [searchText]);
-
-    const handleValueEdit = useCallback((key: KeyItem, entry: Gtk.Entry) => {
-        const text = entry.getText();
-        if (!key.valueType) return;
-
-        try {
-            const variantType = GLib.VariantType.new(key.valueType);
-            const variant = GLib.variantParse(variantType, text, null, null);
-            if (!variant) {
-                entry.errorBell();
-                entry.setText(keysState.current.get(key.id) ?? key.value);
-                return;
-            }
-
-            const source = Gio.SettingsSchemaSource.getDefault();
-            if (source) {
-                const schema = source.lookup(key.schemaId, true);
-                if (schema) {
-                    const schemaKey = schema.getKey(key.name);
-                    if (!schemaKey.rangeCheck(variant)) {
-                        entry.errorBell();
-                        entry.setText(keysState.current.get(key.id) ?? key.value);
-                        return;
-                    }
-                }
-            }
-
-            const settings = Gio.Settings.new(key.schemaId);
-            settings.setValue(key.name, variant);
-            keysState.current.set(key.id, variant.print(false) ?? "");
-        } catch {
-            entry.errorBell();
-            entry.setText(keysState.current.get(key.id) ?? key.value);
-        }
-    }, []);
+    const handleValueEdit = useCallback(
+        (key: KeyItem, entry: Gtk.Entry) => commitSettingValue(key, entry, keysState),
+        [],
+    );
 
     return (
         <>
@@ -189,33 +226,11 @@ const ListViewSettings2Demo = () => {
                 <GtkSearchBar searchModeEnabled={searchMode}>
                     <GtkSearchEntry onSearchChanged={handleSearchChanged} onStopSearch={handleStopSearch} />
                 </GtkSearchBar>
-                <GtkScrolledWindow>
-                    <GtkListView
-                        vexpand
-                        cssClasses={["rich-list"]}
-                        renderItem={(key: KeyItem) => (
-                            <GtkBox>
-                                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                                    <GtkLabel label={key.name} xalign={0} />
-                                    <GtkLabel label={key.summary} cssClasses={["dim-label"]} xalign={0} ellipsize={3} />
-                                </GtkBox>
-                                <GtkEntry
-                                    text={keysState.current.get(key.id) ?? key.value}
-                                    halign={Gtk.Align.END}
-                                    hexpand
-                                    onChanged={(entry: Gtk.Entry) => handleValueEdit(key, entry)}
-                                />
-                            </GtkBox>
-                        )}
-                        renderHeader={(schemaId: string) => <GtkLabel label={schemaId} xalign={0} />}
-                        items={filteredSchemaKeys.map((schema) => ({
-                            id: schema.schemaId,
-                            value: schema.schemaId,
-                            section: true,
-                            children: schema.keys.map((key) => ({ id: key.id, value: key })),
-                        }))}
-                    />
-                </GtkScrolledWindow>
+                <SchemaKeysListView
+                    filteredSchemaKeys={filteredSchemaKeys}
+                    keysState={keysState}
+                    onValueEdit={handleValueEdit}
+                />
             </GtkBox>
         </>
     );

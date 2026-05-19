@@ -74,7 +74,7 @@ describe("unwrapOuterNamespace", () => {
     });
 });
 
-describe("rewriteEnumsToConstObjects", () => {
+describe("rewriteEnumsToConstObjects (1)", () => {
     it("replaces top-level enums with const + type pair", () => {
         const text = rewriteEnumsToConstObjects("export enum Status { OK, FAIL }");
 
@@ -115,7 +115,9 @@ describe("rewriteEnumsToConstObjects", () => {
         expect(text).not.toContain("export const Internal");
         expect(text).not.toContain("export type Internal");
     });
+});
 
+describe("rewriteEnumsToConstObjects (2)", () => {
     it("handles enums nested inside namespaces", () => {
         const text = rewriteEnumsToConstObjects(
             ["export namespace outer {", "    enum Nested { A, B }", "}"].join("\n"),
@@ -240,7 +242,7 @@ describe("loadAndRewrite", () => {
     });
 });
 
-describe("rewriteAsyncSignatures", () => {
+describe("rewriteAsyncSignatures (1)", () => {
     it("retypes a class async method to Promise and drops its callback parameter", () => {
         const source = [
             "export class InputStream {",
@@ -275,7 +277,9 @@ describe("rewriteAsyncSignatures", () => {
         );
         expect(result).toContain("export function busGetFinish(res: AsyncResult): DBusConnection");
     });
+});
 
+describe("rewriteAsyncSignatures (2)", () => {
     it("retypes an interface async method within its class block", () => {
         const source = [
             "export class AsyncInitable {",
@@ -310,7 +314,7 @@ describe("rewriteAsyncSignatures", () => {
     });
 });
 
-describe("stripEventEmitterSignalOverloads", () => {
+describe("stripEventEmitterSignalOverloads (1)", () => {
     it("corrects on/once/off return type to the declaring class and keeps the members", () => {
         const source = [
             "export class Button {",
@@ -341,7 +345,9 @@ describe("stripEventEmitterSignalOverloads", () => {
             'on(sigName: "changed", callback: (...args: any[]) => void, after?: boolean): Editable',
         );
     });
+});
 
+describe("stripEventEmitterSignalOverloads (2)", () => {
     it("removes the synthetic _init, gTypeInstance, and notify::__gtype__ lines, keeping __gtype__", () => {
         const source = [
             "export class Widget {",
@@ -460,7 +466,7 @@ describe("rewriteDefaultImportsToNamespace", () => {
     });
 });
 
-describe("rewriteEnumsToConstObjects error domains", () => {
+describe("rewriteEnumsToConstObjects error domains (1)", () => {
     it("emits a Symbol.hasInstance member for error-domain enums", () => {
         const text = rewriteEnumsToConstObjects(
             "export enum FileError { EXIST, ACCES }",
@@ -509,7 +515,9 @@ describe("rewriteEnumsToConstObjects error domains", () => {
         expect(text).not.toContain("first member");
         expect(text).not.toContain("trailing note");
     });
+});
 
+describe("rewriteEnumsToConstObjects error domains (2)", () => {
     it("leaves sources without an enum untouched", () => {
         const source = "export class Foo {}";
         expect(rewriteEnumsToConstObjects(source)).toBe(source);

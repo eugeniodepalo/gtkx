@@ -42,21 +42,39 @@ type SignalParamData = {
 };
 
 /**
+ * Options for {@link SignalBuilder}.
+ */
+export type SignalBuilderOptions = {
+    cls: GirClass;
+    ffiMapper: FfiMapper;
+    imports: ImportCollector;
+    repository: GirRepository;
+    options: FfiGeneratorOptions;
+    selfNames?: ReadonlySet<string>;
+};
+
+/**
  * Builds signal connection code for a class.
  */
 export class SignalBuilder {
     private readonly className: string;
     private readonly methodBody: MethodBodyWriter;
     private readonly descriptors: FfiDescriptorRegistry | undefined;
+    private readonly cls: GirClass;
+    private readonly ffiMapper: FfiMapper;
+    private readonly imports: ImportCollector;
+    private readonly repository: GirRepository;
+    private readonly options: FfiGeneratorOptions;
+    private readonly selfNames: ReadonlySet<string>;
 
-    constructor(
-        private readonly cls: GirClass,
-        private readonly ffiMapper: FfiMapper,
-        private readonly imports: ImportCollector,
-        private readonly repository: GirRepository,
-        private readonly options: FfiGeneratorOptions,
-        private readonly selfNames: ReadonlySet<string> = new Set(),
-    ) {
+    constructor(opts: SignalBuilderOptions) {
+        const { cls, ffiMapper, imports, repository, options, selfNames = new Set() } = opts;
+        this.cls = cls;
+        this.ffiMapper = ffiMapper;
+        this.imports = imports;
+        this.repository = repository;
+        this.options = options;
+        this.selfNames = selfNames;
         this.className = normalizeClassName(cls.name);
         this.descriptors = imports.descriptors;
         this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
@@ -89,11 +107,11 @@ export class SignalBuilder {
         const cls = this.className;
         const root = this.isRootGObject();
         const connectBody = root
-            ? `return connectSignal(this, ${cls}, signal, handler, after);`
-            : `return connectSignal(this, ${cls}, signal, handler, after, (s, h, a) => super.connect(s, h, a));`;
+            ? `return connectSignal({ instance: this, cls: ${cls} }, signal, handler, { after });`
+            : `return connectSignal({ instance: this, cls: ${cls} }, signal, handler, { after, parentConnect: (s, h, a) => super.connect(s, h, a) });`;
         const emitBody = root
-            ? `emitSignal(this, ${cls}, sigName, args);`
-            : `emitSignal(this, ${cls}, sigName, args, (s, ...a) => super.emit(s, ...a));`;
+            ? `emitSignal({ instance: this, cls: ${cls} }, sigName, args);`
+            : `emitSignal({ instance: this, cls: ${cls} }, sigName, args, (s, ...a) => super.emit(s, ...a));`;
 
         return [
             {

@@ -58,14 +58,14 @@ export function methodStructureStrategy(
                 self: { type: selfTypeDescriptor, value: "getHandle(this)" },
             }),
         buildStub: (method) =>
-            methodBody.buildStubStructure(
-                memberName(method),
-                `${options.namespace}.${method.name}`,
-                method.doc,
-                options.namespace,
-                false,
-                method.parameters,
-            ),
+            methodBody.buildStubStructure({
+                memberName: memberName(method),
+                qualifiedName: `${options.namespace}.${method.name}`,
+                doc: method.doc,
+                namespace: options.namespace,
+                isStatic: false,
+                parameters: method.parameters,
+            }),
     };
 }
 
@@ -110,13 +110,13 @@ export function staticFunctionStructureStrategy(
                 namespace: options.namespace,
             }),
         buildStub: (func) =>
-            methodBody.buildStubStructure(
-                toValidMemberName(toCamelCase(func.name)),
-                `${options.namespace}.${ownerOriginalName}.${func.name}`,
-                func.doc,
-                options.namespace,
-                true,
-                func.parameters,
-            ),
+            methodBody.buildStubStructure({
+                memberName: toValidMemberName(toCamelCase(func.name)),
+                qualifiedName: `${options.namespace}.${ownerOriginalName}.${func.name}`,
+                doc: func.doc,
+                namespace: options.namespace,
+                isStatic: true,
+                parameters: func.parameters,
+            }),
     };
 }

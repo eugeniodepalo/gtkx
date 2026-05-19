@@ -94,7 +94,7 @@ describe("writeFfiTypeExpression — struct", () => {
 });
 
 describe("writeFfiTypeExpression — fundamental", () => {
-    it("renders library/refFn/unrefFn/ownership in fixed positional order", () => {
+    it("renders library/refFn/unrefFn positionally followed by an options object", () => {
         expect(
             render({
                 type: "fundamental",
@@ -103,10 +103,10 @@ describe("writeFfiTypeExpression — fundamental", () => {
                 unrefFn: "g_object_unref",
                 ownership: "borrowed",
             }),
-        ).toBe('t.fundamental("libgobject-2.0.so.0", "g_object_ref", "g_object_unref", "borrowed")');
+        ).toBe('t.fundamental("libgobject-2.0.so.0", "g_object_ref", "g_object_unref", { ownership: "borrowed" })');
     });
 
-    it("appends typeName when provided", () => {
+    it("appends typeName to the options object when provided", () => {
         expect(
             render({
                 type: "fundamental",
@@ -116,11 +116,13 @@ describe("writeFfiTypeExpression — fundamental", () => {
                 ownership: "full",
                 typeName: "MyType",
             }),
-        ).toBe('t.fundamental("lib.so", "ref", "unref", "full", "MyType")');
+        ).toBe('t.fundamental("lib.so", "ref", "unref", { ownership: "full", typeName: "MyType" })');
     });
 
     it("substitutes empty strings for missing library, refFn, and unrefFn", () => {
-        expect(render({ type: "fundamental", ownership: "borrowed" })).toBe('t.fundamental("", "", "", "borrowed")');
+        expect(render({ type: "fundamental", ownership: "borrowed" })).toBe(
+            't.fundamental("", "", "", { ownership: "borrowed" })',
+        );
     });
 });
 
@@ -169,7 +171,7 @@ describe("writeFfiTypeExpression — enum and flags", () => {
     });
 });
 
-describe("writeFfiTypeExpression — arrays", () => {
+describe("writeFfiTypeExpression — arrays (1)", () => {
     const itemType: FfiTypeDescriptor = { type: "int32" };
 
     it("emits undefined when the array has no item type", () => {
@@ -218,6 +220,10 @@ describe("writeFfiTypeExpression — arrays", () => {
     it("renders a sized array using a default sizeParamIndex of 0 when missing", () => {
         expect(render({ type: "array", kind: "sized", itemType })).toBe('t.sizedArray(t.int32, 0, "borrowed")');
     });
+});
+
+describe("writeFfiTypeExpression — arrays (2)", () => {
+    const itemType: FfiTypeDescriptor = { type: "int32" };
 
     it("renders a fixed array including elementSize when present", () => {
         expect(

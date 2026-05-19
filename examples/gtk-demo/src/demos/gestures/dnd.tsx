@@ -220,28 +220,59 @@ function initialItemStyle(): ItemStyle {
     return { type: "rgba", cssColor: themeIsDark() ? "blue" : "yellow" };
 }
 
-const DndDemo = ({ window }: DemoProps) => {
-    useEffect(() => {
-        const win = window.current;
-        if (win) {
-            win.setDefaultSize(640, 480);
-        }
-    }, [window]);
-
-    const [items, setItems] = useState<CanvasItem[]>(() => {
-        const style = initialItemStyle();
-        return [
-            { id: "1", label: "Item 1", style, x: 40, y: 40, angle: 0, angleDelta: 0 },
-            { id: "2", label: "Item 2", style, x: 190, y: 140, angle: 0, angleDelta: 0 },
-            { id: "3", label: "Item 3", style, x: 340, y: 240, angle: 0, angleDelta: 0 },
-            { id: "4", label: "Item 4", style, x: 490, y: 340, angle: 0, angleDelta: 0 },
-        ];
-    });
+function useDndState() {
+    const [items, setItems] = useState<CanvasItem[]>(() => createInitialItems());
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [editState, setEditState] = useState<EditState | null>(null);
     const [isDragging, setIsDragging] = useState<string | null>(null);
     const [trashHovering, setTrashHovering] = useState(false);
 
+    const refs = useDndRefs();
+    const handlers = useDndHandlers({
+        items,
+        setItems,
+        contextMenu,
+        setContextMenu,
+        setEditState,
+        setIsDragging,
+        setTrashHovering,
+        refs,
+    });
+
+    const editingItem = useMemo(
+        () => (editState ? items.find((i) => i.id === editState.itemId) : null),
+        [editState, items],
+    );
+
+    return {
+        items,
+        setItems,
+        contextMenu,
+        setContextMenu,
+        editState,
+        setEditState,
+        isDragging,
+        trashHovering,
+        setTrashHovering,
+        refs,
+        handlers,
+        editingItem,
+    };
+}
+
+type DndState = ReturnType<typeof useDndState>;
+
+const createInitialItems = (): CanvasItem[] => {
+    const style = initialItemStyle();
+    return [
+        { id: "1", label: "Item 1", style, x: 40, y: 40, angle: 0, angleDelta: 0 },
+        { id: "2", label: "Item 2", style, x: 190, y: 140, angle: 0, angleDelta: 0 },
+        { id: "3", label: "Item 3", style, x: 340, y: 240, angle: 0, angleDelta: 0 },
+        { id: "4", label: "Item 4", style, x: 490, y: 340, angle: 0, angleDelta: 0 },
+    ];
+};
+
+function useDndRefs() {
     const contextMenuRef = useRef<Gtk.Popover | null>(null);
     const entryRef = useRef<Gtk.Entry | null>(null);
     const gestureClickRef = useRef<Gtk.GestureClick | null>(null);
@@ -249,56 +280,170 @@ const DndDemo = ({ window }: DemoProps) => {
     const itemHalves = useRef<Map<string, { halfW: number; halfH: number }>>(new Map());
     const itemRadii = useRef<Map<string, number>>(new Map());
     const dragHotspotRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+    return { contextMenuRef, entryRef, gestureClickRef, buttonRefs, itemHalves, itemRadii, dragHotspotRef };
+}
 
+type DndRefs = ReturnType<typeof useDndRefs>;
+
+function useItemBoundsObserver(items: CanvasItem[], refs: DndRefs) {
     useEffect(() => {
         for (const item of items) {
-            const button = buttonRefs.current.get(item.id);
-            if (button) {
-                const [ok, bounds] = button.computeBounds(button);
-                if (ok) {
-                    const halfW = bounds.getWidth() / 2;
-                    const halfH = bounds.getHeight() / 2;
-                    const r = Math.hypot(halfW, halfH);
-                    itemHalves.current.set(item.id, { halfW, halfH });
-                    itemRadii.current.set(item.id, r);
+            const button = refs.buttonRefs.current.get(item.id);
+            if (!button) continue;
+            const [ok, bounds] = button.computeBounds(button);
+            if (!ok) continue;
+            const halfW = bounds.getWidth() / 2;
+            const halfH = bounds.getHeight() / 2;
+            refs.itemHalves.current.set(item.id, { halfW, halfH });
+            refs.itemRadii.current.set(item.id, Math.hypot(halfW, halfH));
+        }
+    }, [items, refs]);
+}
+
+function useEntryFocusEffect(editState: EditState | null, entryRef: React.RefObject<Gtk.Entry | null>) {
+    useEffect(() => {
+        const entry = entryRef.current;
+        if (entry && editState) {
+            entry.grabFocusWithoutSelecting();
+            entry.setPosition(-1);
+        }
+    }, [editState, entryRef]);
+}
+
+interface DndHandlerArgs {
+    items: CanvasItem[];
+    setItems: React.Dispatch<React.SetStateAction<CanvasItem[]>>;
+    contextMenu: ContextMenuState | null;
+    setContextMenu: (m: ContextMenuState | null) => void;
+    setEditState: (e: EditState | null) => void;
+    setIsDragging: (id: string | null) => void;
+    setTrashHovering: (v: boolean) => void;
+    refs: DndRefs;
+}
+
+function useDndHandlers(args: DndHandlerArgs) {
+    const itemHandlers = useItemHandlers(args);
+    const contextMenuHandlers = useContextMenuHandlers(args);
+    const dropHandlers = useDropHandlers(args);
+    return { ...itemHandlers, ...contextMenuHandlers, ...dropHandlers };
+}
+
+function useItemHandlers(args: DndHandlerArgs) {
+    const editHandlers = useItemEditHandlers(args);
+    const rotateHandlers = useItemRotateHandlers(args);
+    const dragHandlers = useItemDragHandlers(args);
+    return { ...editHandlers, ...rotateHandlers, ...dragHandlers };
+}
+
+function useItemEditHandlers(args: DndHandlerArgs) {
+    const { setItems } = args;
+
+    const createContentProvider = useCallback(
+        (itemId: string) => Gdk.ContentProvider.newForValue(makeValue(GObject.Type.STRING, (v) => v.setString(itemId))),
+        [],
+    );
+
+    const toggleEditing = useCallback(
+        (itemId: string) => args.setEditState(args.contextMenu?.itemId === itemId ? null : { itemId }),
+        [args],
+    );
+
+    const updateItemLabel = useCallback(
+        (itemId: string, label: string) =>
+            setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, label } : item))),
+        [setItems],
+    );
+
+    const updateItemAngle = useCallback(
+        (itemId: string, angle: number) =>
+            setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, angle } : item))),
+        [setItems],
+    );
+
+    return { createContentProvider, toggleEditing, updateItemLabel, updateItemAngle };
+}
+
+function useItemRotateHandlers(args: DndHandlerArgs) {
+    const { setItems } = args;
+
+    const updateItemAngleDelta = useCallback(
+        (itemId: string, angleDeltaDeg: number) =>
+            setItems((prev) =>
+                prev.map((item) => (item.id === itemId ? { ...item, angleDelta: angleDeltaDeg } : item)),
+            ),
+        [setItems],
+    );
+
+    const handleRotateAngleChanged = useCallback(
+        (itemId: string) => (_angle: number, angleDelta: number) =>
+            updateItemAngleDelta(itemId, (angleDelta * 180) / Math.PI),
+        [updateItemAngleDelta],
+    );
+
+    const handleRotateEnd = useCallback(
+        (itemId: string) =>
+            setItems((prev) =>
+                prev.map((item) =>
+                    item.id === itemId ? { ...item, angle: item.angle + item.angleDelta, angleDelta: 0 } : item,
+                ),
+            ),
+        [setItems],
+    );
+
+    return { handleRotateAngleChanged, handleRotateEnd };
+}
+
+function useItemDragHandlers(args: DndHandlerArgs) {
+    const { setItems, refs } = args;
+
+    const bringToFront = useCallback(
+        (itemId: string) =>
+            setItems((prev) => {
+                const idx = prev.findIndex((i) => i.id === itemId);
+                if (idx === -1 || idx === prev.length - 1) return prev;
+                const item = prev[idx];
+                if (!item) return prev;
+                return [...prev.slice(0, idx), ...prev.slice(idx + 1), item];
+            }),
+        [setItems],
+    );
+
+    const setDragIcon = useCallback(
+        (itemId: string) => {
+            const button = refs.buttonRefs.current.get(itemId);
+            if (!button) return;
+            const controllers = button.observeControllers();
+            const count = controllers.getNItems();
+            for (let i = 0; i < count; i++) {
+                const controller = controllers.getItem(i);
+                if (controller instanceof Gtk.DragSource) {
+                    const paintable = Gtk.WidgetPaintable.new(button);
+                    const { x, y } = refs.dragHotspotRef.current;
+                    controller.setIcon(paintable, x, y);
+                    break;
                 }
             }
-        }
-    }, [items]);
+        },
+        [refs],
+    );
 
-    const createContentProvider = useCallback((itemId: string) => {
-        return Gdk.ContentProvider.newForValue(makeValue(GObject.Type.STRING, (v) => v.setString(itemId)));
-    }, []);
+    return { bringToFront, setDragIcon };
+}
 
-    const handleCanvasDrop = useCallback((value: GObject.Value, x: number, y: number) => {
-        const itemId = value.getString();
-        if (itemId) {
-            const r = itemRadii.current.get(itemId) ?? 0;
-            setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, x: x - r, y: y - r } : item)));
-        }
-        return true;
-    }, []);
-
-    const handleTrashDrop = useCallback((value: GObject.Value) => {
-        const itemId = value.getString();
-        if (itemId) {
-            setItems((prev) => prev.filter((item) => item.id !== itemId));
-        }
-        setTrashHovering(false);
-        return true;
-    }, []);
+function useContextMenuHandlers(args: DndHandlerArgs) {
+    const { items, setItems, contextMenu, setContextMenu, setEditState, refs } = args;
 
     const handleContextMenu = useCallback(
         (clickX: number, clickY: number) => {
             const hitItem = items.find((item) => {
-                const r = itemRadii.current.get(item.id) ?? ITEM_SIZE;
+                const r = refs.itemRadii.current.get(item.id) ?? ITEM_SIZE;
                 const size = 2 * r;
                 return clickX >= item.x && clickX <= item.x + size && clickY >= item.y && clickY <= item.y + size;
             });
             setContextMenu({ x: clickX, y: clickY, itemId: hitItem?.id ?? null });
-            setTimeout(() => contextMenuRef.current?.popup(), 0);
+            setTimeout(() => refs.contextMenuRef.current?.popup(), 0);
         },
-        [items],
+        [items, setContextMenu, refs],
     );
 
     const handleAddItem = useCallback(() => {
@@ -308,122 +453,249 @@ const DndDemo = ({ window }: DemoProps) => {
         nextId++;
         setItems((prev) => [
             ...prev,
-            {
-                id,
-                label,
-                style: initialItemStyle(),
-                x: contextMenu.x,
-                y: contextMenu.y,
-                angle: 0,
-                angleDelta: 0,
-            },
+            { id, label, style: initialItemStyle(), x: contextMenu.x, y: contextMenu.y, angle: 0, angleDelta: 0 },
         ]);
-        contextMenuRef.current?.popdown();
+        refs.contextMenuRef.current?.popdown();
         setContextMenu(null);
-    }, [contextMenu]);
+    }, [contextMenu, setItems, setContextMenu, refs]);
 
     const handleEditItem = useCallback(() => {
         if (!contextMenu?.itemId) return;
         setEditState({ itemId: contextMenu.itemId });
-        contextMenuRef.current?.popdown();
-    }, [contextMenu]);
+        refs.contextMenuRef.current?.popdown();
+    }, [contextMenu, setEditState, refs]);
 
     const handleDeleteItem = useCallback(() => {
         if (!contextMenu?.itemId) return;
         setItems((prev) => prev.filter((item) => item.id !== contextMenu.itemId));
-        contextMenuRef.current?.popdown();
+        refs.contextMenuRef.current?.popdown();
         setContextMenu(null);
-    }, [contextMenu]);
+    }, [contextMenu, setItems, setContextMenu, refs]);
 
-    const toggleEditing = useCallback((itemId: string) => {
-        setEditState((prev) => (prev?.itemId === itemId ? null : { itemId }));
-    }, []);
+    return { handleContextMenu, handleAddItem, handleEditItem, handleDeleteItem };
+}
 
-    const updateItemLabel = useCallback((itemId: string, label: string) => {
-        setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, label } : item)));
-    }, []);
+function useDropHandlers(args: DndHandlerArgs) {
+    const { setItems, setTrashHovering, refs } = args;
 
-    const updateItemAngle = useCallback((itemId: string, angle: number) => {
-        setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, angle } : item)));
-    }, []);
-
-    const updateItemAngleDelta = useCallback((itemId: string, angleDeltaDeg: number) => {
-        setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, angleDelta: angleDeltaDeg } : item)));
-    }, []);
-
-    const handleRotateAngleChanged = useCallback(
-        (itemId: string) => (_angle: number, angleDelta: number) => {
-            updateItemAngleDelta(itemId, (angleDelta * 180) / Math.PI);
-        },
-        [updateItemAngleDelta],
-    );
-
-    const handleRotateEnd = useCallback((itemId: string) => {
-        setItems((prev) =>
-            prev.map((item) =>
-                item.id === itemId ? { ...item, angle: item.angle + item.angleDelta, angleDelta: 0 } : item,
-            ),
-        );
-    }, []);
-
-    const handleItemColorDrop = useCallback((itemId: string, value: GObject.Value) => {
-        const rgba = value.getBoxed<Gdk.RGBA>();
-        if (rgba instanceof Gdk.RGBA) {
-            const cssColor = rgba.toString() ?? "transparent";
-            setItems((prev) =>
-                prev.map((item) => (item.id === itemId ? { ...item, style: { type: "rgba", cssColor } } : item)),
-            );
-            return true;
-        }
-        const className = value.getString();
-        if (className) {
-            setItems((prev) =>
-                prev.map((item) => (item.id === itemId ? { ...item, style: { type: "cssClass", className } } : item)),
-            );
-        }
-        return true;
-    }, []);
-
-    const setDragIcon = useCallback((itemId: string) => {
-        const button = buttonRefs.current.get(itemId);
-        if (!button) return;
-
-        const controllers = button.observeControllers();
-        const count = controllers.getNItems();
-
-        for (let i = 0; i < count; i++) {
-            const controller = controllers.getItem(i);
-            if (controller instanceof Gtk.DragSource) {
-                const paintable = Gtk.WidgetPaintable.new(button);
-                const { x, y } = dragHotspotRef.current;
-                controller.setIcon(paintable, x, y);
-                break;
+    const handleCanvasDrop = useCallback(
+        (value: GObject.Value, x: number, y: number) => {
+            const itemId = value.getString();
+            if (itemId) {
+                const r = refs.itemRadii.current.get(itemId) ?? 0;
+                setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, x: x - r, y: y - r } : item)));
             }
-        }
-    }, []);
-
-    const bringToFront = useCallback((itemId: string) => {
-        setItems((prev) => {
-            const idx = prev.findIndex((i) => i.id === itemId);
-            if (idx === -1 || idx === prev.length - 1) return prev;
-            const item = prev[idx];
-            if (!item) return prev;
-            return [...prev.slice(0, idx), ...prev.slice(idx + 1), item];
-        });
-    }, []);
-
-    const editingItem = useMemo(
-        () => (editState ? items.find((i) => i.id === editState.itemId) : null),
-        [editState, items],
+            return true;
+        },
+        [setItems, refs],
     );
 
+    const handleTrashDrop = useCallback(
+        (value: GObject.Value) => {
+            const itemId = value.getString();
+            if (itemId) setItems((prev) => prev.filter((item) => item.id !== itemId));
+            setTrashHovering(false);
+            return true;
+        },
+        [setItems, setTrashHovering],
+    );
+
+    const handleItemColorDrop = useCallback(
+        (itemId: string, value: GObject.Value) => {
+            const rgba = value.getBoxed<Gdk.RGBA>();
+            if (rgba instanceof Gdk.RGBA) {
+                const cssColor = rgba.toString() ?? "transparent";
+                setItems((prev) =>
+                    prev.map((item) => (item.id === itemId ? { ...item, style: { type: "rgba", cssColor } } : item)),
+                );
+                return true;
+            }
+            const className = value.getString();
+            if (className) {
+                setItems((prev) =>
+                    prev.map((item) =>
+                        item.id === itemId ? { ...item, style: { type: "cssClass", className } } : item,
+                    ),
+                );
+            }
+            return true;
+        },
+        [setItems],
+    );
+
+    return { handleCanvasDrop, handleTrashDrop, handleItemColorDrop };
+}
+
+const DndItem = ({ item, dnd }: { item: CanvasItem; dnd: DndState }) => {
+    const { refs, handlers, isDragging } = dnd;
+    const halfW = refs.itemHalves.current.get(item.id)?.halfW ?? ITEM_SIZE / 2;
+    const halfH = refs.itemHalves.current.get(item.id)?.halfH ?? ITEM_SIZE / 2;
+    return (
+        <GtkFixed.Child
+            x={item.x}
+            y={item.y}
+            transform={createRotationTransform(halfW, halfH, item.angle + item.angleDelta)}
+        >
+            <GtkLabel
+                ref={(ref) => {
+                    if (ref) refs.buttonRefs.current.set(item.id, ref);
+                    else refs.buttonRefs.current.delete(item.id);
+                }}
+                label={item.label}
+                cssClasses={cx(
+                    itemStyle,
+                    ...getItemStyleClass(item.style),
+                    isDragging === item.id && css`opacity: 0.3;`,
+                )}
+            >
+                <GtkGestureClick
+                    onReleased={() => {
+                        handlers.bringToFront(item.id);
+                        handlers.toggleEditing(item.id);
+                    }}
+                />
+                <GtkDragSource
+                    onPrepare={(x: number, y: number) => {
+                        refs.dragHotspotRef.current = { x, y };
+                        return handlers.createContentProvider(item.id);
+                    }}
+                    onDragBegin={() => {
+                        handlers.setDragIcon(item.id);
+                        handlers.bringToFront(item.id);
+                        dnd.setItems((prev) => prev);
+                    }}
+                    onDragEnd={() => dnd.setItems((prev) => prev)}
+                    actions={Gdk.DragAction.MOVE}
+                />
+                <GtkDropTarget
+                    types={[getGdkRgbaType(), GObject.Type.STRING]}
+                    actions={Gdk.DragAction.COPY}
+                    onMotion={() => Gdk.DragAction.COPY}
+                    onDrop={(value: GObject.Value) => handlers.handleItemColorDrop(item.id, value)}
+                />
+                <GtkGestureRotate
+                    onAngleChanged={handlers.handleRotateAngleChanged(item.id)}
+                    onEnd={() => handlers.handleRotateEnd(item.id)}
+                />
+            </GtkLabel>
+        </GtkFixed.Child>
+    );
+};
+
+const DndContextMenu = ({ dnd }: { dnd: DndState }) => {
+    const { refs, contextMenu, setContextMenu, handlers } = dnd;
+    return (
+        <GtkFixed.Child x={0} y={0}>
+            <GtkPopover
+                ref={refs.contextMenuRef}
+                hasArrow={false}
+                pointingTo={contextMenu ? makeRectangle(contextMenu.x, contextMenu.y, 1, 1) : undefined}
+                autohide
+                onClosed={() => setContextMenu(null)}
+            >
+                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
+                    <GtkButton label="New" cssClasses={["flat"]} onClicked={handlers.handleAddItem} />
+                    <GtkSeparator />
+                    <GtkButton
+                        label="Edit"
+                        cssClasses={["flat"]}
+                        sensitive={contextMenu?.itemId !== null}
+                        onClicked={handlers.handleEditItem}
+                    />
+                    <GtkSeparator />
+                    <GtkButton
+                        label="Delete"
+                        cssClasses={["flat"]}
+                        sensitive={contextMenu?.itemId !== null}
+                        onClicked={handlers.handleDeleteItem}
+                    />
+                </GtkBox>
+            </GtkPopover>
+        </GtkFixed.Child>
+    );
+};
+
+const DndItemEditor = ({ dnd, editingItem }: { dnd: DndState; editingItem: CanvasItem }) => {
+    const { refs, handlers, setEditState } = dnd;
+    const halfH = refs.itemHalves.current.get(editingItem.id)?.halfH ?? ITEM_SIZE / 2;
+    return (
+        <GtkFixed.Child x={editingItem.x} y={editingItem.y + 2 * halfH}>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                <GtkEntry
+                    ref={refs.entryRef}
+                    text={editingItem.label}
+                    onChanged={(entry) => handlers.updateItemLabel(editingItem.id, entry.getText())}
+                    widthChars={12}
+                    onActivate={() => setEditState(null)}
+                />
+                <GtkScale
+                    orientation={Gtk.Orientation.HORIZONTAL}
+                    lower={0}
+                    upper={360}
+                    value={editingItem.angle % 360}
+                    onValueChanged={(val) => handlers.updateItemAngle(editingItem.id, val)}
+                    drawValue={false}
+                />
+            </GtkBox>
+        </GtkFixed.Child>
+    );
+};
+
+interface DndTrashZoneProps {
+    trashHovering: boolean;
+    setTrashHovering: (v: boolean) => void;
+    handleTrashDrop: (value: GObject.Value) => boolean;
+}
+
+const DndTrashZone = ({ trashHovering, setTrashHovering, handleTrashDrop }: DndTrashZoneProps) => (
+    <GtkFixed.Child x={20} y={20}>
+        <GtkBox
+            cssClasses={[
+                css`padding: 12px;`,
+                trashHovering ? css`background-color: alpha(@error_color, 0.2); border-radius: 12px;` : "",
+            ]}
+        >
+            <GtkDropTarget
+                types={[GObject.Type.STRING]}
+                actions={Gdk.DragAction.MOVE}
+                onEnter={() => {
+                    setTrashHovering(true);
+                    return Gdk.DragAction.MOVE;
+                }}
+                onLeave={() => setTrashHovering(false)}
+                onDrop={(value: GObject.Value) => handleTrashDrop(value)}
+            />
+            <GtkImage iconName="user-trash-symbolic" pixelSize={64} cssClasses={["error"]} />
+        </GtkBox>
+    </GtkFixed.Child>
+);
+
+const DndSwatchPalette = () => (
+    <GtkScrolledWindow
+        hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
+        vscrollbarPolicy={Gtk.PolicyType.NEVER}
+        minContentHeight={48}
+    >
+        <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4} cssClasses={["linked"]}>
+            {SWATCH_COLORS.map((color) => (
+                <ColorSwatch key={color} color={color} />
+            ))}
+            <CssPatternSwatch cssClass={rainbow1Style} />
+            <CssPatternSwatch cssClass={rainbow2Style} />
+            <CssPatternSwatch cssClass={rainbow3Style} />
+        </GtkBox>
+    </GtkScrolledWindow>
+);
+
+const DndDemo = ({ window }: DemoProps) => {
     useEffect(() => {
-        const entry = entryRef.current;
-        if (entry && editState) {
-            entry.grabFocusWithoutSelecting();
-            entry.setPosition(-1);
-        }
-    }, [editState]);
+        const win = window.current;
+        if (win) win.setDefaultSize(640, 480);
+    }, [window]);
+
+    const dnd = useDndState();
+    useItemBoundsObserver(dnd.items, dnd.refs);
+    useEntryFocusEffect(dnd.editState, dnd.refs.entryRef);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -433,170 +705,35 @@ const DndDemo = ({ window }: DemoProps) => {
                     actions={Gdk.DragAction.MOVE}
                     onMotion={() => Gdk.DragAction.MOVE}
                     onDrop={(value: GObject.Value, dropX: number, dropY: number) =>
-                        handleCanvasDrop(value, dropX, dropY)
+                        dnd.handlers.handleCanvasDrop(value, dropX, dropY)
                     }
                 />
                 <GtkGestureClick
-                    ref={gestureClickRef}
+                    ref={dnd.refs.gestureClickRef}
                     button={0}
                     onPressed={(_nPress: number, pressX: number, pressY: number) => {
-                        const event = gestureClickRef.current?.getCurrentEvent();
-                        if (event?.triggersContextMenu()) {
-                            handleContextMenu(pressX, pressY);
-                        }
+                        const event = dnd.refs.gestureClickRef.current?.getCurrentEvent();
+                        if (event?.triggersContextMenu()) dnd.handlers.handleContextMenu(pressX, pressY);
                     }}
                 />
-                {items.map((item) => (
-                    <GtkFixed.Child
-                        key={item.id}
-                        x={item.x}
-                        y={item.y}
-                        transform={createRotationTransform(
-                            itemHalves.current.get(item.id)?.halfW ?? ITEM_SIZE / 2,
-                            itemHalves.current.get(item.id)?.halfH ?? ITEM_SIZE / 2,
-                            item.angle + item.angleDelta,
-                        )}
-                    >
-                        <GtkLabel
-                            ref={(ref) => {
-                                if (ref) buttonRefs.current.set(item.id, ref);
-                                else buttonRefs.current.delete(item.id);
-                            }}
-                            label={item.label}
-                            cssClasses={cx(
-                                itemStyle,
-                                ...getItemStyleClass(item.style),
-                                isDragging === item.id && css`opacity: 0.3;`,
-                            )}
-                        >
-                            <GtkGestureClick
-                                onReleased={() => {
-                                    bringToFront(item.id);
-                                    toggleEditing(item.id);
-                                }}
-                            />
-                            <GtkDragSource
-                                onPrepare={(x: number, y: number) => {
-                                    dragHotspotRef.current = { x, y };
-                                    return createContentProvider(item.id);
-                                }}
-                                onDragBegin={() => {
-                                    setDragIcon(item.id);
-                                    bringToFront(item.id);
-                                    setIsDragging(item.id);
-                                }}
-                                onDragEnd={() => setIsDragging(null)}
-                                actions={Gdk.DragAction.MOVE}
-                            />
-                            <GtkDropTarget
-                                types={[getGdkRgbaType(), GObject.Type.STRING]}
-                                actions={Gdk.DragAction.COPY}
-                                onMotion={() => Gdk.DragAction.COPY}
-                                onDrop={(value: GObject.Value) => handleItemColorDrop(item.id, value)}
-                            />
-                            <GtkGestureRotate
-                                onAngleChanged={handleRotateAngleChanged(item.id)}
-                                onEnd={() => handleRotateEnd(item.id)}
-                            />
-                        </GtkLabel>
-                    </GtkFixed.Child>
+                {dnd.items.map((item) => (
+                    <DndItem key={item.id} item={item} dnd={dnd} />
                 ))}
 
-                <GtkFixed.Child x={0} y={0}>
-                    <GtkPopover
-                        ref={contextMenuRef}
-                        hasArrow={false}
-                        pointingTo={contextMenu ? makeRectangle(contextMenu.x, contextMenu.y, 1, 1) : undefined}
-                        autohide
-                        onClosed={() => setContextMenu(null)}
-                    >
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={4}>
-                            <GtkButton label="New" cssClasses={["flat"]} onClicked={handleAddItem} />
-                            <GtkSeparator />
-                            <GtkButton
-                                label="Edit"
-                                cssClasses={["flat"]}
-                                sensitive={contextMenu?.itemId !== null}
-                                onClicked={handleEditItem}
-                            />
-                            <GtkSeparator />
-                            <GtkButton
-                                label="Delete"
-                                cssClasses={["flat"]}
-                                sensitive={contextMenu?.itemId !== null}
-                                onClicked={handleDeleteItem}
-                            />
-                        </GtkBox>
-                    </GtkPopover>
-                </GtkFixed.Child>
-
-                {editingItem && (
-                    <GtkFixed.Child
-                        x={editingItem.x}
-                        y={editingItem.y + 2 * (itemHalves.current.get(editingItem.id)?.halfH ?? ITEM_SIZE / 2)}
-                    >
-                        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
-                            <GtkEntry
-                                ref={entryRef}
-                                text={editingItem.label}
-                                onChanged={(entry) => updateItemLabel(editingItem.id, entry.getText())}
-                                widthChars={12}
-                                onActivate={() => setEditState(null)}
-                            />
-                            <GtkScale
-                                orientation={Gtk.Orientation.HORIZONTAL}
-                                lower={0}
-                                upper={360}
-                                value={editingItem.angle % 360}
-                                onValueChanged={(val) => updateItemAngle(editingItem.id, val)}
-                                drawValue={false}
-                            />
-                        </GtkBox>
-                    </GtkFixed.Child>
-                )}
-
-                {isDragging && (
-                    <GtkFixed.Child x={20} y={20}>
-                        <GtkBox
-                            cssClasses={[
-                                css`padding: 12px;`,
-                                trashHovering
-                                    ? css`background-color: alpha(@error_color, 0.2); border-radius: 12px;`
-                                    : "",
-                            ]}
-                        >
-                            <GtkDropTarget
-                                types={[GObject.Type.STRING]}
-                                actions={Gdk.DragAction.MOVE}
-                                onEnter={() => {
-                                    setTrashHovering(true);
-                                    return Gdk.DragAction.MOVE;
-                                }}
-                                onLeave={() => setTrashHovering(false)}
-                                onDrop={(value: GObject.Value) => handleTrashDrop(value)}
-                            />
-                            <GtkImage iconName="user-trash-symbolic" pixelSize={64} cssClasses={["error"]} />
-                        </GtkBox>
-                    </GtkFixed.Child>
+                <DndContextMenu dnd={dnd} />
+                {dnd.editingItem && <DndItemEditor dnd={dnd} editingItem={dnd.editingItem} />}
+                {dnd.isDragging && (
+                    <DndTrashZone
+                        trashHovering={dnd.trashHovering}
+                        setTrashHovering={dnd.setTrashHovering}
+                        handleTrashDrop={dnd.handlers.handleTrashDrop}
+                    />
                 )}
             </GtkFixed>
 
             <GtkSeparator orientation={Gtk.Orientation.HORIZONTAL} />
 
-            <GtkScrolledWindow
-                hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
-                vscrollbarPolicy={Gtk.PolicyType.NEVER}
-                minContentHeight={48}
-            >
-                <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={4} cssClasses={["linked"]}>
-                    {SWATCH_COLORS.map((color) => (
-                        <ColorSwatch key={color} color={color} />
-                    ))}
-                    <CssPatternSwatch cssClass={rainbow1Style} />
-                    <CssPatternSwatch cssClass={rainbow2Style} />
-                    <CssPatternSwatch cssClass={rainbow3Style} />
-                </GtkBox>
-            </GtkScrolledWindow>
+            <DndSwatchPalette />
         </GtkBox>
     );
 };

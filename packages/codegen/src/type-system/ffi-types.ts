@@ -301,19 +301,19 @@ export const gobjectType = (transferFull: boolean): FfiTypeDescriptor => ({
  * @param unrefFn - name of the unref function
  * @param transferFull - true for transfer full, false for transfer none
  */
-export const fundamentalType = (
-    lib: string,
-    refFn: string,
-    unrefFn: string,
-    transferFull: boolean,
-    typeName?: string,
-): FfiTypeDescriptor => ({
+export const fundamentalType = (opts: {
+    lib: string;
+    refFn: string;
+    unrefFn: string;
+    transferFull: boolean;
+    typeName?: string;
+}): FfiTypeDescriptor => ({
     type: "fundamental",
-    library: lib,
-    refFn,
-    unrefFn,
-    ownership: toOwnership(transferFull),
-    typeName,
+    library: opts.lib,
+    refFn: opts.refFn,
+    unrefFn: opts.unrefFn,
+    ownership: toOwnership(opts.transferFull),
+    typeName: opts.typeName,
 });
 
 /**
@@ -359,9 +359,7 @@ export const arrayType = (
     itemType: FfiTypeDescriptor,
     containerKind: "array" | "glist" | "gslist" | "gptrarray" | "garray" | "gbytearray" | "sized" | "fixed" = "array",
     transferFull: boolean = true,
-    sizeParamIndex?: number,
-    fixedSize?: number,
-    elementSize?: number,
+    opts: { sizeParamIndex?: number; fixedSize?: number; elementSize?: number } = {},
 ): FfiTypeDescriptor => {
     const result: FfiTypeDescriptor = {
         type: "array",
@@ -369,14 +367,14 @@ export const arrayType = (
         kind: containerKind,
         ownership: toOwnership(transferFull),
     };
-    if (sizeParamIndex !== undefined) {
-        result.sizeParamIndex = sizeParamIndex;
+    if (opts.sizeParamIndex !== undefined) {
+        result.sizeParamIndex = opts.sizeParamIndex;
     }
-    if (fixedSize !== undefined) {
-        result.fixedSize = fixedSize;
+    if (opts.fixedSize !== undefined) {
+        result.fixedSize = opts.fixedSize;
     }
-    if (elementSize !== undefined) {
-        result.elementSize = elementSize;
+    if (opts.elementSize !== undefined) {
+        result.elementSize = opts.elementSize;
     }
     return result;
 };
@@ -675,19 +673,19 @@ export const SELF_TYPE_GOBJECT: SelfTypeDescriptor = { type: "gobject", ownershi
 /**
  * Creates a fundamental self type descriptor for types with custom ref/unref.
  */
-export const fundamentalSelfType = (
-    library: string,
-    refFn: string,
-    unrefFn: string,
-    ownership: "borrowed" | "full" = "borrowed",
-    typeName?: string,
-): SelfTypeDescriptor => ({
+export const fundamentalSelfType = (opts: {
+    library: string;
+    refFn: string;
+    unrefFn: string;
+    ownership?: "borrowed" | "full";
+    typeName?: string;
+}): SelfTypeDescriptor => ({
     type: "fundamental",
-    ownership,
-    library,
-    refFn,
-    unrefFn,
-    typeName,
+    ownership: opts.ownership ?? "borrowed",
+    library: opts.library,
+    refFn: opts.refFn,
+    unrefFn: opts.unrefFn,
+    typeName: opts.typeName,
 });
 
 /**

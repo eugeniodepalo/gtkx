@@ -166,17 +166,24 @@ describe("create", () => {
     });
 });
 
-describe("codegen command", () => {
-    let logSpy: ReturnType<typeof vi.spyOn>;
+type CodegenLogState = { logSpy: ReturnType<typeof vi.spyOn> };
 
+const setupCodegenLog = (state: CodegenLogState): void => {
     beforeEach(() => {
         vi.clearAllMocks();
-        logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        state.logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     });
-
     afterEach(() => {
-        logSpy.mockRestore();
+        state.logSpy.mockRestore();
     });
+};
+
+const collectLogged = (logSpy: ReturnType<typeof vi.spyOn>): string =>
+    logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
+
+describe("codegen command (skip and forwarding)", () => {
+    const state = {} as CodegenLogState;
+    setupCodegenLog(state);
 
     it("logs the up-to-date message and skips reporting when nothing ran", async () => {
         runCodegenMock.mockResolvedValueOnce({ ran: false } as never);
@@ -184,23 +191,9 @@ describe("codegen command", () => {
 
         await run({ args: {} });
 
-        const logged = logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
+        const logged = collectLogged(state.logSpy);
         expect(logged).toContain("up to date");
         expect(logged).not.toContain("namespaces");
-    });
-
-    it("logs config, libraries, gir path, and totals after a successful run", async () => {
-        const run = codegen.run as unknown as CommandRun<{ force?: boolean; cwd?: string }>;
-
-        await run({ args: {} });
-
-        expect(runCodegenMock).toHaveBeenCalledWith({ cwd: process.cwd(), force: undefined });
-
-        const logged = logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
-        expect(logged).toContain("config=/project/gtkx.config.ts");
-        expect(logged).toContain("libraries=Gtk-4.0, Adw-1");
-        expect(logged).toContain("girPath=/usr/share/gir-1.0");
-        expect(logged).toContain("2 namespaces, 142 widgets in 250ms");
     });
 
     it("forwards --force and --cwd flags", async () => {
@@ -212,6 +205,25 @@ describe("codegen command", () => {
             cwd: expect.stringContaining("custom/dir"),
             force: true,
         });
+    });
+});
+
+describe("codegen command (result reporting)", () => {
+    const state = {} as CodegenLogState;
+    setupCodegenLog(state);
+
+    it("logs config, libraries, gir path, and totals after a successful run", async () => {
+        const run = codegen.run as unknown as CommandRun<{ force?: boolean; cwd?: string }>;
+
+        await run({ args: {} });
+
+        expect(runCodegenMock).toHaveBeenCalledWith({ cwd: process.cwd(), force: undefined });
+
+        const logged = collectLogged(state.logSpy);
+        expect(logged).toContain("config=/project/gtkx.config.ts");
+        expect(logged).toContain("libraries=Gtk-4.0, Adw-1");
+        expect(logged).toContain("girPath=/usr/share/gir-1.0");
+        expect(logged).toContain("2 namespaces, 142 widgets in 250ms");
     });
 
     it("skips optional log lines when fields are missing from the result", async () => {
@@ -225,7 +237,7 @@ describe("codegen command", () => {
 
         await run({ args: {} });
 
-        const logged = logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
+        const logged = collectLogged(state.logSpy);
         expect(logged).not.toContain("config=");
         expect(logged).not.toContain("libraries=");
         expect(logged).not.toContain("girPath=");
@@ -233,50 +245,56 @@ describe("codegen command", () => {
     });
 });
 
-describe("dev command", () => {
-    let logSpy: ReturnType<typeof vi.spyOn>;
-    let exitSpy: ReturnType<typeof vi.spyOn>;
-    let prevSigInt: NodeJS.Signals[] | undefined;
-    let prevSigTerm: NodeJS.Signals[] | undefined;
-    let runDev: CommandRun<{ entry?: string }>;
+type DevContext = {
+    logSpy: ReturnType<typeof vi.spyOn>;
+    exitSpy: ReturnType<typeof vi.spyOn>;
+    prevSigInt: NodeJS.Signals[] | undefined;
+    prevSigTerm: NodeJS.Signals[] | undefined;
+    runDev: CommandRun<{ entry?: string }>;
+};
 
+const cleanupSignalListeners = (name: "SIGINT" | "SIGTERM", previous: NodeJS.Signals[] | undefined): void => {
+    const current = process.listeners(name) as unknown as NodeJS.Signals[];
+    for (const listener of current) {
+        if (!previous?.includes(listener)) {
+            process.removeListener(name, listener as never);
+        }
+    }
+};
+
+const setupDevCtx = (): DevContext => {
+    const ctx = {} as DevContext;
     beforeEach(() => {
         vi.clearAllMocks();
-        logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
-        exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
-        prevSigInt = process.listeners("SIGINT") as unknown as NodeJS.Signals[];
-        prevSigTerm = process.listeners("SIGTERM") as unknown as NodeJS.Signals[];
-        runDev = dev.run as unknown as CommandRun<{ entry?: string }>;
+        ctx.logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        ctx.exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+        ctx.prevSigInt = process.listeners("SIGINT") as unknown as NodeJS.Signals[];
+        ctx.prevSigTerm = process.listeners("SIGTERM") as unknown as NodeJS.Signals[];
+        ctx.runDev = dev.run as unknown as CommandRun<{ entry?: string }>;
     });
-
     afterEach(() => {
-        logSpy.mockRestore();
-        exitSpy.mockRestore();
-        const newSigInt = process.listeners("SIGINT") as unknown as NodeJS.Signals[];
-        for (const listener of newSigInt) {
-            if (!prevSigInt?.includes(listener)) {
-                process.removeListener("SIGINT", listener as never);
-            }
-        }
-        const newSigTerm = process.listeners("SIGTERM") as unknown as NodeJS.Signals[];
-        for (const listener of newSigTerm) {
-            if (!prevSigTerm?.includes(listener)) {
-                process.removeListener("SIGTERM", listener as never);
-            }
-        }
+        ctx.logSpy.mockRestore();
+        ctx.exitSpy.mockRestore();
+        cleanupSignalListeners("SIGINT", ctx.prevSigInt);
+        cleanupSignalListeners("SIGTERM", ctx.prevSigTerm);
     });
+    return ctx;
+};
 
-    async function startDev(entry?: string): Promise<FakeChild> {
-        const child = createFakeChild();
-        forkMock.mockReturnValueOnce(child as unknown as ChildProcess);
-        runDev({ args: entry ? { entry } : {} }).catch(() => undefined);
-        await preflightMock.mock.results[0]?.value;
-        await Promise.resolve();
-        return child;
-    }
+const startDev = async (ctx: DevContext, entry?: string): Promise<FakeChild> => {
+    const child = createFakeChild();
+    forkMock.mockReturnValueOnce(child as unknown as ChildProcess);
+    ctx.runDev({ args: entry ? { entry } : {} }).catch(() => undefined);
+    await preflightMock.mock.results[0]?.value;
+    await Promise.resolve();
+    return child;
+};
+
+describe("dev command (startup)", () => {
+    const ctx = setupDevCtx();
 
     it("runs preflight codegen and forks the dev runner with the resolved entry", async () => {
-        await startDev("src/main.tsx");
+        await startDev(ctx, "src/main.tsx");
 
         expect(preflightMock).toHaveBeenCalledOnce();
         expect(forkMock).toHaveBeenCalledOnce();
@@ -285,52 +303,60 @@ describe("dev command", () => {
     });
 
     it("uses src/index.tsx as the default entry when no positional is supplied", async () => {
-        await startDev();
+        await startDev(ctx);
 
         const [, args] = forkMock.mock.calls[0] ?? [];
         expect(Array.isArray(args) ? args[0] : undefined).toMatch(/src\/index\.tsx$/);
     });
+});
+
+describe("dev command (child exit handling)", () => {
+    const ctx = setupDevCtx();
 
     it("relaunches the runner when the child exits with the reload code", async () => {
-        const child = await startDev();
+        const child = await startDev(ctx);
         const second = createFakeChild();
         forkMock.mockReturnValueOnce(second as unknown as ChildProcess);
 
         child.emit("exit", RELOAD_EXIT_CODE, null);
 
         expect(forkMock).toHaveBeenCalledTimes(2);
-        expect(exitSpy).not.toHaveBeenCalled();
-        const logged = logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
+        expect(ctx.exitSpy).not.toHaveBeenCalled();
+        const logged = ctx.logSpy.mock.calls.map((call: unknown[]) => String(call[0])).join("\n");
         expect(logged).toContain("Restarting dev runner");
     });
 
     it("exits with the child's code when the child exits non-reloadably", async () => {
-        const child = await startDev();
+        const child = await startDev(ctx);
 
         child.emit("exit", 7, null);
 
-        expect(exitSpy).toHaveBeenCalledWith(7);
+        expect(ctx.exitSpy).toHaveBeenCalledWith(7);
     });
 
     it("exits with the signal-mapped code when the child exits via signal", async () => {
-        const child = await startDev();
+        const child = await startDev(ctx);
 
         child.emit("exit", null, "SIGINT");
 
-        expect(exitSpy).toHaveBeenCalledWith(130);
+        expect(ctx.exitSpy).toHaveBeenCalledWith(130);
     });
+});
+
+describe("dev command (signal forwarding)", () => {
+    const ctx = setupDevCtx();
 
     it("forwards SIGINT to the running child process", async () => {
-        const child = await startDev();
+        const child = await startDev(ctx);
 
         process.emit("SIGINT", "SIGINT");
 
         expect(child.kill).toHaveBeenCalledWith("SIGINT");
-        expect(exitSpy).not.toHaveBeenCalled();
+        expect(ctx.exitSpy).not.toHaveBeenCalled();
     });
 
     it("forwards SIGTERM to the running child process", async () => {
-        const child = await startDev();
+        const child = await startDev(ctx);
 
         process.emit("SIGTERM", "SIGTERM");
 
@@ -338,7 +364,7 @@ describe("dev command", () => {
     });
 
     it("does not re-kill a child that already reports killed=true", async () => {
-        const child = await startDev();
+        const child = await startDev(ctx);
         child.killed = true;
 
         process.emit("SIGINT", "SIGINT");
@@ -347,23 +373,23 @@ describe("dev command", () => {
     });
 
     it("exits cleanly when a signal arrives after the child has already exited", async () => {
-        const child = await startDev();
+        const child = await startDev(ctx);
         child.emit("exit", 0, null);
-        exitSpy.mockClear();
+        ctx.exitSpy.mockClear();
 
         process.emit("SIGINT", "SIGINT");
 
-        expect(exitSpy).toHaveBeenCalledWith(0);
+        expect(ctx.exitSpy).toHaveBeenCalledWith(0);
     });
 
     it("ignores subsequent child exits once shutting down", async () => {
-        const child = await startDev();
+        const child = await startDev(ctx);
 
         process.emit("SIGINT", "SIGINT");
-        exitSpy.mockClear();
+        ctx.exitSpy.mockClear();
 
         child.emit("exit", 99, null);
 
-        expect(exitSpy).not.toHaveBeenCalled();
+        expect(ctx.exitSpy).not.toHaveBeenCalled();
     });
 });

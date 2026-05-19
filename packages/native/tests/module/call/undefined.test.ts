@@ -13,7 +13,7 @@ import {
     VOID,
 } from "../utils.js";
 
-describe("call - undefined type", () => {
+describe("call - undefined type - basic void", () => {
     it("returns undefined for void functions", () => {
         const label = createLabel("Test");
 
@@ -54,7 +54,9 @@ describe("call - undefined type", () => {
 
         expect(result).toBeUndefined();
     });
+});
 
+describe("call - undefined type - widget operations", () => {
     it("handles gtk_widget_hide", () => {
         const button = createButton("Test");
 
@@ -78,7 +80,9 @@ describe("call - undefined type", () => {
 
         expect(result).toBeUndefined();
     });
+});
 
+describe("call - undefined type - box operations", () => {
     it("handles gtk_box_remove", () => {
         const box = createBox();
         const label = createLabel("Test");
@@ -121,77 +125,76 @@ describe("call - undefined type", () => {
 
         expect(result).toBeUndefined();
     });
+});
 
-    describe("edge cases", () => {
-        it("return value is exactly undefined, not null", () => {
-            const label = createLabel("Test");
+describe("call - undefined type - edge cases identity", () => {
+    it("return value is exactly undefined, not null", () => {
+        const label = createLabel("Test");
 
-            const result = call(
-                GTK_LIB,
-                "gtk_label_set_text",
-                [
-                    { type: GOBJECT_BORROWED, value: label },
-                    { type: STRING, value: "Test" },
-                ],
-                VOID,
-            );
+        const result = call(
+            GTK_LIB,
+            "gtk_label_set_text",
+            [
+                { type: GOBJECT_BORROWED, value: label },
+                { type: STRING, value: "Test" },
+            ],
+            VOID,
+        );
 
-            expect(result).toBeUndefined();
-            expect(result).not.toBeNull();
-            expect(result === undefined).toBe(true);
-            expect(result === null).toBe(false);
-        });
+        expect(result).toBeUndefined();
+        expect(result).not.toBeNull();
+        expect(result === undefined).toBe(true);
+        expect(result === null).toBe(false);
+    });
+});
 
-        it("consecutive void calls return undefined", () => {
-            const label = createLabel("Test");
+describe("call - undefined type - edge cases consecutive", () => {
+    it("consecutive void calls return undefined", () => {
+        const label = createLabel("Test");
 
-            const result1 = call(
-                GTK_LIB,
-                "gtk_label_set_text",
-                [
-                    { type: GOBJECT_BORROWED, value: label },
-                    { type: STRING, value: "First" },
-                ],
-                VOID,
-            );
+        const result1 = call(
+            GTK_LIB,
+            "gtk_label_set_text",
+            [
+                { type: GOBJECT_BORROWED, value: label },
+                { type: STRING, value: "First" },
+            ],
+            VOID,
+        );
 
-            const result2 = call(
-                GTK_LIB,
-                "gtk_label_set_text",
-                [
-                    { type: GOBJECT_BORROWED, value: label },
-                    { type: STRING, value: "Second" },
-                ],
-                VOID,
-            );
+        const result2 = call(
+            GTK_LIB,
+            "gtk_label_set_text",
+            [
+                { type: GOBJECT_BORROWED, value: label },
+                { type: STRING, value: "Second" },
+            ],
+            VOID,
+        );
 
-            expect(result1).toBeUndefined();
-            expect(result2).toBeUndefined();
-        });
+        expect(result1).toBeUndefined();
+        expect(result2).toBeUndefined();
+    });
+});
 
-        it("void return with state change still modifies state", () => {
-            const label = createLabel("Initial");
+describe("call - undefined type - edge cases state change", () => {
+    it("void return with state change still modifies state", () => {
+        const label = createLabel("Initial");
 
-            const result = call(
-                GTK_LIB,
-                "gtk_label_set_text",
-                [
-                    { type: GOBJECT_BORROWED, value: label },
-                    { type: STRING, value: "Modified" },
-                ],
-                VOID,
-            );
+        const result = call(
+            GTK_LIB,
+            "gtk_label_set_text",
+            [
+                { type: GOBJECT_BORROWED, value: label },
+                { type: STRING, value: "Modified" },
+            ],
+            VOID,
+        );
 
-            expect(result).toBeUndefined();
+        expect(result).toBeUndefined();
 
-            const text = call(
-                GTK_LIB,
-                "gtk_label_get_text",
-                [{ type: GOBJECT_BORROWED, value: label }],
-                STRING_BORROWED,
-            );
+        const text = call(GTK_LIB, "gtk_label_get_text", [{ type: GOBJECT_BORROWED, value: label }], STRING_BORROWED);
 
-            expect(text).toBe("Modified");
-        });
+        expect(text).toBe("Modified");
     });
 });

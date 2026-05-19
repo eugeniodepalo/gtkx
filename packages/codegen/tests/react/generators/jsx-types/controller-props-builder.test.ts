@@ -31,102 +31,100 @@ function declarationToString(
     return stringify(file);
 }
 
-describe("ControllerPropsBuilder", () => {
-    describe("buildBaseControllerPropsInterface", () => {
-        it("emits an EventControllerBaseProps interface with optional props, signals, and children", () => {
-            const builder = new ControllerPropsBuilder();
-            const meta = controllerMeta({
-                className: "EventController",
-                jsxName: "GtkEventController",
-                parentClassName: null,
-                parentNamespace: null,
-            });
-
-            const decl = builder.buildBaseControllerPropsInterface(meta);
-            const file = fileBuilder();
-            file.add(decl);
-            const code = stringify(file);
-
-            expect(code).toContain("interface EventControllerBaseProps");
-            expect(code).toContain("exclusive?:");
-            expect(code).toContain("onPressed?:");
-            expect(code).toContain("children?: ReactNode");
+describe("ControllerPropsBuilder / buildBaseControllerPropsInterface", () => {
+    it("emits an EventControllerBaseProps interface with optional props, signals, and children", () => {
+        const builder = new ControllerPropsBuilder();
+        const meta = controllerMeta({
+            className: "EventController",
+            jsxName: "GtkEventController",
+            parentClassName: null,
+            parentNamespace: null,
         });
 
-        it("uses the controller doc when one is provided", () => {
-            const builder = new ControllerPropsBuilder();
-            const meta = controllerMeta({
-                className: "EventController",
-                doc: "Top-level controller for input events.",
-            });
+        const decl = builder.buildBaseControllerPropsInterface(meta);
+        const file = fileBuilder();
+        file.add(decl);
+        const code = stringify(file);
 
-            const decl = builder.buildBaseControllerPropsInterface(meta);
-            const file = fileBuilder();
-            file.add(decl);
-            const code = stringify(file);
-
-            expect(code).toContain("Top-level controller for input events");
-        });
-
-        it("falls back to a generic doc when no controller doc is provided", () => {
-            const builder = new ControllerPropsBuilder();
-            const meta = controllerMeta({ className: "EventController", doc: undefined });
-
-            const decl = builder.buildBaseControllerPropsInterface(meta);
-            const file = fileBuilder();
-            file.add(decl);
-            const code = stringify(file);
-
-            expect(code).toContain("Base props for all event controller elements");
-        });
+        expect(code).toContain("interface EventControllerBaseProps");
+        expect(code).toContain("exclusive?:");
+        expect(code).toContain("onPressed?:");
+        expect(code).toContain("children?: ReactNode");
     });
 
-    describe("buildControllerPropsInterface", () => {
-        it("returns null for the base EventController class", () => {
-            const builder = new ControllerPropsBuilder();
-            const result = builder.buildControllerPropsInterface(controllerMeta({ className: "EventController" }));
-            expect(result).toBeNull();
+    it("uses the controller doc when one is provided", () => {
+        const builder = new ControllerPropsBuilder();
+        const meta = controllerMeta({
+            className: "EventController",
+            doc: "Top-level controller for input events.",
         });
 
-        it("emits a Props interface with optional props, signals, and a ref", () => {
-            const builder = new ControllerPropsBuilder();
-            const decl = builder.buildControllerPropsInterface(controllerMeta());
-            expect(decl).not.toBeNull();
-            const code = declarationToString(builder, decl as NonNullable<typeof decl>);
+        const decl = builder.buildBaseControllerPropsInterface(meta);
+        const file = fileBuilder();
+        file.add(decl);
+        const code = stringify(file);
 
-            expect(code).toContain("interface GtkGestureClickProps");
-            expect(code).toContain("exclusive?:");
-            expect(code).toContain("onPressed?:");
-            expect(code).toContain("ref?: Ref<Gtk.GestureClick>");
-        });
+        expect(code).toContain("Top-level controller for input events");
+    });
 
-        it("extends EventControllerBaseProps when the controller's parent is the base EventController", () => {
-            const builder = new ControllerPropsBuilder();
-            const decl = builder.buildControllerPropsInterface(
-                controllerMeta({
-                    className: "GestureSingle",
-                    jsxName: "GtkGestureSingle",
-                    parentClassName: "EventController",
-                }),
-            );
+    it("falls back to a generic doc when no controller doc is provided", () => {
+        const builder = new ControllerPropsBuilder();
+        const meta = controllerMeta({ className: "EventController", doc: undefined });
 
-            const code = declarationToString(builder, decl as NonNullable<typeof decl>);
-            expect(code).toContain("extends EventControllerBaseProps");
-        });
+        const decl = builder.buildBaseControllerPropsInterface(meta);
+        const file = fileBuilder();
+        file.add(decl);
+        const code = stringify(file);
 
-        it("extends the parent controller props for a deeper class hierarchy", () => {
-            const builder = new ControllerPropsBuilder();
-            const decl = builder.buildControllerPropsInterface(
-                controllerMeta({
-                    className: "GestureClick",
-                    jsxName: "GtkGestureClick",
-                    parentClassName: "GestureSingle",
-                    parentNamespace: "Gtk",
-                }),
-            );
+        expect(code).toContain("Base props for all event controller elements");
+    });
+});
 
-            const code = declarationToString(builder, decl as NonNullable<typeof decl>);
-            expect(code).toContain("extends GtkGestureSingleProps");
-        });
+describe("ControllerPropsBuilder / buildControllerPropsInterface", () => {
+    it("returns null for the base EventController class", () => {
+        const builder = new ControllerPropsBuilder();
+        const result = builder.buildControllerPropsInterface(controllerMeta({ className: "EventController" }));
+        expect(result).toBeNull();
+    });
+
+    it("emits a Props interface with optional props, signals, and a ref", () => {
+        const builder = new ControllerPropsBuilder();
+        const decl = builder.buildControllerPropsInterface(controllerMeta());
+        expect(decl).not.toBeNull();
+        const code = declarationToString(builder, decl as NonNullable<typeof decl>);
+
+        expect(code).toContain("interface GtkGestureClickProps");
+        expect(code).toContain("exclusive?:");
+        expect(code).toContain("onPressed?:");
+        expect(code).toContain("ref?: Ref<Gtk.GestureClick>");
+    });
+
+    it("extends EventControllerBaseProps when the controller's parent is the base EventController", () => {
+        const builder = new ControllerPropsBuilder();
+        const decl = builder.buildControllerPropsInterface(
+            controllerMeta({
+                className: "GestureSingle",
+                jsxName: "GtkGestureSingle",
+                parentClassName: "EventController",
+            }),
+        );
+
+        const code = declarationToString(builder, decl as NonNullable<typeof decl>);
+        expect(code).toContain("extends EventControllerBaseProps");
+    });
+
+    it("extends the parent controller props for a deeper class hierarchy", () => {
+        const builder = new ControllerPropsBuilder();
+        const decl = builder.buildControllerPropsInterface(
+            controllerMeta({
+                className: "GestureClick",
+                jsxName: "GtkGestureClick",
+                parentClassName: "GestureSingle",
+                parentNamespace: "Gtk",
+            }),
+        );
+
+        const code = declarationToString(builder, decl as NonNullable<typeof decl>);
+        expect(code).toContain("extends GtkGestureSingleProps");
     });
 });

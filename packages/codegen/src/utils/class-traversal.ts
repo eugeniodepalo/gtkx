@@ -34,13 +34,14 @@ function collectParentInterfaces(cls: GirClass): Set<string> {
  * @param getInterfaceMembers - Function to extract members from an interface
  * @param transformName - Optional function to transform member names (e.g., toCamelCase)
  */
-function collectParentMemberNames<T extends { name: string }>(
-    cls: GirClass,
-    repo: GirRepository,
-    getClassMembers: (c: GirClass) => readonly T[],
-    getInterfaceMembers: (i: GirInterface) => readonly T[],
-    transformName: (name: string) => string = (n) => n,
-): Set<string> {
+function collectParentMemberNames<T extends { name: string }>(opts: {
+    cls: GirClass;
+    repo: GirRepository;
+    getClassMembers: (c: GirClass) => readonly T[];
+    getInterfaceMembers: (i: GirInterface) => readonly T[];
+    transformName?: (name: string) => string;
+}): Set<string> {
+    const { cls, repo, getClassMembers, getInterfaceMembers, transformName = (n) => n } = opts;
     const names = new Set<string>();
 
     let current = cls.getParent();
@@ -68,26 +69,26 @@ function collectParentMemberNames<T extends { name: string }>(
  * Collects property names from all parent classes and their interfaces.
  */
 export function collectParentPropertyNames(cls: GirClass, repo: GirRepository): Set<string> {
-    return collectParentMemberNames(
+    return collectParentMemberNames({
         cls,
         repo,
-        (c) => c.properties,
-        (i) => i.properties,
-        toCamelCase,
-    );
+        getClassMembers: (c) => c.properties,
+        getInterfaceMembers: (i) => i.properties,
+        transformName: toCamelCase,
+    });
 }
 
 /**
  * Collects signal names from all parent classes and their interfaces.
  */
 export function collectParentSignalNames(cls: GirClass, repo: GirRepository): Set<string> {
-    return collectParentMemberNames(
+    return collectParentMemberNames({
         cls,
         repo,
-        (c) => c.signals,
-        (i) => i.signals,
-        toCamelCase,
-    );
+        getClassMembers: (c) => c.signals,
+        getInterfaceMembers: (i) => i.signals,
+        transformName: toCamelCase,
+    });
 }
 
 /**
@@ -235,12 +236,12 @@ export function collectInterfaceReachableVirtualMethodNames(iface: GirInterface,
  * Collects method names from all parent classes and their interfaces.
  */
 export function collectParentMethodNames(cls: GirClass, repo: GirRepository): Set<string> {
-    return collectParentMemberNames(
+    return collectParentMemberNames({
         cls,
         repo,
-        (c) => c.methods,
-        (i) => i.methods,
-    );
+        getClassMembers: (c) => c.methods,
+        getInterfaceMembers: (i) => i.methods,
+    });
 }
 
 /**

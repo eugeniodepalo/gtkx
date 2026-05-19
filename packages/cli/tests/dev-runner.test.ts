@@ -75,10 +75,14 @@ describe("log", () => {
     });
 });
 
-describe("createViteDevServer", () => {
+const setupCreateServer = (): void => {
     beforeEach(() => {
         createServerMock.mockReset();
     });
+};
+
+describe("createViteDevServer (base config)", () => {
+    setupCreateServer();
 
     it("forwards root and required custom options to vite.createServer", async () => {
         const fakeServer = {} as ViteDevServer;
@@ -108,6 +112,10 @@ describe("createViteDevServer", () => {
         expect(names).toContain("gtkx:refresh");
         expect(names).toContain("gtkx:remove-react-dom-optimized");
     });
+});
+
+describe("createViteDevServer (react-dom stripping)", () => {
+    setupCreateServer();
 
     it("filters react-dom entries out of optimizeDeps.include via the post plugin's config hook", async () => {
         createServerMock.mockResolvedValueOnce({} as ViteDevServer);
@@ -214,39 +222,50 @@ describe("handleFileChange", () => {
     });
 });
 
-describe("main", () => {
-    let exitSpy: ReturnType<typeof vi.spyOn>;
-    let errorSpy: ReturnType<typeof vi.spyOn>;
-    let logSpy: ReturnType<typeof vi.spyOn>;
-    let originalArgv: string[];
+type MainCtx = {
+    exitSpy: ReturnType<typeof vi.spyOn>;
+    errorSpy: ReturnType<typeof vi.spyOn>;
+    logSpy: ReturnType<typeof vi.spyOn>;
+    originalArgv: string[];
+};
 
+const setupMainCtx = (): MainCtx => {
+    const ctx = {} as MainCtx;
     beforeEach(() => {
         vi.clearAllMocks();
         whenStoppedMock.mockReturnValue(new Promise<void>(() => {}));
-        exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
-        errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
-        logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
-        originalArgv = process.argv;
+        ctx.exitSpy = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+        ctx.errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+        ctx.logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+        ctx.originalArgv = process.argv;
     });
-
     afterEach(() => {
-        exitSpy.mockRestore();
-        errorSpy.mockRestore();
-        logSpy.mockRestore();
-        process.argv = originalArgv;
+        ctx.exitSpy.mockRestore();
+        ctx.errorSpy.mockRestore();
+        ctx.logSpy.mockRestore();
+        process.argv = ctx.originalArgv;
     });
+    return ctx;
+};
+
+describe("main (entry validation)", () => {
+    const ctx = setupMainCtx();
 
     it("prints an error and exits 1 when no entry is provided", async () => {
         process.argv = ["node", "runner"];
-        exitSpy.mockImplementationOnce((() => {
+        ctx.exitSpy.mockImplementationOnce((() => {
             throw new Error("__exit__");
         }) as never);
 
         await expect(main()).rejects.toThrow("__exit__");
 
-        expect(errorSpy).toHaveBeenCalledWith("[gtkx-dev-runner] Missing entry argument");
-        expect(exitSpy).toHaveBeenCalledWith(1);
+        expect(ctx.errorSpy).toHaveBeenCalledWith("[gtkx-dev-runner] Missing entry argument");
+        expect(ctx.exitSpy).toHaveBeenCalledWith(1);
     });
+});
+
+describe("main (MCP lifecycle)", () => {
+    const ctx = setupMainCtx();
 
     it("starts an MCP client when the loaded entry registers a default GApplication", async () => {
         process.argv = ["node", "runner", "src/index.tsx"];
@@ -258,7 +277,7 @@ describe("main", () => {
 
         expect(server.ssrLoadModule).toHaveBeenCalled();
         expect(startMcpClientMock).toHaveBeenCalledWith("com.example.app");
-        const messages = logSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+        const messages = ctx.logSpy.mock.calls.map((c: unknown[]) => String(c[0]));
         expect(messages.some((m: string) => m.includes("Connected app id: com.example.app"))).toBe(true);
         expect(messages.some((m: string) => m.includes("HMR enabled"))).toBe(true);
     });
@@ -272,7 +291,7 @@ describe("main", () => {
         await main();
 
         expect(startMcpClientMock).not.toHaveBeenCalled();
-        const messages = logSpy.mock.calls.map((c: unknown[]) => String(c[0]));
+        const messages = ctx.logSpy.mock.calls.map((c: unknown[]) => String(c[0]));
         expect(messages.some((m: string) => m.includes("MCP client not started"))).toBe(true);
     });
 
@@ -296,6 +315,10 @@ describe("main", () => {
         expect(stopMcpClientMock).toHaveBeenCalled();
         expect(server.close).toHaveBeenCalled();
     });
+});
+
+describe("main (file watcher)", () => {
+    setupMainCtx();
 
     it("forwards watcher 'change' events into handleFileChange", async () => {
         process.argv = ["node", "runner", "src/index.tsx"];

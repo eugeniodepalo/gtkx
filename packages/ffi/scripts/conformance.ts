@@ -473,40 +473,39 @@ const checkSource = (namespace: string, sharedClasses: readonly string[]): strin
  * result, so the check verifies declared API existence and enum values
  * rather than unknowable FFI-result types.
  *
- * @param specifier - The module specifier text.
- * @param containingFile - Absolute path of the importing file.
- * @param options - Active compiler options.
- * @param containingSourceFile - Importing source file.
- * @param host - Resolution host.
- * @param namespaces - Known namespace identifiers.
+ * @param request - Specifier, containing file/source, compiler options, host, and known namespaces.
  * @returns The resolution result.
  */
-const resolveSpecifier = (
-    specifier: string,
-    containingFile: string,
-    options: ts.CompilerOptions,
-    containingSourceFile: ts.SourceFile | undefined,
-    host: ts.ModuleResolutionHost,
-    namespaces: Set<string>,
-): ts.ResolvedModuleWithFailedLookupLocations => {
-    if (specifier.startsWith(IMPL_PREFIX)) {
-        const resolvedFileName = implEntryPath(specifier.slice(IMPL_PREFIX.length));
-        return {
-            resolvedModule: {
-                resolvedFileName,
-                extension: resolvedFileName.endsWith(".ts") ? ts.Extension.Ts : ts.Extension.Js,
-                isExternalLibraryImport: false,
-            },
-        };
-    }
+type ResolveSpecifierRequest = {
+    readonly specifier: string;
+    readonly containingFile: string;
+    readonly options: ts.CompilerOptions;
+    readonly containingSourceFile: ts.SourceFile | undefined;
+    readonly host: ts.ModuleResolutionHost;
+    readonly namespaces: Set<string>;
+};
 
+const resolveImplSpecifier = (specifier: string): ts.ResolvedModuleWithFailedLookupLocations => {
+    const resolvedFileName = implEntryPath(specifier.slice(IMPL_PREFIX.length));
+    return {
+        resolvedModule: {
+            resolvedFileName,
+            extension: resolvedFileName.endsWith(".ts") ? ts.Extension.Ts : ts.Extension.Js,
+            isExternalLibraryImport: false,
+        },
+    };
+};
+
+const resolveContractSpecifier = (
+    specifier: string,
+    namespaces: Set<string>,
+): ts.ResolvedModuleWithFailedLookupLocations | undefined => {
     let contractNamespace: string | undefined;
     if (specifier.startsWith(CONTRACT_PREFIX)) {
         contractNamespace = specifier.slice(CONTRACT_PREFIX.length);
     } else if (specifier.startsWith(FFI_PACKAGE_PREFIX)) {
         contractNamespace = specifier.slice(FFI_PACKAGE_PREFIX.length);
     }
-
     if (contractNamespace !== undefined && namespaces.has(contractNamespace)) {
         return {
             resolvedModule: {
@@ -515,6 +514,19 @@ const resolveSpecifier = (
                 isExternalLibraryImport: false,
             },
         };
+    }
+    return undefined;
+};
+
+const resolveSpecifier = (request: ResolveSpecifierRequest): ts.ResolvedModuleWithFailedLookupLocations => {
+    const { specifier, containingFile, options, containingSourceFile, host, namespaces } = request;
+    if (specifier.startsWith(IMPL_PREFIX)) {
+        return resolveImplSpecifier(specifier);
+    }
+
+    const contractResolution = resolveContractSpecifier(specifier, namespaces);
+    if (contractResolution !== undefined) {
+        return contractResolution;
     }
 
     if (containingFile.startsWith(`${GENERATED_DIR}/`)) {
@@ -545,18 +557,13 @@ const resolveSpecifier = (
  * @param namespaces - Known namespace identifiers.
  * @returns The configured host.
  */
-const createConformanceHost = (virtualFiles: Map<string, string>, namespaces: Set<string>): ts.CompilerHost => {
-    const host = ts.createCompilerHost(TARGET_OPTIONS, true);
-    const isHiddenDeclaration = (fileName: string): boolean =>
-        fileName.endsWith(".d.ts") && fileName.startsWith(`${GENERATED_DIR}/`);
+const isHiddenDeclaration = (fileName: string): boolean =>
+    fileName.endsWith(".d.ts") && fileName.startsWith(`${GENERATED_DIR}/`);
 
+const overrideReadHooks = (host: ts.CompilerHost, virtualFiles: Map<string, string>): void => {
     const baseGetSourceFile = host.getSourceFile.bind(host);
     const baseFileExists = host.fileExists.bind(host);
     const baseReadFile = host.readFile.bind(host);
-    const baseDirectoryExists = host.directoryExists?.bind(host);
-    const baseRealpath = host.realpath?.bind(host);
-
-    host.getCurrentDirectory = () => FFI_ROOT;
 
     host.getSourceFile = (fileName, languageVersionOrOptions, onError, shouldCreate) => {
         const virtual = virtualFiles.get(fileName);
@@ -589,6 +596,11 @@ const createConformanceHost = (virtualFiles: Map<string, string>, namespaces: Se
         }
         return baseReadFile(fileName);
     };
+};
+
+const overrideDirectoryHooks = (host: ts.CompilerHost, virtualFiles: Map<string, string>): void => {
+    const baseDirectoryExists = host.directoryExists?.bind(host);
+    const baseRealpath = host.realpath?.bind(host);
 
     if (baseDirectoryExists) {
         host.directoryExists = (directory) => {
@@ -604,29 +616,34 @@ const createConformanceHost = (virtualFiles: Map<string, string>, namespaces: Se
     if (baseRealpath) {
         host.realpath = (path) => (virtualFiles.has(path) ? path : baseRealpath(path));
     }
+};
 
-    host.resolveModuleNameLiterals = (moduleLiterals, containingFile, _redirected, options, containingSourceFile) =>
-        moduleLiterals.map((literal) =>
-            resolveSpecifier(literal.text, containingFile, options, containingSourceFile, host, namespaces),
+const installResolveModuleNameLiterals = (host: ts.CompilerHost, namespaces: Set<string>): void => {
+    host.resolveModuleNameLiterals = (...resolveArgs) => {
+        const [moduleLiterals, containingFile, , options, containingSourceFile] = resolveArgs;
+        return moduleLiterals.map((literal) =>
+            resolveSpecifier({
+                specifier: literal.text,
+                containingFile,
+                options,
+                containingSourceFile,
+                host,
+                namespaces,
+            }),
         );
+    };
+};
 
+const createConformanceHost = (virtualFiles: Map<string, string>, namespaces: Set<string>): ts.CompilerHost => {
+    const host = ts.createCompilerHost(TARGET_OPTIONS, true);
+    host.getCurrentDirectory = () => FFI_ROOT;
+    overrideReadHooks(host, virtualFiles);
+    overrideDirectoryHooks(host, virtualFiles);
+    installResolveModuleNameLiterals(host, namespaces);
     return host;
 };
 
-const main = (): void => {
-    if (!existsSync(GENERATED_DIR)) {
-        console.error(`conformance: ${GENERATED_DIR} not found — run codegen first.`);
-        process.exit(1);
-    }
-
-    const namespaces = collectNamespaces().filter((namespace) => !UNCONTRACTED_NAMESPACES.has(namespace));
-    if (namespaces.length === 0) {
-        console.error("conformance: no generated namespaces found under src/generated.");
-        process.exit(1);
-    }
-
-    const virtualFiles = new Map<string, string>();
-    const rootNames: string[] = [];
+const populateVirtualFiles = (namespaces: string[], virtualFiles: Map<string, string>, rootNames: string[]): void => {
     for (const namespace of namespaces) {
         const declarationPath = join(GENERATED_DIR, namespace, `${namespace}.d.ts`);
         const declaration = readFileSync(declarationPath, "utf8");
@@ -651,6 +668,36 @@ const main = (): void => {
         virtualFiles.set(checkPath, checkSource(namespace, sharedClasses));
         rootNames.push(checkPath);
     }
+};
+
+const collectViolations = (program: ts.Program, namespaces: string[]): ts.Diagnostic[] => {
+    const violations: ts.Diagnostic[] = [];
+    for (const namespace of namespaces) {
+        const checkFile = program.getSourceFile(checkTsPath(namespace));
+        if (checkFile === undefined) {
+            console.error(`conformance: internal error — check module for '${namespace}' was not created.`);
+            process.exit(1);
+        }
+        violations.push(...program.getSyntacticDiagnostics(checkFile), ...program.getSemanticDiagnostics(checkFile));
+    }
+    return violations;
+};
+
+const main = (): void => {
+    if (!existsSync(GENERATED_DIR)) {
+        console.error(`conformance: ${GENERATED_DIR} not found — run codegen first.`);
+        process.exit(1);
+    }
+
+    const namespaces = collectNamespaces().filter((namespace) => !UNCONTRACTED_NAMESPACES.has(namespace));
+    if (namespaces.length === 0) {
+        console.error("conformance: no generated namespaces found under src/generated.");
+        process.exit(1);
+    }
+
+    const virtualFiles = new Map<string, string>();
+    const rootNames: string[] = [];
+    populateVirtualFiles(namespaces, virtualFiles, rootNames);
 
     const host = createConformanceHost(virtualFiles, new Set(namespaces));
     const program = ts.createProgram({ rootNames, options: TARGET_OPTIONS, host });
@@ -662,15 +709,7 @@ const main = (): void => {
         process.exit(1);
     }
 
-    const violations: ts.Diagnostic[] = [];
-    for (const namespace of namespaces) {
-        const checkFile = program.getSourceFile(checkTsPath(namespace));
-        if (checkFile === undefined) {
-            console.error(`conformance: internal error — check module for '${namespace}' was not created.`);
-            process.exit(1);
-        }
-        violations.push(...program.getSyntacticDiagnostics(checkFile), ...program.getSemanticDiagnostics(checkFile));
-    }
+    const violations = collectViolations(program, namespaces);
 
     if (violations.length > 0) {
         console.error(ts.formatDiagnosticsWithColorAndContext(violations, FORMAT_HOST));

@@ -38,55 +38,66 @@ const waitForEvent = <T>(server: SocketServer, event: Parameters<SocketServer["o
         }) as never);
     });
 
-describe("SocketServer", () => {
-    let tmpDir: string;
-    let socketPath: string;
-    let server: SocketServer;
+interface SocketServerCtx {
+    tmpDir: string;
+    socketPath: string;
+    server: SocketServer;
+}
 
+const socketCtx = {} as SocketServerCtx;
+
+function setupSocketServer(): void {
     beforeEach(() => {
-        tmpDir = mkdtempSync(join(tmpdir(), "gtkx-socket-server-"));
-        socketPath = join(tmpDir, "ipc.sock");
-        server = new SocketServer(socketPath);
+        socketCtx.tmpDir = mkdtempSync(join(tmpdir(), "gtkx-socket-server-"));
+        socketCtx.socketPath = join(socketCtx.tmpDir, "ipc.sock");
+        socketCtx.server = new SocketServer(socketCtx.socketPath);
     });
 
     afterEach(async () => {
-        await server.stop();
-        rmSync(tmpDir, { recursive: true, force: true });
+        await socketCtx.server.stop();
+        rmSync(socketCtx.tmpDir, { recursive: true, force: true });
     });
+}
 
+describe("SocketServer lifecycle", () => {
+    setupSocketServer();
     it("exposes the configured socket path", () => {
-        expect(server.path).toBe(socketPath);
+        expect(socketCtx.server.path).toBe(socketCtx.socketPath);
     });
 
     it("reports not listening before start", () => {
-        expect(server.isListening).toBe(false);
+        expect(socketCtx.server.isListening).toBe(false);
     });
 
     it("listens after start and stops cleanly", async () => {
-        await server.start();
-        expect(server.isListening).toBe(true);
+        await socketCtx.server.start();
+        expect(socketCtx.server.isListening).toBe(true);
 
-        await server.stop();
-        expect(server.isListening).toBe(false);
+        await socketCtx.server.stop();
+        expect(socketCtx.server.isListening).toBe(false);
     });
 
     it("is idempotent when start is called twice", async () => {
-        await server.start();
-        await server.start();
-        expect(server.isListening).toBe(true);
+        await socketCtx.server.start();
+        await socketCtx.server.start();
+        expect(socketCtx.server.isListening).toBe(true);
     });
 
     it("is idempotent when stop is called without a prior start", async () => {
-        await expect(server.stop()).resolves.toBeUndefined();
+        await expect(socketCtx.server.stop()).resolves.toBeUndefined();
     });
 
     it("removes a stale socket file on start", async () => {
-        writeFileSync(socketPath, "");
-        await server.start();
-        expect(server.isListening).toBe(true);
+        writeFileSync(socketCtx.socketPath, "");
+        await socketCtx.server.start();
+        expect(socketCtx.server.isListening).toBe(true);
     });
+});
 
+describe("SocketServer connections", () => {
+    setupSocketServer();
     it("emits connection and disconnection events", async () => {
+        const { server, socketPath } = socketCtx;
         await server.start();
 
         const connectionPromise = waitForEvent(server, "connection");
@@ -103,13 +114,16 @@ describe("SocketServer", () => {
     });
 
     it("getConnection returns undefined for an unknown id", async () => {
-        await server.start();
-        expect(server.getConnection("nope")).toBeUndefined();
+        await socketCtx.server.start();
+        expect(socketCtx.server.getConnection("nope")).toBeUndefined();
     });
+});
 
+describe("SocketServer framing — request/response events", () => {
+    setupSocketServer();
     it("emits a request event for valid request frames", async () => {
+        const { server, socketPath } = socketCtx;
         await server.start();
-
         const client = await connectClient(socketPath);
 
         const received = new Promise<IpcRequest>((resolve) => {
@@ -127,6 +141,7 @@ describe("SocketServer", () => {
     });
 
     it("emits a response event for valid response frames (no method field)", async () => {
+        const { server, socketPath } = socketCtx;
         await server.start();
         const client = await connectClient(socketPath);
 
@@ -142,8 +157,54 @@ describe("SocketServer", () => {
 
         client.destroy();
     });
+});
 
+describe("SocketServer framing — chunking & blanks", () => {
+    setupSocketServer();
+    it("ignores blank lines between frames", async () => {
+        const { server, socketPath } = socketCtx;
+        await server.start();
+        const client = await connectClient(socketPath);
+
+        const received = new Promise<IpcRequest>((resolve) => {
+            server.once("request", (_conn, req) => resolve(req));
+        });
+
+        client.write("\n\n");
+        client.write(`${JSON.stringify({ id: "r-3", method: "ping" })}\n`);
+
+        const got = await received;
+        expect(got.id).toBe("r-3");
+
+        client.destroy();
+    });
+
+    it("frames messages spanning multiple TCP chunks", async () => {
+        const { server, socketPath } = socketCtx;
+        await server.start();
+        const client = await connectClient(socketPath);
+
+        const received = new Promise<IpcRequest>((resolve) => {
+            server.once("request", (_conn, req) => resolve(req));
+        });
+
+        const message = JSON.stringify({ id: "r-split", method: "ping" });
+        const half = Math.floor(message.length / 2);
+        client.write(message.slice(0, half));
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        client.write(`${message.slice(half)}\n`);
+
+        const got = await received;
+        expect(got.id).toBe("r-split");
+
+        client.destroy();
+    });
+});
+
+describe("SocketServer framing — error responses", () => {
+    setupSocketServer();
     it("returns an Invalid JSON error response for malformed lines", async () => {
+        const { server, socketPath } = socketCtx;
         await server.start();
         const client = await connectClient(socketPath);
         const collector = collectLines(client);
@@ -161,6 +222,7 @@ describe("SocketServer", () => {
     });
 
     it("returns an Invalid message format error for unknown shapes", async () => {
+        const { server, socketPath } = socketCtx;
         await server.start();
         const client = await connectClient(socketPath);
         const collector = collectLines(client);
@@ -178,6 +240,7 @@ describe("SocketServer", () => {
     });
 
     it("returns an Invalid message format error when a request payload fails schema validation", async () => {
+        const { server, socketPath } = socketCtx;
         await server.start();
         const client = await connectClient(socketPath);
         const collector = collectLines(client);
@@ -192,31 +255,18 @@ describe("SocketServer", () => {
         const parsed = JSON.parse(collector.lines[0] as string) as IpcResponse & { id: unknown };
         expect(parsed.error?.message).toContain("Invalid message format");
     });
+});
 
-    it("ignores blank lines between frames", async () => {
-        await server.start();
-        const client = await connectClient(socketPath);
-
-        const received = new Promise<IpcRequest>((resolve) => {
-            server.once("request", (_conn, req) => resolve(req));
-        });
-
-        client.write("\n\n");
-        client.write(`${JSON.stringify({ id: "r-3", method: "ping" })}\n`);
-
-        const got = await received;
-        expect(got.id).toBe("r-3");
-
-        client.destroy();
-    });
-
+describe("SocketServer send", () => {
+    setupSocketServer();
     it("send returns false for an unknown connection id", async () => {
-        await server.start();
-        const ok = server.send("missing", { id: "x", method: "noop" } as IpcMessage);
+        await socketCtx.server.start();
+        const ok = socketCtx.server.send("missing", { id: "x", method: "noop" } as IpcMessage);
         expect(ok).toBe(false);
     });
 
     it("send delivers a message to the connected client", async () => {
+        const { server, socketPath } = socketCtx;
         await server.start();
 
         const connectionPromise = waitForEvent(server, "connection");
@@ -237,8 +287,12 @@ describe("SocketServer", () => {
         const parsed = JSON.parse(collector.lines[0] as string) as IpcMessage;
         expect((parsed as { id: string }).id).toBe("out-1");
     });
+});
 
+describe("SocketServer errors", () => {
+    setupSocketServer();
     it("emits an error event when a connected socket errors", async () => {
+        const { server, socketPath } = socketCtx;
         await server.start();
 
         const connectionPromise = waitForEvent(server, "connection");
@@ -259,7 +313,7 @@ describe("SocketServer", () => {
     });
 
     it("rejects start and emits error when binding to an unreachable path", async () => {
-        const bad = new SocketServer(join(tmpDir, "no-such-dir", "ipc.sock"));
+        const bad = new SocketServer(join(socketCtx.tmpDir, "no-such-dir", "ipc.sock"));
         const errorReceived = new Promise<Error>((resolve) => {
             bad.once("error", (err) => resolve(err));
         });
@@ -269,25 +323,5 @@ describe("SocketServer", () => {
         expect(got).toBeInstanceOf(Error);
 
         await bad.stop();
-    });
-
-    it("frames messages spanning multiple TCP chunks", async () => {
-        await server.start();
-        const client = await connectClient(socketPath);
-
-        const received = new Promise<IpcRequest>((resolve) => {
-            server.once("request", (_conn, req) => resolve(req));
-        });
-
-        const message = JSON.stringify({ id: "r-split", method: "ping" });
-        const half = Math.floor(message.length / 2);
-        client.write(message.slice(0, half));
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        client.write(`${message.slice(half)}\n`);
-
-        const got = await received;
-        expect(got.id).toBe("r-split");
-
-        client.destroy();
     });
 });

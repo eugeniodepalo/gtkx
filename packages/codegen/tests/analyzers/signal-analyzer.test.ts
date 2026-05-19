@@ -19,356 +19,371 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
     return { repo, mapper, analyzer };
 }
 
-describe("SignalAnalyzer", () => {
-    describe("analyzeWidgetSignals", () => {
-        it("returns empty array for class with no signals", () => {
-            const cls = createNormalizedClass({ signals: [] });
-            const ns = createNormalizedNamespace({
-                name: "Gtk",
-                classes: new Map([["Button", cls]]),
-            });
-            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
-
-            const result = analyzer.analyzeWidgetSignals(cls);
-
-            expect(result).toHaveLength(0);
+describe("SignalAnalyzer / analyzeWidgetSignals (1)", () => {
+    it("returns empty array for class with no signals", () => {
+        const cls = createNormalizedClass({ signals: [] });
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            classes: new Map([["Button", cls]]),
         });
+        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
 
-        it("analyzes signal with no parameters", () => {
-            const cls = createNormalizedClass({
-                name: "Button",
-                parent: null,
-                signals: [createNormalizedSignal({ name: "clicked" })],
-            });
-            const ns = createNormalizedNamespace({
-                name: "Gtk",
-                classes: new Map([["Button", cls]]),
-            });
-            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const result = analyzer.analyzeWidgetSignals(cls);
 
-            const result = analyzer.analyzeWidgetSignals(cls);
+        expect(result).toHaveLength(0);
+    });
 
-            expect(result).toHaveLength(1);
-            expect(result[0]).toMatchObject({
-                name: "clicked",
-                camelName: "clicked",
-                handlerName: "onClicked",
-                parameters: [],
-                returnType: "void",
-            });
+    it("analyzes signal with no parameters", () => {
+        const cls = createNormalizedClass({
+            name: "Button",
+            parent: null,
+            signals: [createNormalizedSignal({ name: "clicked" })],
         });
-
-        it("generates correct handler name for hyphenated signal", () => {
-            const cls = createNormalizedClass({
-                name: "Window",
-                parent: null,
-                signals: [createNormalizedSignal({ name: "close-request" })],
-            });
-            const ns = createNormalizedNamespace({
-                name: "Gtk",
-                classes: new Map([["Window", cls]]),
-            });
-            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
-
-            const result = analyzer.analyzeWidgetSignals(cls);
-
-            expect(result[0]?.camelName).toBe("closeRequest");
-            expect(result[0]?.handlerName).toBe("onCloseRequest");
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            classes: new Map([["Button", cls]]),
         });
+        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
 
-        it("analyzes signal parameters", () => {
-            const cls = createNormalizedClass({
-                name: "Scale",
-                parent: null,
-                signals: [
-                    createNormalizedSignal({
-                        name: "change-value",
-                        parameters: [
-                            createNormalizedParameter({
-                                name: "scroll",
-                                type: createNormalizedType({ name: "gint" }),
-                            }),
-                            createNormalizedParameter({
-                                name: "value",
-                                type: createNormalizedType({ name: "gdouble" }),
-                            }),
-                        ],
-                    }),
-                ],
-            });
-            const ns = createNormalizedNamespace({
-                name: "Gtk",
-                classes: new Map([["Scale", cls]]),
-            });
-            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const result = analyzer.analyzeWidgetSignals(cls);
 
-            const result = analyzer.analyzeWidgetSignals(cls);
-
-            expect(result[0]?.parameters).toHaveLength(2);
-            expect(result[0]?.parameters[0]).toMatchObject({
-                name: "scroll",
-                type: "number",
-            });
-            expect(result[0]?.parameters[1]).toMatchObject({
-                name: "value",
-                type: "number",
-            });
+        expect(result).toHaveLength(1);
+        expect(result[0]).toMatchObject({
+            name: "clicked",
+            camelName: "clicked",
+            handlerName: "onClicked",
+            parameters: [],
+            returnType: "void",
         });
+    });
+});
 
-        it("converts parameter names to camelCase", () => {
-            const cls = createNormalizedClass({
-                name: "Widget",
-                parent: null,
-                signals: [
-                    createNormalizedSignal({
-                        name: "query-tooltip",
-                        parameters: [
-                            createNormalizedParameter({
-                                name: "keyboard_tooltip",
-                                type: createNormalizedType({ name: "gboolean" }),
-                            }),
-                        ],
-                    }),
-                ],
-            });
-            const ns = createNormalizedNamespace({
-                name: "Gtk",
-                classes: new Map([["Widget", cls]]),
-            });
-            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
-
-            const result = analyzer.analyzeWidgetSignals(cls);
-
-            expect(result[0]?.parameters[0]?.name).toBe("keyboardTooltip");
+describe("SignalAnalyzer / analyzeWidgetSignals (2)", () => {
+    it("generates correct handler name for hyphenated signal", () => {
+        const cls = createNormalizedClass({
+            name: "Window",
+            parent: null,
+            signals: [createNormalizedSignal({ name: "close-request" })],
         });
-
-        it("analyzes signal with return type", () => {
-            const cls = createNormalizedClass({
-                name: "Window",
-                parent: null,
-                signals: [
-                    createNormalizedSignal({
-                        name: "close-request",
-                        returnType: createNormalizedType({ name: "gboolean" }),
-                    }),
-                ],
-            });
-            const ns = createNormalizedNamespace({
-                name: "Gtk",
-                classes: new Map([["Window", cls]]),
-            });
-            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
-
-            const result = analyzer.analyzeWidgetSignals(cls);
-
-            expect(result[0]?.returnType).toBe("boolean");
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            classes: new Map([["Window", cls]]),
         });
+        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
 
-        it("excludes signals inherited from parent class", () => {
-            const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
-            const widgetClass = createWidgetClass({}, nullRepo);
-            const buttonRepo = { resolveClass: () => widgetClass, resolveInterface: () => null, findClasses: () => [] };
-            const buttonClass = createNormalizedClass(
-                {
-                    name: "Button",
-                    qualifiedName: qualifiedName("Gtk", "Button"),
-                    parent: qualifiedName("Gtk", "Widget"),
-                    signals: [
-                        createNormalizedSignal({ name: "clicked" }),
-                        createNormalizedSignal({ name: "activate" }),
+        const result = analyzer.analyzeWidgetSignals(cls);
+
+        expect(result[0]?.camelName).toBe("closeRequest");
+        expect(result[0]?.handlerName).toBe("onCloseRequest");
+    });
+});
+
+describe("SignalAnalyzer / analyzeWidgetSignals (3)", () => {
+    it("analyzes signal parameters", () => {
+        const cls = createNormalizedClass({
+            name: "Scale",
+            parent: null,
+            signals: [
+                createNormalizedSignal({
+                    name: "change-value",
+                    parameters: [
+                        createNormalizedParameter({
+                            name: "scroll",
+                            type: createNormalizedType({ name: "gint" }),
+                        }),
+                        createNormalizedParameter({
+                            name: "value",
+                            type: createNormalizedType({ name: "gdouble" }),
+                        }),
                     ],
-                },
-                buttonRepo,
-            );
-
-            const ns = createNormalizedNamespace({
-                name: "Gtk",
-                classes: new Map([
-                    ["Widget", widgetClass],
-                    ["Button", buttonClass],
-                ]),
-            });
-            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
-
-            const result = analyzer.analyzeWidgetSignals(buttonClass);
-
-            expect(result.map((s) => s.name)).toContain("clicked");
-            expect(result.map((s) => s.name)).toContain("activate");
-            expect(result.map((s) => s.name)).not.toContain("destroy");
-            expect(result.map((s) => s.name)).not.toContain("show");
+                }),
+            ],
         });
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            classes: new Map([["Scale", cls]]),
+        });
+        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
 
-        it("preserves documentation", () => {
-            const cls = createNormalizedClass({
+        const result = analyzer.analyzeWidgetSignals(cls);
+
+        expect(result[0]?.parameters).toHaveLength(2);
+        expect(result[0]?.parameters[0]).toMatchObject({
+            name: "scroll",
+            type: "number",
+        });
+        expect(result[0]?.parameters[1]).toMatchObject({
+            name: "value",
+            type: "number",
+        });
+    });
+});
+
+describe("SignalAnalyzer / analyzeWidgetSignals (4)", () => {
+    it("converts parameter names to camelCase", () => {
+        const cls = createNormalizedClass({
+            name: "Widget",
+            parent: null,
+            signals: [
+                createNormalizedSignal({
+                    name: "query-tooltip",
+                    parameters: [
+                        createNormalizedParameter({
+                            name: "keyboard_tooltip",
+                            type: createNormalizedType({ name: "gboolean" }),
+                        }),
+                    ],
+                }),
+            ],
+        });
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            classes: new Map([["Widget", cls]]),
+        });
+        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+        const result = analyzer.analyzeWidgetSignals(cls);
+
+        expect(result[0]?.parameters[0]?.name).toBe("keyboardTooltip");
+    });
+});
+
+describe("SignalAnalyzer / analyzeWidgetSignals (5)", () => {
+    it("analyzes signal with return type", () => {
+        const cls = createNormalizedClass({
+            name: "Window",
+            parent: null,
+            signals: [
+                createNormalizedSignal({
+                    name: "close-request",
+                    returnType: createNormalizedType({ name: "gboolean" }),
+                }),
+            ],
+        });
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            classes: new Map([["Window", cls]]),
+        });
+        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+        const result = analyzer.analyzeWidgetSignals(cls);
+
+        expect(result[0]?.returnType).toBe("boolean");
+    });
+});
+
+describe("SignalAnalyzer / analyzeWidgetSignals (6)", () => {
+    it("excludes signals inherited from parent class", () => {
+        const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
+        const widgetClass = createWidgetClass({}, nullRepo);
+        const buttonRepo = { resolveClass: () => widgetClass, resolveInterface: () => null, findClasses: () => [] };
+        const buttonClass = createNormalizedClass(
+            {
                 name: "Button",
-                parent: null,
-                signals: [
-                    createNormalizedSignal({
-                        name: "clicked",
-                        doc: "Emitted when the button is clicked.",
-                    }),
-                ],
-            });
-            const ns = createNormalizedNamespace({
-                name: "Gtk",
-                classes: new Map([["Button", cls]]),
-            });
-            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+                qualifiedName: qualifiedName("Gtk", "Button"),
+                parent: qualifiedName("Gtk", "Widget"),
+                signals: [createNormalizedSignal({ name: "clicked" }), createNormalizedSignal({ name: "activate" })],
+            },
+            buttonRepo,
+        );
 
-            const result = analyzer.analyzeWidgetSignals(cls);
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            classes: new Map([
+                ["Widget", widgetClass],
+                ["Button", buttonClass],
+            ]),
+        });
+        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
 
-            expect(result[0]?.doc).toBe("Emitted when the button is clicked.");
+        const result = analyzer.analyzeWidgetSignals(buttonClass);
+
+        expect(result.map((s) => s.name)).toContain("clicked");
+        expect(result.map((s) => s.name)).toContain("activate");
+        expect(result.map((s) => s.name)).not.toContain("destroy");
+        expect(result.map((s) => s.name)).not.toContain("show");
+    });
+});
+
+describe("SignalAnalyzer / analyzeWidgetSignals (7)", () => {
+    it("preserves documentation", () => {
+        const cls = createNormalizedClass({
+            name: "Button",
+            parent: null,
+            signals: [
+                createNormalizedSignal({
+                    name: "clicked",
+                    doc: "Emitted when the button is clicked.",
+                }),
+            ],
+        });
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            classes: new Map([["Button", cls]]),
+        });
+        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+        const result = analyzer.analyzeWidgetSignals(cls);
+
+        expect(result[0]?.doc).toBe("Emitted when the button is clicked.");
+    });
+});
+
+describe("SignalAnalyzer / analyzeWidgetSignals (8)", () => {
+    it("tracks external namespace references in parameters", () => {
+        const gdkEvent = createNormalizedClass({
+            name: "Event",
+            qualifiedName: qualifiedName("Gdk", "Event"),
+        });
+        const gdkNs = createNormalizedNamespace({
+            name: "Gdk",
+            classes: new Map([["Event", gdkEvent]]),
         });
 
-        it("tracks external namespace references in parameters", () => {
-            const gdkEvent = createNormalizedClass({
-                name: "Event",
-                qualifiedName: qualifiedName("Gdk", "Event"),
-            });
-            const gdkNs = createNormalizedNamespace({
-                name: "Gdk",
-                classes: new Map([["Event", gdkEvent]]),
-            });
-
-            const widgetClass = createNormalizedClass({
-                name: "Widget",
-                parent: null,
-                signals: [
-                    createNormalizedSignal({
-                        name: "event",
-                        parameters: [
-                            createNormalizedParameter({
-                                name: "event",
-                                type: createNormalizedType({ name: "Gdk.Event" }),
-                            }),
-                        ],
-                    }),
-                ],
-            });
-            const gtkNs = createNormalizedNamespace({
-                name: "Gtk",
-                classes: new Map([["Widget", widgetClass]]),
-            });
-
-            const repo = createMockRepository(
-                new Map([
-                    ["Gtk", gtkNs],
-                    ["Gdk", gdkNs],
-                ]),
-            );
-            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-            const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
-
-            const result = analyzer.analyzeWidgetSignals(widgetClass);
-
-            expect(result[0]?.referencedNamespaces).toContain("Gdk");
+        const widgetClass = createNormalizedClass({
+            name: "Widget",
+            parent: null,
+            signals: [
+                createNormalizedSignal({
+                    name: "event",
+                    parameters: [
+                        createNormalizedParameter({
+                            name: "event",
+                            type: createNormalizedType({ name: "Gdk.Event" }),
+                        }),
+                    ],
+                }),
+            ],
+        });
+        const gtkNs = createNormalizedNamespace({
+            name: "Gtk",
+            classes: new Map([["Widget", widgetClass]]),
         });
 
-        it("tracks external namespace references in return type", () => {
-            const gdkDragSurface = createNormalizedClass({
-                name: "DragSurface",
-                qualifiedName: qualifiedName("Gdk", "DragSurface"),
-            });
-            const gdkNs = createNormalizedNamespace({
-                name: "Gdk",
-                classes: new Map([["DragSurface", gdkDragSurface]]),
-            });
+        const repo = createMockRepository(
+            new Map([
+                ["Gtk", gtkNs],
+                ["Gdk", gdkNs],
+            ]),
+        );
+        const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
+        const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
 
-            const dndClass = createNormalizedClass({
-                name: "DragSource",
-                parent: null,
-                signals: [
-                    createNormalizedSignal({
-                        name: "drag-begin",
-                        returnType: createNormalizedType({ name: "Gdk.DragSurface" }),
-                    }),
-                ],
-            });
-            const gtkNs = createNormalizedNamespace({
-                name: "Gtk",
-                classes: new Map([["DragSource", dndClass]]),
-            });
+        const result = analyzer.analyzeWidgetSignals(widgetClass);
 
-            const repo = createMockRepository(
-                new Map([
-                    ["Gtk", gtkNs],
-                    ["Gdk", gdkNs],
-                ]),
-            );
-            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-            const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
+        expect(result[0]?.referencedNamespaces).toContain("Gdk");
+    });
+});
 
-            const result = analyzer.analyzeWidgetSignals(dndClass);
-
-            expect(result[0]?.referencedNamespaces).toContain("Gdk");
+describe("SignalAnalyzer / analyzeWidgetSignals (9)", () => {
+    it("tracks external namespace references in return type", () => {
+        const gdkDragSurface = createNormalizedClass({
+            name: "DragSurface",
+            qualifiedName: qualifiedName("Gdk", "DragSurface"),
+        });
+        const gdkNs = createNormalizedNamespace({
+            name: "Gdk",
+            classes: new Map([["DragSurface", gdkDragSurface]]),
         });
 
-        it("handles multiple signals", () => {
-            const cls = createNormalizedClass({
-                name: "Entry",
-                parent: null,
-                signals: [
-                    createNormalizedSignal({ name: "activate" }),
-                    createNormalizedSignal({ name: "changed" }),
-                    createNormalizedSignal({ name: "icon-press" }),
-                ],
-            });
-            const ns = createNormalizedNamespace({
-                name: "Gtk",
-                classes: new Map([["Entry", cls]]),
-            });
-            const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
-
-            const result = analyzer.analyzeWidgetSignals(cls);
-
-            expect(result).toHaveLength(3);
-            expect(result.map((s) => s.name)).toContain("activate");
-            expect(result.map((s) => s.name)).toContain("changed");
-            expect(result.map((s) => s.name)).toContain("icon-press");
+        const dndClass = createNormalizedClass({
+            name: "DragSource",
+            parent: null,
+            signals: [
+                createNormalizedSignal({
+                    name: "drag-begin",
+                    returnType: createNormalizedType({ name: "Gdk.DragSurface" }),
+                }),
+            ],
+        });
+        const gtkNs = createNormalizedNamespace({
+            name: "Gtk",
+            classes: new Map([["DragSource", dndClass]]),
         });
 
-        it("qualifies external types in parameter type", () => {
-            const gdkDevice = createNormalizedClass({
-                name: "Device",
-                qualifiedName: qualifiedName("Gdk", "Device"),
-            });
-            const gdkNs = createNormalizedNamespace({
-                name: "Gdk",
-                classes: new Map([["Device", gdkDevice]]),
-            });
+        const repo = createMockRepository(
+            new Map([
+                ["Gtk", gtkNs],
+                ["Gdk", gdkNs],
+            ]),
+        );
+        const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
+        const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
 
-            const gestureClass = createNormalizedClass({
-                name: "Gesture",
-                parent: null,
-                signals: [
-                    createNormalizedSignal({
-                        name: "begin",
-                        parameters: [
-                            createNormalizedParameter({
-                                name: "device",
-                                type: createNormalizedType({ name: "Gdk.Device" }),
-                            }),
-                        ],
-                    }),
-                ],
-            });
-            const gtkNs = createNormalizedNamespace({
-                name: "Gtk",
-                classes: new Map([["Gesture", gestureClass]]),
-            });
+        const result = analyzer.analyzeWidgetSignals(dndClass);
 
-            const repo = createMockRepository(
-                new Map([
-                    ["Gtk", gtkNs],
-                    ["Gdk", gdkNs],
-                ]),
-            );
-            const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-            const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
+        expect(result[0]?.referencedNamespaces).toContain("Gdk");
+    });
+});
 
-            const result = analyzer.analyzeWidgetSignals(gestureClass);
-
-            expect(result[0]?.parameters[0]?.type).toBe("Gdk.Device");
+describe("SignalAnalyzer / analyzeWidgetSignals (10)", () => {
+    it("handles multiple signals", () => {
+        const cls = createNormalizedClass({
+            name: "Entry",
+            parent: null,
+            signals: [
+                createNormalizedSignal({ name: "activate" }),
+                createNormalizedSignal({ name: "changed" }),
+                createNormalizedSignal({ name: "icon-press" }),
+            ],
         });
+        const ns = createNormalizedNamespace({
+            name: "Gtk",
+            classes: new Map([["Entry", cls]]),
+        });
+        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+
+        const result = analyzer.analyzeWidgetSignals(cls);
+
+        expect(result).toHaveLength(3);
+        expect(result.map((s) => s.name)).toContain("activate");
+        expect(result.map((s) => s.name)).toContain("changed");
+        expect(result.map((s) => s.name)).toContain("icon-press");
+    });
+});
+
+describe("SignalAnalyzer / analyzeWidgetSignals (11)", () => {
+    it("qualifies external types in parameter type", () => {
+        const gdkDevice = createNormalizedClass({
+            name: "Device",
+            qualifiedName: qualifiedName("Gdk", "Device"),
+        });
+        const gdkNs = createNormalizedNamespace({
+            name: "Gdk",
+            classes: new Map([["Device", gdkDevice]]),
+        });
+
+        const gestureClass = createNormalizedClass({
+            name: "Gesture",
+            parent: null,
+            signals: [
+                createNormalizedSignal({
+                    name: "begin",
+                    parameters: [
+                        createNormalizedParameter({
+                            name: "device",
+                            type: createNormalizedType({ name: "Gdk.Device" }),
+                        }),
+                    ],
+                }),
+            ],
+        });
+        const gtkNs = createNormalizedNamespace({
+            name: "Gtk",
+            classes: new Map([["Gesture", gestureClass]]),
+        });
+
+        const repo = createMockRepository(
+            new Map([
+                ["Gtk", gtkNs],
+                ["Gdk", gdkNs],
+            ]),
+        );
+        const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
+        const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
+
+        const result = analyzer.analyzeWidgetSignals(gestureClass);
+
+        expect(result[0]?.parameters[0]?.type).toBe("Gdk.Device");
     });
 });

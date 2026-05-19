@@ -3,7 +3,7 @@ import { GtkBox, GtkButton, GtkEntry, GtkFrame, GtkLabel } from "@gtkx/react";
 import { describe, expect, it } from "vitest";
 import { render, screen, within } from "../src/index.js";
 
-describe("within", () => {
+describe("within scoping", () => {
     it("scopes queries to container element", async () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -38,7 +38,9 @@ describe("within", () => {
 
         await expect(findByText("Outside", { timeout: 100 })).rejects.toThrow("Unable to find");
     });
+});
 
+describe("within find single", () => {
     it("provides findByRole query", async () => {
         await render(
             <GtkFrame name="container">
@@ -97,7 +99,9 @@ describe("within", () => {
         const entry = await findByName("my-input");
         expect(entry).toBeDefined();
     });
+});
 
+describe("within find all", () => {
     it("provides findAllByRole query", async () => {
         await render(
             <GtkFrame name="container">
@@ -176,7 +180,9 @@ describe("within", () => {
         const entries = await findAllByName("field");
         expect(entries.length).toBe(2);
     });
+});
 
+describe("within nested", () => {
     it("supports nested within calls", async () => {
         await render(
             <GtkFrame name="outer-frame">

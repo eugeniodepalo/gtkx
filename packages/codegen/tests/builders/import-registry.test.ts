@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ImportRegistry } from "../../src/builders/import-registry.js";
 import { stringify } from "../../src/builders/stringify.js";
 
-describe("ImportRegistry", () => {
+describe("ImportRegistry (1)", () => {
     it("renders a single import", () => {
         const reg = new ImportRegistry();
         reg.add("./foo.js", ["Foo"]);
@@ -51,7 +51,9 @@ describe("ImportRegistry", () => {
         reg.add("./foo.js", ["Foo"]);
         expect(reg.isEmpty).toBe(false);
     });
+});
 
+describe("ImportRegistry (2)", () => {
     it("leaves runtime-module value imports unchanged outside JS mode", () => {
         const reg = new ImportRegistry();
         reg.add("../../registry.js", ["getNativeObject"]);

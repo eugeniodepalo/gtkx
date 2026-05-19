@@ -105,13 +105,19 @@ const setupGridLayout = (
     return { logicalRect, ch, iter };
 };
 
-const renderSmallSurface = (
-    small: ReturnType<Context["getTarget"]>,
-    fontOptions: FontOptions,
-    fontDesc: Pango.FontDescription,
-    ch: string,
-    hintMetrics: boolean,
-): { iter: Pango.LayoutIter } | null => {
+const renderSmallSurface = ({
+    small,
+    fontOptions,
+    fontDesc,
+    ch,
+    hintMetrics,
+}: {
+    small: ReturnType<Context["getTarget"]>;
+    fontOptions: FontOptions;
+    fontDesc: Pango.FontDescription;
+    ch: string;
+    hintMetrics: boolean;
+}): { iter: Pango.LayoutIter } | null => {
     const smallCr = Context.create(small);
     smallCr.setFontOptions(fontOptions);
     const smallCtx = PangoCairo.createContext(smallCr);
@@ -148,15 +154,23 @@ const renderSmallSurface = (
     return { iter: smallIter };
 };
 
-const paintSmallSurface = (
-    cr: Context,
-    small: ReturnType<Context["getTarget"]>,
-    surfaceWidth: number,
-    surfaceHeight: number,
-    scale: number,
-    width: number,
-    height: number,
-): void => {
+const paintSmallSurface = ({
+    cr,
+    small,
+    surfaceWidth,
+    surfaceHeight,
+    scale,
+    width,
+    height,
+}: {
+    cr: Context;
+    small: ReturnType<Context["getTarget"]>;
+    surfaceWidth: number;
+    surfaceHeight: number;
+    scale: number;
+    width: number;
+    height: number;
+}): void => {
     const scaledWidth = surfaceWidth * scale;
     const scaledHeight = surfaceHeight * scale;
     const offsetX = Math.max(0, Math.floor((width - scaledWidth) / 2));
@@ -171,7 +185,7 @@ const paintSmallSurface = (
     cr.restore();
 };
 
-const FontRenderingDemo = () => {
+function useFontRenderingState() {
     const [mode, setMode] = useState<Mode>("text");
     const [text, setText] = useState(DEFAULT_TEXT);
     const [fontDesc, setFontDesc] = useState(() => Pango.FontDescription.fromString("Sans 24"));
@@ -179,17 +193,50 @@ const FontRenderingDemo = () => {
     const [antialias, setAntialias] = useState(true);
     const [hintMetrics, setHintMetrics] = useState(false);
     const [scale, setScale] = useState(7);
-
     const [overlays, setOverlays] = useState<OverlayState>({
         showPixels: true,
         showOutlines: false,
         showExtents: false,
         showGrid: false,
     });
-
     const [pixelAlpha, setPixelAlpha] = useState(1);
     const [outlineAlpha, setOutlineAlpha] = useState(0);
     const animationRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    return {
+        mode,
+        setMode,
+        text,
+        setText,
+        fontDesc,
+        setFontDesc,
+        hintStyle,
+        setHintStyle,
+        antialias,
+        setAntialias,
+        hintMetrics,
+        setHintMetrics,
+        scale,
+        setScale,
+        overlays,
+        setOverlays,
+        pixelAlpha,
+        setPixelAlpha,
+        outlineAlpha,
+        setOutlineAlpha,
+        animationRef,
+    };
+}
+
+type FontRenderingState = ReturnType<typeof useFontRenderingState>;
+
+const easeOutCubic = (t: number) => {
+    const p = t - 1;
+    return p * p * p + 1;
+};
+
+function useOverlayAnimation(state: FontRenderingState) {
+    const { overlays, pixelAlpha, outlineAlpha, setPixelAlpha, setOutlineAlpha, animationRef } = state;
 
     useEffect(() => {
         let targetPixelAlpha: number;
@@ -205,18 +252,12 @@ const FontRenderingDemo = () => {
         const startTime = Date.now();
         const duration = 500;
 
-        const easeOutCubic = (t: number) => {
-            const p = t - 1;
-            return p * p * p + 1;
-        };
-
         if (animationRef.current) {
             clearInterval(animationRef.current);
         }
 
         animationRef.current = setInterval(() => {
-            const now = Date.now();
-            const elapsed = now - startTime;
+            const elapsed = Date.now() - startTime;
             const t = Math.min(elapsed / duration, 1);
             const eased = easeOutCubic(t);
 
@@ -235,160 +276,253 @@ const FontRenderingDemo = () => {
                 animationRef.current = null;
             }
         };
-    }, [overlays.showPixels, overlays.showOutlines, outlineAlpha, pixelAlpha]);
+    }, [
+        overlays.showPixels,
+        overlays.showOutlines,
+        outlineAlpha,
+        pixelAlpha,
+        setPixelAlpha,
+        setOutlineAlpha,
+        animationRef,
+    ]);
+}
 
-    const drawTextMode = useCallback(
+interface DrawTextModeContext {
+    cr: Context;
+    width: number;
+    height: number;
+    state: FontRenderingState;
+    fontOptions: FontOptions;
+    target: ReturnType<Context["getTarget"]>;
+    inkPixel: { x: number; y: number; width: number; height: number };
+    logicalRect: Pango.Rectangle;
+    baseline: number;
+    surfaceWidth: number;
+    surfaceHeight: number;
+}
+
+const drawSmallSurface = (ctx: DrawTextModeContext) => {
+    const { target, surfaceWidth, surfaceHeight, fontOptions, state, cr } = ctx;
+    const small = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
+    const smallCr = Context.create(small);
+    smallCr.setSourceRgb(1, 1, 1);
+    smallCr.paint();
+    smallCr.setFontOptions(fontOptions);
+    const smallContext = PangoCairo.createContext(smallCr);
+    PangoCairo.contextSetFontOptions(smallContext, fontOptions);
+    smallContext.setRoundGlyphPositions(state.hintMetrics);
+
+    const smallLayout = new Pango.Layout(smallContext);
+    smallLayout.setFontDescription(state.fontDesc);
+    smallLayout.setText(state.text || " ", -1);
+
+    smallCr.setSourceRgba(0, 0, 0, state.pixelAlpha);
+    smallCr.translate(10, 10);
+    PangoCairo.showLayout(smallCr, smallLayout);
+    PangoCairo.layoutPath(smallCr, smallLayout);
+    smallCr.save();
+    smallCr.newPath();
+    smallCr.restore();
+
+    const scaledWidth = surfaceWidth * state.scale;
+    const scaledHeight = surfaceHeight * state.scale;
+    const offsetX = Math.max(0, Math.floor((ctx.width - scaledWidth) / 2));
+    const offsetY = Math.max(0, Math.floor((ctx.height - scaledHeight) / 2));
+
+    cr.save();
+    cr.translate(offsetX, offsetY);
+    cr.scale(state.scale, state.scale);
+    cr.setSourceSurface(small, 0, 0);
+    cr.getSource().setFilter(Filter.NEAREST);
+    cr.paint();
+    cr.restore();
+
+    return { small, scaledWidth, scaledHeight, offsetX, offsetY };
+};
+
+const drawOverlays = (
+    ctx: DrawTextModeContext,
+    overlayInfo: { offsetX: number; offsetY: number; scaledWidth: number; scaledHeight: number },
+) => {
+    const { cr, state, surfaceWidth, surfaceHeight, logicalRect, baseline, inkPixel } = ctx;
+    const { scale } = state;
+    cr.save();
+    cr.translate(overlayInfo.offsetX, overlayInfo.offsetY);
+    cr.setLineWidth(1);
+
+    if (state.overlays.showGrid) {
+        cr.setSourceRgba(0.2, 0, 0, 0.2);
+        for (let i = 1; i < surfaceHeight; i++) {
+            cr.moveTo(0, scale * i - 0.5);
+            cr.lineTo(overlayInfo.scaledWidth, scale * i - 0.5);
+            cr.stroke();
+        }
+        for (let i = 1; i < surfaceWidth; i++) {
+            cr.moveTo(scale * i - 0.5, 0);
+            cr.lineTo(scale * i - 0.5, overlayInfo.scaledHeight);
+            cr.stroke();
+        }
+    }
+
+    if (state.overlays.showExtents) {
+        drawExtents({ cr, scale, logicalRect, baseline, inkPixel });
+    }
+
+    if (state.outlineAlpha > 0) {
+        drawOutlineLayer(ctx);
+    }
+
+    cr.restore();
+};
+
+const drawExtents = ({
+    cr,
+    scale,
+    logicalRect,
+    baseline,
+    inkPixel,
+}: {
+    cr: Context;
+    scale: number;
+    logicalRect: Pango.Rectangle;
+    baseline: number;
+    inkPixel: { x: number; y: number; width: number; height: number };
+}) => {
+    const logX = logicalRect.x / PANGO_SCALE;
+    const logY = logicalRect.y / PANGO_SCALE;
+    const logW = logicalRect.width / PANGO_SCALE;
+    const logH = logicalRect.height / PANGO_SCALE;
+    const bl = baseline / PANGO_SCALE;
+
+    cr.setSourceRgb(0, 0, 1);
+    cr.rectangle(scale * (10 + logX) - 0.5, scale * (10 + logY) - 0.5, scale * logW + 1, scale * logH + 1);
+    cr.stroke();
+
+    cr.moveTo(scale * (10 + logX) - 0.5, scale * (10 + bl) - 0.5);
+    cr.lineTo(scale * (10 + logX + logW) + 1, scale * (10 + bl) - 0.5);
+    cr.stroke();
+
+    cr.setSourceRgb(1, 0, 0);
+    cr.rectangle(
+        scale * (10 + inkPixel.x) - 0.5,
+        scale * (10 + inkPixel.y) - 0.5,
+        scale * inkPixel.width + 1,
+        scale * inkPixel.height + 1,
+    );
+    cr.stroke();
+};
+
+const drawOutlineLayer = (ctx: DrawTextModeContext) => {
+    const { target, surfaceWidth, surfaceHeight, fontOptions, state, cr } = ctx;
+    const outlineSurface = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
+    const outlineCr = Context.create(outlineSurface);
+    outlineCr.setFontOptions(fontOptions);
+    const outlineCtx = PangoCairo.createContext(outlineCr);
+    PangoCairo.contextSetFontOptions(outlineCtx, fontOptions);
+    outlineCtx.setRoundGlyphPositions(state.hintMetrics);
+
+    const outlineLayout = new Pango.Layout(outlineCtx);
+    outlineLayout.setFontDescription(state.fontDesc);
+    outlineLayout.setText(state.text || " ", -1);
+
+    outlineCr.translate(10, 10);
+    PangoCairo.layoutPath(outlineCr, outlineLayout);
+    outlineCr.setSourceRgba(0, 0, 0, 1);
+    outlineCr.setLineWidth(1);
+    outlineCr.stroke();
+
+    cr.scale(state.scale, state.scale);
+    cr.setSourceSurface(outlineSurface, 0, 0);
+    cr.getSource().setFilter(Filter.NEAREST);
+    cr.paintWithAlpha(state.outlineAlpha);
+
+    outlineSurface.finish();
+};
+
+interface ComputeTextLayoutArgs {
+    cr: Context;
+    width: number;
+    height: number;
+    fontOptions: FontOptions;
+    fontDesc: Pango.FontDescription;
+    text: string;
+    hintMetrics: boolean;
+}
+
+const computeTextLayout = ({ cr, width, height, fontOptions, fontDesc, text, hintMetrics }: ComputeTextLayoutArgs) => {
+    const target = cr.getTarget();
+    const offscreen = Surface.createSimilar(target, Content.COLOR_ALPHA, width, height);
+    const offCr = Context.create(offscreen);
+    offCr.setFontOptions(fontOptions);
+
+    const context = PangoCairo.createContext(offCr);
+    PangoCairo.contextSetFontOptions(context, fontOptions);
+    context.setRoundGlyphPositions(hintMetrics);
+
+    const layout = new Pango.Layout(context);
+    layout.setFontDescription(fontDesc);
+    layout.setText(text || " ", -1);
+
+    const [inkRect, logicalRect] = layout.getExtents();
+    const baseline = layout.getBaseline();
+
+    const inkPixel = {
+        x: Math.floor(inkRect.x / PANGO_SCALE),
+        y: Math.floor(inkRect.y / PANGO_SCALE),
+        width: Math.ceil(inkRect.width / PANGO_SCALE),
+        height: Math.ceil(inkRect.height / PANGO_SCALE),
+    };
+
+    return { inkPixel, logicalRect, baseline, target };
+};
+
+function useDrawTextMode(state: FontRenderingState) {
+    const { fontDesc, text, hintStyle, antialias, hintMetrics } = state;
+
+    return useCallback(
         (cr: Context, width: number, height: number) => {
             cr.setSourceRgb(1, 1, 1);
             cr.paint();
 
-            const fontOptions = new FontOptions();
-            fontOptions.setHintStyle(hintStyle);
-            fontOptions.setAntialias(antialias ? Antialias.GRAY : Antialias.NONE);
-            fontOptions.setHintMetrics(hintMetrics ? HintMetrics.ON : HintMetrics.OFF);
-
-            const target = cr.getTarget();
-            const offscreen = Surface.createSimilar(target, Content.COLOR_ALPHA, width, height);
-            const offCr = Context.create(offscreen);
-
-            offCr.setFontOptions(fontOptions);
-
-            const context = PangoCairo.createContext(offCr);
-            PangoCairo.contextSetFontOptions(context, fontOptions);
-            context.setRoundGlyphPositions(hintMetrics);
-
-            const layout = new Pango.Layout(context);
-            layout.setFontDescription(fontDesc);
-            layout.setText(text || " ", -1);
-
-            const [inkRect, logicalRect] = layout.getExtents();
-            const baseline = layout.getBaseline();
-
-            const inkPixel = {
-                x: Math.floor(inkRect.x / PANGO_SCALE),
-                y: Math.floor(inkRect.y / PANGO_SCALE),
-                width: Math.ceil(inkRect.width / PANGO_SCALE),
-                height: Math.ceil(inkRect.height / PANGO_SCALE),
-            };
+            const fontOptions = createGridFontOptions(hintStyle, antialias, hintMetrics);
+            const { inkPixel, logicalRect, baseline, target } = computeTextLayout({
+                cr,
+                width,
+                height,
+                fontOptions,
+                fontDesc,
+                text,
+                hintMetrics,
+            });
 
             const surfaceWidth = inkPixel.width + 20;
             const surfaceHeight = inkPixel.height + 20;
 
-            const small = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
-            const smallCr = Context.create(small);
-
-            smallCr.setSourceRgb(1, 1, 1);
-            smallCr.paint();
-
-            smallCr.setFontOptions(fontOptions);
-            const smallContext = PangoCairo.createContext(smallCr);
-            PangoCairo.contextSetFontOptions(smallContext, fontOptions);
-            smallContext.setRoundGlyphPositions(hintMetrics);
-
-            const smallLayout = new Pango.Layout(smallContext);
-            smallLayout.setFontDescription(fontDesc);
-            smallLayout.setText(text || " ", -1);
-
-            smallCr.setSourceRgba(0, 0, 0, pixelAlpha);
-            smallCr.translate(10, 10);
-            PangoCairo.showLayout(smallCr, smallLayout);
-
-            PangoCairo.layoutPath(smallCr, smallLayout);
-
-            smallCr.save();
-            smallCr.newPath();
-            smallCr.restore();
-
-            const scaledWidth = surfaceWidth * scale;
-            const scaledHeight = surfaceHeight * scale;
-            const offsetX = Math.max(0, Math.floor((width - scaledWidth) / 2));
-            const offsetY = Math.max(0, Math.floor((height - scaledHeight) / 2));
-
-            cr.save();
-            cr.translate(offsetX, offsetY);
-            cr.scale(scale, scale);
-            cr.setSourceSurface(small, 0, 0);
-            cr.getSource().setFilter(Filter.NEAREST);
-            cr.paint();
-            cr.restore();
-
-            cr.save();
-            cr.translate(offsetX, offsetY);
-            cr.setLineWidth(1);
-
-            if (overlays.showGrid) {
-                cr.setSourceRgba(0.2, 0, 0, 0.2);
-                for (let i = 1; i < surfaceHeight; i++) {
-                    cr.moveTo(0, scale * i - 0.5);
-                    cr.lineTo(scaledWidth, scale * i - 0.5);
-                    cr.stroke();
-                }
-                for (let i = 1; i < surfaceWidth; i++) {
-                    cr.moveTo(scale * i - 0.5, 0);
-                    cr.lineTo(scale * i - 0.5, scaledHeight);
-                    cr.stroke();
-                }
-            }
-
-            if (overlays.showExtents) {
-                const logX = logicalRect.x / PANGO_SCALE;
-                const logY = logicalRect.y / PANGO_SCALE;
-                const logW = logicalRect.width / PANGO_SCALE;
-                const logH = logicalRect.height / PANGO_SCALE;
-                const bl = baseline / PANGO_SCALE;
-
-                cr.setSourceRgb(0, 0, 1);
-                cr.rectangle(scale * (10 + logX) - 0.5, scale * (10 + logY) - 0.5, scale * logW + 1, scale * logH + 1);
-                cr.stroke();
-
-                cr.moveTo(scale * (10 + logX) - 0.5, scale * (10 + bl) - 0.5);
-                cr.lineTo(scale * (10 + logX + logW) + 1, scale * (10 + bl) - 0.5);
-                cr.stroke();
-
-                cr.setSourceRgb(1, 0, 0);
-                cr.rectangle(
-                    scale * (10 + inkPixel.x) - 0.5,
-                    scale * (10 + inkPixel.y) - 0.5,
-                    scale * inkPixel.width + 1,
-                    scale * inkPixel.height + 1,
-                );
-                cr.stroke();
-            }
-
-            if (outlineAlpha > 0) {
-                const outlineSurface = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
-                const outlineCr = Context.create(outlineSurface);
-                outlineCr.setFontOptions(fontOptions);
-                const outlineCtx = PangoCairo.createContext(outlineCr);
-                PangoCairo.contextSetFontOptions(outlineCtx, fontOptions);
-                outlineCtx.setRoundGlyphPositions(hintMetrics);
-
-                const outlineLayout = new Pango.Layout(outlineCtx);
-                outlineLayout.setFontDescription(fontDesc);
-                outlineLayout.setText(text || " ", -1);
-
-                outlineCr.translate(10, 10);
-                PangoCairo.layoutPath(outlineCr, outlineLayout);
-                outlineCr.setSourceRgba(0, 0, 0, 1);
-                outlineCr.setLineWidth(1);
-                outlineCr.stroke();
-
-                cr.scale(scale, scale);
-                cr.setSourceSurface(outlineSurface, 0, 0);
-                cr.getSource().setFilter(Filter.NEAREST);
-                cr.paintWithAlpha(outlineAlpha);
-
-                outlineSurface.finish();
-            }
-
-            cr.restore();
-
+            const ctx: DrawTextModeContext = {
+                cr,
+                width,
+                height,
+                state,
+                fontOptions,
+                target,
+                inkPixel,
+                logicalRect,
+                baseline,
+                surfaceWidth,
+                surfaceHeight,
+            };
+            const { small, scaledWidth, scaledHeight, offsetX, offsetY } = drawSmallSurface(ctx);
+            drawOverlays(ctx, { offsetX, offsetY, scaledWidth, scaledHeight });
             small.finish();
         },
-        [fontDesc, text, hintStyle, antialias, hintMetrics, scale, overlays, pixelAlpha, outlineAlpha],
+        [fontDesc, text, hintStyle, antialias, hintMetrics, state],
     );
+}
 
-    const drawGridMode = useCallback(
+function useDrawGridMode(state: FontRenderingState) {
+    const { fontDesc, text, hintStyle, antialias, hintMetrics, scale } = state;
+
+    return useCallback(
         (cr: Context, width: number, height: number) => {
             const fontOptions = createGridFontOptions(hintStyle, antialias, hintMetrics);
             const target = cr.getTarget();
@@ -407,7 +541,7 @@ const FontRenderingDemo = () => {
             const surfaceWidth = Math.round((logicalRect.width * 3) / 2);
             const surfaceHeight = logicalRect.height * 4;
             const small = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
-            const smallSetup = renderSmallSurface(small, fontOptions, fontDesc, ch, hintMetrics);
+            const smallSetup = renderSmallSurface({ small, fontOptions, fontDesc, ch, hintMetrics });
             if (!smallSetup) {
                 small.finish();
                 tmpSurface.finish();
@@ -416,7 +550,7 @@ const FontRenderingDemo = () => {
 
             cr.setSourceRgb(1, 1, 1);
             cr.paint();
-            paintSmallSurface(cr, small, surfaceWidth, surfaceHeight, scale, width, height);
+            paintSmallSurface({ cr, small, surfaceWidth, surfaceHeight, scale, width, height });
 
             smallSetup.iter.free();
             small.finish();
@@ -425,11 +559,199 @@ const FontRenderingDemo = () => {
         },
         [fontDesc, text, hintStyle, antialias, hintMetrics, scale],
     );
+}
 
+const FontRenderingHeader = ({ state }: { state: FontRenderingState }) => {
+    const { mode, setMode } = state;
+    return (
+        <Slot id="titlebar">
+            <GtkHeaderBar
+                titleWidget={
+                    <GtkBox cssClasses={["linked"]}>
+                        <GtkToggleButton label="Text" active={mode === "text"} onToggled={() => setMode("text")} />
+                        <GtkToggleButton label="Grid" active={mode === "grid"} onToggled={() => setMode("grid")} />
+                    </GtkBox>
+                }
+            ></GtkHeaderBar>
+        </Slot>
+    );
+};
+
+interface FontRenderingControlsProps {
+    state: FontRenderingState;
+    onZoomIn: () => void;
+    onZoomOut: () => void;
+}
+
+const FontRenderingControls = ({ state, onZoomIn, onZoomOut }: FontRenderingControlsProps) => (
+    <GtkGrid halign={Gtk.Align.CENTER} marginTop={10} marginBottom={10} rowSpacing={10} columnSpacing={10}>
+        <FontRenderingTextRow state={state} />
+        <FontRenderingOverlayChecks state={state} />
+        <FontRenderingHintControls state={state} />
+        <FontRenderingExtraOverlays state={state} />
+        <FontRenderingZoomButtons state={state} onZoomIn={onZoomIn} onZoomOut={onZoomOut} />
+        <GtkGrid.Child column={8} row={0}>
+            <GtkLabel label="" hexpand />
+        </GtkGrid.Child>
+    </GtkGrid>
+);
+
+const FontRenderingTextRow = ({ state }: { state: FontRenderingState }) => {
+    const { text, setText, fontDesc, setFontDesc } = state;
+    return (
+        <>
+            <GtkGrid.Child column={1} row={0}>
+                <GtkLabel label="Text" xalign={1} marginStart={10} cssClasses={["dim-label"]} />
+            </GtkGrid.Child>
+            <GtkGrid.Child column={2} row={0}>
+                <GtkEntry text={text} onChanged={(entry) => setText(entry.getText())} />
+            </GtkGrid.Child>
+            <GtkGrid.Child column={1} row={1}>
+                <GtkLabel label="Font" xalign={1} marginStart={10} cssClasses={["dim-label"]} />
+            </GtkGrid.Child>
+            <GtkGrid.Child column={2} row={1}>
+                <GtkFontDialogButton fontDesc={fontDesc} onFontDescChanged={setFontDesc} />
+            </GtkGrid.Child>
+        </>
+    );
+};
+
+const FontRenderingOverlayChecks = ({ state }: { state: FontRenderingState }) => {
+    const { overlays, setOverlays } = state;
+    return (
+        <>
+            <GtkGrid.Child column={3} row={0}>
+                <GtkCheckButton
+                    label="Show _Pixels"
+                    useUnderline
+                    active={overlays.showPixels}
+                    onToggled={(btn) => setOverlays((o) => ({ ...o, showPixels: btn.getActive() }))}
+                />
+            </GtkGrid.Child>
+            <GtkGrid.Child column={3} row={1}>
+                <GtkCheckButton
+                    label="Show _Outline"
+                    useUnderline
+                    active={overlays.showOutlines}
+                    onToggled={(btn) => setOverlays((o) => ({ ...o, showOutlines: btn.getActive() }))}
+                />
+            </GtkGrid.Child>
+        </>
+    );
+};
+
+const FontRenderingHintControls = ({ state }: { state: FontRenderingState }) => {
+    const { hintStyle, setHintStyle, antialias, setAntialias, hintMetrics, setHintMetrics } = state;
+    return (
+        <>
+            <GtkGrid.Child column={4} row={0} columnSpan={2}>
+                <GtkBox spacing={6}>
+                    <GtkLabel label="_Hinting" useUnderline cssClasses={["dim-label"]} />
+                    <GtkDropDown
+                        valign={Gtk.Align.CENTER}
+                        selectedId={hintStyleOptions.find((o) => o.value === hintStyle)?.id}
+                        onSelectionChanged={(id) => {
+                            const opt = hintStyleOptions.find((o) => o.id === id);
+                            if (opt) setHintStyle(opt.value);
+                        }}
+                        items={hintStyleOptions.map((opt) => ({ id: opt.id, value: opt.label }))}
+                    />
+                </GtkBox>
+            </GtkGrid.Child>
+            <GtkGrid.Child column={4} row={1}>
+                <GtkCheckButton
+                    label="_Antialias"
+                    useUnderline
+                    active={antialias}
+                    onToggled={(btn) => setAntialias(btn.getActive())}
+                />
+            </GtkGrid.Child>
+            <GtkGrid.Child column={5} row={1}>
+                <GtkCheckButton
+                    label="Hint _Metrics"
+                    useUnderline
+                    active={hintMetrics}
+                    onToggled={(btn) => setHintMetrics(btn.getActive())}
+                />
+            </GtkGrid.Child>
+        </>
+    );
+};
+
+const FontRenderingExtraOverlays = ({ state }: { state: FontRenderingState }) => {
+    const { overlays, setOverlays } = state;
+    return (
+        <>
+            <GtkGrid.Child column={6} row={0}>
+                <GtkCheckButton
+                    label="Show _Extents"
+                    useUnderline
+                    active={overlays.showExtents}
+                    onToggled={(btn) => setOverlays((o) => ({ ...o, showExtents: btn.getActive() }))}
+                />
+            </GtkGrid.Child>
+            <GtkGrid.Child column={6} row={1}>
+                <GtkCheckButton
+                    label="Show _Grid"
+                    useUnderline
+                    active={overlays.showGrid}
+                    onToggled={(btn) => setOverlays((o) => ({ ...o, showGrid: btn.getActive() }))}
+                />
+            </GtkGrid.Child>
+        </>
+    );
+};
+
+const FontRenderingZoomButtons = ({
+    state,
+    onZoomIn,
+    onZoomOut,
+}: {
+    state: FontRenderingState;
+    onZoomIn: () => void;
+    onZoomOut: () => void;
+}) => {
+    const { scale } = state;
+    return (
+        <>
+            <GtkGrid.Child column={7} row={0}>
+                <GtkButton
+                    iconName="list-add-symbolic"
+                    onClicked={onZoomIn}
+                    sensitive={scale < 32}
+                    cssClasses={["circular"]}
+                    halign={Gtk.Align.CENTER}
+                    valign={Gtk.Align.CENTER}
+                    accessibleLabel="Zoom in"
+                />
+            </GtkGrid.Child>
+            <GtkGrid.Child column={7} row={1}>
+                <GtkButton
+                    iconName="list-remove-symbolic"
+                    onClicked={onZoomOut}
+                    sensitive={scale > 1}
+                    cssClasses={["circular"]}
+                    halign={Gtk.Align.CENTER}
+                    valign={Gtk.Align.CENTER}
+                    accessibleLabel="Zoom out"
+                />
+            </GtkGrid.Child>
+        </>
+    );
+};
+
+const FontRenderingDemo = () => {
+    const state = useFontRenderingState();
+    const { mode, setScale } = state;
+
+    useOverlayAnimation(state);
+
+    const drawTextMode = useDrawTextMode(state);
+    const drawGridMode = useDrawGridMode(state);
     const drawFunc = mode === "text" ? drawTextMode : drawGridMode;
 
-    const zoomIn = useCallback(() => setScale((s) => Math.min(32, s + 1)), []);
-    const zoomOut = useCallback(() => setScale((s) => Math.max(1, s - 1)), []);
+    const zoomIn = useCallback(() => setScale((s) => Math.min(32, s + 1)), [setScale]);
+    const zoomOut = useCallback(() => setScale((s) => Math.max(1, s - 1)), [setScale]);
 
     return (
         <>
@@ -437,119 +759,9 @@ const FontRenderingDemo = () => {
                 <GtkShortcutController.Shortcut trigger="<Control>plus" onActivate={zoomIn} />
                 <GtkShortcutController.Shortcut trigger="<Control>minus" onActivate={zoomOut} />
             </GtkShortcutController>
-            <Slot id="titlebar">
-                <GtkHeaderBar
-                    titleWidget={
-                        <GtkBox cssClasses={["linked"]}>
-                            <GtkToggleButton label="Text" active={mode === "text"} onToggled={() => setMode("text")} />
-                            <GtkToggleButton label="Grid" active={mode === "grid"} onToggled={() => setMode("grid")} />
-                        </GtkBox>
-                    }
-                ></GtkHeaderBar>
-            </Slot>
+            <FontRenderingHeader state={state} />
             <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
-                <GtkGrid halign={Gtk.Align.CENTER} marginTop={10} marginBottom={10} rowSpacing={10} columnSpacing={10}>
-                    <GtkGrid.Child column={1} row={0}>
-                        <GtkLabel label="Text" xalign={1} marginStart={10} cssClasses={["dim-label"]} />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={2} row={0}>
-                        <GtkEntry text={text} onChanged={(entry) => setText(entry.getText())} />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={1} row={1}>
-                        <GtkLabel label="Font" xalign={1} marginStart={10} cssClasses={["dim-label"]} />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={2} row={1}>
-                        <GtkFontDialogButton fontDesc={fontDesc} onFontDescChanged={setFontDesc} />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={3} row={0}>
-                        <GtkCheckButton
-                            label="Show _Pixels"
-                            useUnderline
-                            active={overlays.showPixels}
-                            onToggled={(btn) => setOverlays((o) => ({ ...o, showPixels: btn.getActive() }))}
-                        />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={3} row={1}>
-                        <GtkCheckButton
-                            label="Show _Outline"
-                            useUnderline
-                            active={overlays.showOutlines}
-                            onToggled={(btn) => setOverlays((o) => ({ ...o, showOutlines: btn.getActive() }))}
-                        />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={4} row={0} columnSpan={2}>
-                        <GtkBox spacing={6}>
-                            <GtkLabel label="_Hinting" useUnderline cssClasses={["dim-label"]} />
-                            <GtkDropDown
-                                valign={Gtk.Align.CENTER}
-                                selectedId={hintStyleOptions.find((o) => o.value === hintStyle)?.id}
-                                onSelectionChanged={(id) => {
-                                    const opt = hintStyleOptions.find((o) => o.id === id);
-                                    if (opt) setHintStyle(opt.value);
-                                }}
-                                items={hintStyleOptions.map((opt) => ({ id: opt.id, value: opt.label }))}
-                            />
-                        </GtkBox>
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={4} row={1}>
-                        <GtkCheckButton
-                            label="_Antialias"
-                            useUnderline
-                            active={antialias}
-                            onToggled={(btn) => setAntialias(btn.getActive())}
-                        />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={5} row={1}>
-                        <GtkCheckButton
-                            label="Hint _Metrics"
-                            useUnderline
-                            active={hintMetrics}
-                            onToggled={(btn) => setHintMetrics(btn.getActive())}
-                        />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={6} row={0}>
-                        <GtkCheckButton
-                            label="Show _Extents"
-                            useUnderline
-                            active={overlays.showExtents}
-                            onToggled={(btn) => setOverlays((o) => ({ ...o, showExtents: btn.getActive() }))}
-                        />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={6} row={1}>
-                        <GtkCheckButton
-                            label="Show _Grid"
-                            useUnderline
-                            active={overlays.showGrid}
-                            onToggled={(btn) => setOverlays((o) => ({ ...o, showGrid: btn.getActive() }))}
-                        />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={7} row={0}>
-                        <GtkButton
-                            iconName="list-add-symbolic"
-                            onClicked={zoomIn}
-                            sensitive={scale < 32}
-                            cssClasses={["circular"]}
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.CENTER}
-                            accessibleLabel="Zoom in"
-                        />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={7} row={1}>
-                        <GtkButton
-                            iconName="list-remove-symbolic"
-                            onClicked={zoomOut}
-                            sensitive={scale > 1}
-                            cssClasses={["circular"]}
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.CENTER}
-                            accessibleLabel="Zoom out"
-                        />
-                    </GtkGrid.Child>
-                    <GtkGrid.Child column={8} row={0}>
-                        <GtkLabel label="" hexpand />
-                    </GtkGrid.Child>
-                </GtkGrid>
-
+                <FontRenderingControls state={state} onZoomIn={zoomIn} onZoomOut={zoomOut} />
                 <GtkSeparator />
                 <GtkScrolledWindow hexpand vexpand>
                     <GtkDrawingArea render={drawFunc} vexpand hexpand accessibleLabel="Font rendering example" />

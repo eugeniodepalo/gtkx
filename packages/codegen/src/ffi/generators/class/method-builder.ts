@@ -19,18 +19,28 @@ import { partitionSupportedMethods } from "../../../utils/filtering.js";
 import { methodStructureStrategy } from "../callable-strategies.js";
 
 /**
+ * Options for {@link MethodBuilder}.
+ */
+export type MethodBuilderOptions = {
+    ffiMapper: FfiMapper;
+    imports: ImportCollector;
+    methodRenames: Map<string, string>;
+    options: FfiGeneratorOptions;
+    selfNames?: ReadonlySet<string>;
+};
+
+/**
  * Builds method code for a class.
  */
 export class MethodBuilder {
     private readonly methodBody: MethodBodyWriter;
+    private readonly methodRenames: Map<string, string>;
+    private readonly options: FfiGeneratorOptions;
 
-    constructor(
-        ffiMapper: FfiMapper,
-        imports: ImportCollector,
-        private readonly methodRenames: Map<string, string>,
-        private readonly options: FfiGeneratorOptions,
-        selfNames?: ReadonlySet<string>,
-    ) {
+    constructor(opts: MethodBuilderOptions) {
+        const { ffiMapper, imports, methodRenames, options, selfNames } = opts;
+        this.methodRenames = methodRenames;
+        this.options = options;
         this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
             sharedLibrary: options.sharedLibrary,
             glibLibrary: options.glibLibrary,

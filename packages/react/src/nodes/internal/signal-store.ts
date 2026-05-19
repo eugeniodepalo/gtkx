@@ -25,8 +25,17 @@ type HandlerEntry = { obj: GObject.Object; handlerId: number };
 
 type SignalKey = `${string}:${string}`;
 
-interface SignalOptions {
-    blockable?: boolean;
+/**
+ * Parameter object for {@link SignalStore.set}.
+ *
+ * @public
+ */
+export interface SignalBinding {
+    readonly owner: SignalOwner;
+    readonly obj: GObject.Object;
+    readonly signal: string;
+    readonly handler?: SignalHandler | null;
+    readonly blockable?: boolean;
 }
 
 const signalKeyCache = new WeakMap<GObject.Object, string>();
@@ -74,30 +83,20 @@ export class SignalStore {
         }
     }
 
-    private connect(
-        owner: SignalOwner,
-        obj: GObject.Object,
-        signal: string,
-        handler: SignalHandler,
-        blockable: boolean,
-    ): void {
+    private connect(binding: SignalBinding & { handler: SignalHandler; blockable: boolean }): void {
+        const { owner, obj, signal, handler, blockable } = binding;
         const key = getSignalKey(obj, signal);
         const wrappedHandler = this.wrapHandler(handler, signal, blockable);
         const handlerId = obj.connect(signal, wrappedHandler);
         this.getOwnerMap(owner).set(key, { obj, handlerId });
     }
 
-    public set(
-        owner: SignalOwner,
-        obj: GObject.Object,
-        signal: string,
-        handler?: SignalHandler | null,
-        options?: SignalOptions,
-    ): void {
+    public set(binding: SignalBinding): void {
+        const { owner, obj, signal, handler, blockable = true } = binding;
         this.disconnect(owner, obj, signal);
 
         if (handler) {
-            this.connect(owner, obj, signal, handler, options?.blockable ?? true);
+            this.connect({ owner, obj, signal, handler, blockable });
         }
     }
 

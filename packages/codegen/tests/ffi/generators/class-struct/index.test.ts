@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { fileBuilder } from "../../../../src/builders/file-builder.js";
 import { stringify } from "../../../../src/builders/stringify.js";
-import { ClassStructGenerator } from "../../../../src/ffi/generators/class-struct/index.js";
+import {
+    ClassStructGenerator,
+    type ClassStructGeneratorOptions,
+} from "../../../../src/ffi/generators/class-struct/index.js";
 import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
 import {
     createNormalizedCallback,
@@ -28,13 +31,13 @@ function createTestSetup() {
     };
     const skipMessages: string[] = [];
     const logger = { warning: (msg: string) => skipMessages.push(msg) };
-    const generator = new ClassStructGenerator(
+    const generator = new ClassStructGenerator({
         ffiMapper,
         file,
         options,
-        repo as ConstructorParameters<typeof ClassStructGenerator>[3],
+        repo: repo as ClassStructGeneratorOptions["repo"],
         logger,
-    );
+    });
     return { generator, file, repo, skipMessages };
 }
 
@@ -53,7 +56,7 @@ function callbackField(
     });
 }
 
-describe("ClassStructGenerator", () => {
+describe("ClassStructGenerator (1)", () => {
     it("returns false and emits nothing when the record has no callback fields", () => {
         const { generator, file } = createTestSetup();
         const record = createNormalizedRecord({
@@ -90,7 +93,9 @@ describe("ClassStructGenerator", () => {
         expect(code).toContain('vfuncName: "finalize"');
         expect(code).toContain("returnType: t.void");
     });
+});
 
+describe("ClassStructGenerator (2)", () => {
     it("computes byte offsets sequentially across pointer-sized callback fields", () => {
         const { generator, file } = createTestSetup();
         const noopCb = createNormalizedCallback({
@@ -133,7 +138,9 @@ describe("ClassStructGenerator", () => {
         expect(code).toContain("setProperty:");
         expect(code).toContain('vfuncName: "set_property"');
     });
+});
 
+describe("ClassStructGenerator (3)", () => {
     it("skips non-introspectable vfuncs and reports the skip via the logger", () => {
         const { generator, file, skipMessages } = createTestSetup();
         const record = createNormalizedRecord({
@@ -168,7 +175,9 @@ describe("ClassStructGenerator", () => {
         expect(skipMessages[0]).toContain("ObjectClass.constructor");
         expect(skipMessages[0]).toContain('introspectable="0"');
     });
+});
 
+describe("ClassStructGenerator (4)", () => {
     it("skips vfuncs with non-caller-allocated out parameters", () => {
         const { generator, skipMessages } = createTestSetup();
         const record = createNormalizedRecord({
@@ -196,7 +205,9 @@ describe("ClassStructGenerator", () => {
         generator.generate(record);
         expect(skipMessages.some((m) => m.includes("get_size"))).toBe(true);
     });
+});
 
+describe("ClassStructGenerator (5)", () => {
     it("imports the FFI type helper for an eligible vfunc registry", () => {
         const { generator, file } = createTestSetup();
         const record = createNormalizedRecord({
@@ -240,7 +251,9 @@ describe("ClassStructGenerator", () => {
         expect(stringify(file)).toBe("");
         expect(skipMessages.some((m) => m.includes("missing c:type"))).toBe(true);
     });
+});
 
+describe("ClassStructGenerator (6)", () => {
     it("skips records whose vtable kind cannot be inferred from owner or name", () => {
         const { generator, file, skipMessages } = createTestSetup();
         const record = createNormalizedRecord({
@@ -282,7 +295,9 @@ describe("ClassStructGenerator", () => {
         const code = stringify(file);
         expect(code).toContain('kind: "interface"');
     });
+});
 
+describe("ClassStructGenerator (7)", () => {
     it("writes argTypes for eligible vfuncs that have parameters", () => {
         const { generator, file } = createTestSetup();
         const record = createNormalizedRecord({

@@ -31,100 +31,73 @@ interface GirLink {
 
 const GIR_LINK_PATTERN = /\[([a-z]+)@([^\]]+)\]/gi;
 
+const VALID_GIR_LINK_TYPES: ReadonlySet<GirLinkType> = new Set<GirLinkType>([
+    "class",
+    "iface",
+    "struct",
+    "enum",
+    "flags",
+    "error",
+    "callback",
+    "method",
+    "vfunc",
+    "func",
+    "ctor",
+    "property",
+    "signal",
+    "const",
+    "type",
+    "id",
+]);
+
+const splitPropertyOrSignalReference = (linkType: GirLinkType, reference: string): GirLink | null => {
+    const colonIndex = reference.indexOf(":");
+    if (colonIndex === -1) return null;
+    const beforeColon = reference.substring(0, colonIndex);
+    const afterColon = reference.substring(colonIndex + 1);
+    const beforeParts = beforeColon.split(".");
+    if (beforeParts.length >= 2) {
+        return {
+            type: linkType,
+            namespace: beforeParts[0],
+            target: beforeParts.slice(1).join("."),
+            member: afterColon.replace("::", ""),
+        };
+    }
+    return {
+        type: linkType,
+        namespace: undefined,
+        target: beforeColon,
+        member: afterColon.replace("::", ""),
+    };
+};
+
+const parseTwoPartGirLink = (linkType: GirLinkType, first: string, second: string): GirLink => {
+    const isNamespace = /^[A-Z]/.test(first);
+    if (linkType === "func" || linkType === "const" || isNamespace) {
+        return { type: linkType, namespace: first, target: second, member: undefined };
+    }
+    return { type: linkType, namespace: undefined, target: first, member: second };
+};
+
 function parseGirLink(type: string, reference: string): GirLink | null {
     const linkType = type.toLowerCase() as GirLinkType;
-
-    const validTypes: GirLinkType[] = [
-        "class",
-        "iface",
-        "struct",
-        "enum",
-        "flags",
-        "error",
-        "callback",
-        "method",
-        "vfunc",
-        "func",
-        "ctor",
-        "property",
-        "signal",
-        "const",
-        "type",
-        "id",
-    ];
-
-    if (!validTypes.includes(linkType)) {
-        return null;
-    }
+    if (!VALID_GIR_LINK_TYPES.has(linkType)) return null;
 
     const parts = reference.split(".");
-    if (parts.length === 0) {
-        return null;
-    }
+    if (parts.length === 0) return null;
 
     if (linkType === "property" || linkType === "signal") {
-        const colonIndex = reference.indexOf(":");
-        if (colonIndex !== -1) {
-            const beforeColon = reference.substring(0, colonIndex);
-            const afterColon = reference.substring(colonIndex + 1);
-            const beforeParts = beforeColon.split(".");
-            if (beforeParts.length >= 2) {
-                return {
-                    type: linkType,
-                    namespace: beforeParts[0],
-                    target: beforeParts.slice(1).join("."),
-                    member: afterColon.replace("::", ""),
-                };
-            }
-            return {
-                type: linkType,
-                namespace: undefined,
-                target: beforeColon,
-                member: afterColon.replace("::", ""),
-            };
-        }
+        const memberSplit = splitPropertyOrSignalReference(linkType, reference);
+        if (memberSplit) return memberSplit;
     }
 
     if (parts.length === 1) {
-        return {
-            type: linkType,
-            namespace: undefined,
-            target: parts[0] ?? "",
-            member: undefined,
-        };
+        return { type: linkType, namespace: undefined, target: parts[0] ?? "", member: undefined };
     }
-
     if (parts.length === 2) {
-        const first = parts[0] ?? "";
-        const second = parts[1] ?? "";
-        const isNamespace = /^[A-Z]/.test(first);
-
-        if (linkType === "func" || linkType === "const") {
-            return {
-                type: linkType,
-                namespace: first,
-                target: second,
-                member: undefined,
-            };
-        }
-
-        if (isNamespace) {
-            return {
-                type: linkType,
-                namespace: first,
-                target: second,
-                member: undefined,
-            };
-        }
-
-        return {
-            type: linkType,
-            namespace: undefined,
-            target: first,
-            member: second,
-        };
+        return parseTwoPartGirLink(linkType, parts[0] ?? "", parts[1] ?? "");
     }
-
     return {
         type: linkType,
         namespace: parts[0],

@@ -33,7 +33,20 @@ const hasGlibCompileSchemas = (): boolean => {
     }
 };
 
-describe("gtkxGSettings", () => {
+const stubLoadContext = () => ({
+    error: (() => undefined) as unknown as (m: string) => never,
+    emitFile: vi.fn(),
+});
+
+const callResolveIdGsettings = async (
+    resolve: (source: string) => Promise<{ id: string; external?: boolean } | null>,
+    source: string,
+): Promise<string | undefined | null> => {
+    const plugin = gtkxGSettings();
+    return (plugin.resolveId as ResolveIdHook).call({ resolve }, source);
+};
+
+describe("gtkxGSettings (plugin shape and init)", () => {
     it("returns a plugin with the expected name and pre-enforce", () => {
         const plugin = gtkxGSettings();
         expect(plugin.name).toBe("gtkx:gsettings");
@@ -42,69 +55,46 @@ describe("gtkxGSettings", () => {
 
     it("loads the virtual init module with bundleDir bootstrap code", () => {
         const plugin = gtkxGSettings();
-
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
-
-        const result = (plugin.load as LoadHook).call(
-            { error: (() => undefined) as unknown as (m: string) => never, emitFile: vi.fn() },
-            "\0gtkx-gsettings-init",
-        );
-
+        const result = (plugin.load as LoadHook).call(stubLoadContext(), "\0gtkx-gsettings-init");
         expect(typeof result).toBe("string");
         expect(result).toContain("GSETTINGS_SCHEMA_DIR");
         expect(result).toContain("import.meta.url");
     });
+});
 
+describe("gtkxGSettings (resolveId)", () => {
     it("resolveId returns the virtual init id directly", async () => {
-        const plugin = gtkxGSettings();
-        const result = await (plugin.resolveId as ResolveIdHook).call(
-            {
-                resolve: () => Promise.resolve({ id: "" }),
-            },
-            "\0gtkx-gsettings-init",
-        );
+        const result = await callResolveIdGsettings(() => Promise.resolve({ id: "" }), "\0gtkx-gsettings-init");
         expect(result).toBe("\0gtkx-gsettings-init");
     });
 
     it("resolveId ignores non-schema ids", async () => {
-        const plugin = gtkxGSettings();
-        const result = await (plugin.resolveId as ResolveIdHook).call(
-            {
-                resolve: () => Promise.resolve({ id: "" }),
-            },
-            "./some.module.ts",
-        );
+        const result = await callResolveIdGsettings(() => Promise.resolve({ id: "" }), "./some.module.ts");
         expect(result).toBeUndefined();
     });
 
     it("resolveId returns null when the resolve hook reports external", async () => {
-        const plugin = gtkxGSettings();
-        const result = await (plugin.resolveId as ResolveIdHook).call(
-            {
-                resolve: () => Promise.resolve({ id: "/abs.gschema.xml", external: true }),
-            },
+        const result = await callResolveIdGsettings(
+            () => Promise.resolve({ id: "/abs.gschema.xml", external: true }),
             "./x.gschema.xml",
         );
         expect(result).toBeUndefined();
     });
 
     it("resolveId returns the virtual prefix + resolved id for schema imports", async () => {
-        const plugin = gtkxGSettings();
-        const resolved = await (plugin.resolveId as ResolveIdHook).call(
-            {
-                resolve: () => Promise.resolve({ id: "/schema/path.gschema.xml" }),
-            },
+        const resolved = await callResolveIdGsettings(
+            () => Promise.resolve({ id: "/schema/path.gschema.xml" }),
             "./path.gschema.xml",
         );
         expect(resolved).toBe("\0gtkx-gsettings:/schema/path.gschema.xml");
     });
+});
 
+describe("gtkxGSettings (load)", () => {
     it("load returns undefined for non-virtual ids", () => {
         const plugin = gtkxGSettings();
-        const result = (plugin.load as LoadHook).call(
-            { error: (() => undefined) as unknown as (m: string) => never, emitFile: vi.fn() },
-            "/regular/path/file.ts",
-        );
+        const result = (plugin.load as LoadHook).call(stubLoadContext(), "/regular/path/file.ts");
         expect(result).toBeUndefined();
     });
 
@@ -130,13 +120,7 @@ describe("gtkxGSettings", () => {
             const plugin = gtkxGSettings();
             (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });
 
-            const code = (plugin.load as LoadHook).call(
-                {
-                    error: (() => undefined) as unknown as (m: string) => never,
-                    emitFile: vi.fn(),
-                },
-                `\0gtkx-gsettings:${schemaPath}`,
-            ) as string;
+            const code = (plugin.load as LoadHook).call(stubLoadContext(), `\0gtkx-gsettings:${schemaPath}`) as string;
 
             expect(code).toContain(`export default "com.example.alpha";`);
             expect(code).toContain(`export const com_example_alpha = "com.example.alpha";`);
@@ -173,7 +157,9 @@ describe("gtkxGSettings", () => {
             rmSync(tmp, { recursive: true, force: true });
         }
     });
+});
 
+describe("gtkxGSettings (buildEnd)", () => {
     it("buildEnd is a no-op when no schemas were queued", () => {
         const plugin = gtkxGSettings();
         (plugin.configResolved as ConfigResolvedHook).call({}, { command: "build" });

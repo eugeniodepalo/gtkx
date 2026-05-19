@@ -39,109 +39,107 @@ function createRepo(): { repo: RepositoryLike; addInterface: (iface: GirInterfac
     return { repo, addInterface: (iface) => interfaces.set(iface.qualifiedName, iface) };
 }
 
-describe("GirInterface", () => {
-    describe("hasPrerequisite", () => {
-        it("returns true for a directly-listed prerequisite", () => {
-            const { repo } = createRepo();
-            const buildable = makeInterface(repo, { prerequisites: ["GObject.Object"] });
-            expect(buildable.hasPrerequisite("GObject.Object")).toBe(true);
-        });
-
-        it("walks through transitive prerequisites", () => {
-            const ctx = createRepo();
-            const inner = makeInterface(ctx.repo, {
-                qualifiedName: "Gtk.Inner",
-                prerequisites: ["GObject.Object"],
-            });
-            ctx.addInterface(inner);
-            const outer = makeInterface(ctx.repo, {
-                qualifiedName: "Gtk.Outer",
-                prerequisites: ["Gtk.Inner"],
-            });
-            expect(outer.hasPrerequisite("GObject.Object")).toBe(true);
-        });
-
-        it("returns false when no chain reaches the target prerequisite", () => {
-            const ctx = createRepo();
-            const other = makeInterface(ctx.repo, {
-                qualifiedName: "Gtk.Other",
-                prerequisites: ["Gtk.Something"],
-            });
-            ctx.addInterface(other);
-            const buildable = makeInterface(ctx.repo, { prerequisites: ["Gtk.Other"] });
-            expect(buildable.hasPrerequisite("GObject.Missing")).toBe(false);
-        });
-    });
-
-    describe("getAllPrerequisites", () => {
-        it("returns own prerequisites when none have transitive deps", () => {
-            const { repo } = createRepo();
-            const buildable = makeInterface(repo, { prerequisites: ["GObject.Object"] });
-            expect(buildable.getAllPrerequisites()).toEqual(["GObject.Object"]);
-        });
-
-        it("flattens transitive prerequisites and dedupes", () => {
-            const ctx = createRepo();
-            const base = makeInterface(ctx.repo, {
-                qualifiedName: "Gtk.Base",
-                prerequisites: ["GObject.Object"],
-            });
-            ctx.addInterface(base);
-            const middle = makeInterface(ctx.repo, {
-                qualifiedName: "Gtk.Middle",
-                prerequisites: ["Gtk.Base", "GObject.Object"],
-            });
-            ctx.addInterface(middle);
-            const outer = makeInterface(ctx.repo, {
-                qualifiedName: "Gtk.Outer",
-                prerequisites: ["Gtk.Middle", "Gtk.Base"],
-            });
-            expect(new Set(outer.getAllPrerequisites())).toEqual(new Set(["Gtk.Middle", "Gtk.Base", "GObject.Object"]));
-        });
-    });
-
-    describe("lookup helpers", () => {
+describe("GirInterface / hasPrerequisite", () => {
+    it("returns true for a directly-listed prerequisite", () => {
         const { repo } = createRepo();
-        const method = new GirMethod({
-            name: "get_id",
-            cIdentifier: "gtk_buildable_get_id",
-            returnType: makeType("utf8"),
-            parameters: [],
-            throws: false,
-        });
-        const property = new GirProperty({
-            name: "id",
-            type: makeType("utf8"),
-            writable: true,
-            readable: true,
-            constructOnly: false,
-            defaultValue: null,
-        });
-        const signal = new GirSignal({
-            name: "changed",
-            when: "last",
-            returnType: makeType(),
-            parameters: [],
-        });
-        const buildable = makeInterface(repo, {
-            methods: [method],
-            properties: [property],
-            signals: [signal],
-        });
+        const buildable = makeInterface(repo, { prerequisites: ["GObject.Object"] });
+        expect(buildable.hasPrerequisite("GObject.Object")).toBe(true);
+    });
 
-        it("getMethod returns the matching method or null", () => {
-            expect(buildable.getMethod("get_id")).toBe(method);
-            expect(buildable.getMethod("missing")).toBeNull();
+    it("walks through transitive prerequisites", () => {
+        const ctx = createRepo();
+        const inner = makeInterface(ctx.repo, {
+            qualifiedName: "Gtk.Inner",
+            prerequisites: ["GObject.Object"],
         });
+        ctx.addInterface(inner);
+        const outer = makeInterface(ctx.repo, {
+            qualifiedName: "Gtk.Outer",
+            prerequisites: ["Gtk.Inner"],
+        });
+        expect(outer.hasPrerequisite("GObject.Object")).toBe(true);
+    });
 
-        it("getProperty returns the matching property or null", () => {
-            expect(buildable.getProperty("id")).toBe(property);
-            expect(buildable.getProperty("missing")).toBeNull();
+    it("returns false when no chain reaches the target prerequisite", () => {
+        const ctx = createRepo();
+        const other = makeInterface(ctx.repo, {
+            qualifiedName: "Gtk.Other",
+            prerequisites: ["Gtk.Something"],
         });
+        ctx.addInterface(other);
+        const buildable = makeInterface(ctx.repo, { prerequisites: ["Gtk.Other"] });
+        expect(buildable.hasPrerequisite("GObject.Missing")).toBe(false);
+    });
+});
 
-        it("getSignal returns the matching signal or null", () => {
-            expect(buildable.getSignal("changed")).toBe(signal);
-            expect(buildable.getSignal("missing")).toBeNull();
+describe("GirInterface / getAllPrerequisites", () => {
+    it("returns own prerequisites when none have transitive deps", () => {
+        const { repo } = createRepo();
+        const buildable = makeInterface(repo, { prerequisites: ["GObject.Object"] });
+        expect(buildable.getAllPrerequisites()).toEqual(["GObject.Object"]);
+    });
+
+    it("flattens transitive prerequisites and dedupes", () => {
+        const ctx = createRepo();
+        const base = makeInterface(ctx.repo, {
+            qualifiedName: "Gtk.Base",
+            prerequisites: ["GObject.Object"],
         });
+        ctx.addInterface(base);
+        const middle = makeInterface(ctx.repo, {
+            qualifiedName: "Gtk.Middle",
+            prerequisites: ["Gtk.Base", "GObject.Object"],
+        });
+        ctx.addInterface(middle);
+        const outer = makeInterface(ctx.repo, {
+            qualifiedName: "Gtk.Outer",
+            prerequisites: ["Gtk.Middle", "Gtk.Base"],
+        });
+        expect(new Set(outer.getAllPrerequisites())).toEqual(new Set(["Gtk.Middle", "Gtk.Base", "GObject.Object"]));
+    });
+});
+
+describe("GirInterface / lookup helpers", () => {
+    const { repo } = createRepo();
+    const method = new GirMethod({
+        name: "get_id",
+        cIdentifier: "gtk_buildable_get_id",
+        returnType: makeType("utf8"),
+        parameters: [],
+        throws: false,
+    });
+    const property = new GirProperty({
+        name: "id",
+        type: makeType("utf8"),
+        writable: true,
+        readable: true,
+        constructOnly: false,
+        defaultValue: null,
+    });
+    const signal = new GirSignal({
+        name: "changed",
+        when: "last",
+        returnType: makeType(),
+        parameters: [],
+    });
+    const buildable = makeInterface(repo, {
+        methods: [method],
+        properties: [property],
+        signals: [signal],
+    });
+
+    it("getMethod returns the matching method or null", () => {
+        expect(buildable.getMethod("get_id")).toBe(method);
+        expect(buildable.getMethod("missing")).toBeNull();
+    });
+
+    it("getProperty returns the matching property or null", () => {
+        expect(buildable.getProperty("id")).toBe(property);
+        expect(buildable.getProperty("missing")).toBeNull();
+    });
+
+    it("getSignal returns the matching signal or null", () => {
+        expect(buildable.getSignal("changed")).toBe(signal);
+        expect(buildable.getSignal("missing")).toBeNull();
     });
 });

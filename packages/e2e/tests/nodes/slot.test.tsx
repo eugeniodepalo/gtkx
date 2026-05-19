@@ -4,7 +4,7 @@ import { render } from "@gtkx/testing";
 import { createElement, createRef } from "react";
 import { describe, expect, it } from "vitest";
 
-describe("render - Slot", () => {
+describe("render - Slot (1)", () => {
     it("sets slot child via ReactNode prop", async () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
         const titleRef = createRef<Gtk.Label>();
@@ -40,7 +40,9 @@ describe("render - Slot", () => {
 
         expect(headerBarRef.current?.getTitleWidget()).toBeNull();
     });
+});
 
+describe("render - Slot (2)", () => {
     it("updates slot when child changes", async () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
         const label1Ref = createRef<Gtk.Label>();
@@ -89,7 +91,9 @@ describe("render - Slot", () => {
 
         expect(menuButtonRef.current?.getPopover()).toBe(popoverRef.current);
     });
+});
 
+describe("render - Slot (3)", () => {
     it("handles multiple slots on same parent", async () => {
         const panedRef = createRef<Gtk.Paned>();
         const startRef = createRef<Gtk.Label>();

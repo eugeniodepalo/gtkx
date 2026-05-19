@@ -26,7 +26,7 @@ const buildTaggedTextView = (ref: RefObject<Gtk.TextView | null>) => (items: str
     </GtkTextView>
 );
 
-describe("render - TextView", () => {
+describe("render - TextView (1)", () => {
     describe("basic text content", () => {
         it("renders plain text inside TextView", async () => {
             const ref = createRef<Gtk.TextView>();
@@ -69,8 +69,10 @@ describe("render - TextView", () => {
             expect(getBufferText(buffer as Gtk.TextBuffer)).toBe('Special: & < > "');
         });
     });
+});
 
-    describe("TextTag styling", () => {
+describe("render - TextView (2)", () => {
+    describe("TextTag styling (1)", () => {
         it("applies TextTag to wrapped text", async () => {
             const ref = createRef<Gtk.TextView>();
 
@@ -102,7 +104,11 @@ describe("render - TextView", () => {
             expect(getBufferText(buffer as Gtk.TextBuffer)).toBe("Red Text");
             expect(hasTagAtOffset(buffer as Gtk.TextBuffer, "red", 0)).toBe(true);
         });
+    });
+});
 
+describe("render - TextView (3)", () => {
+    describe("TextTag styling (2)", () => {
         it("renders text with bold weight", async () => {
             const ref = createRef<Gtk.TextView>();
 
@@ -141,7 +147,9 @@ describe("render - TextView", () => {
             expect(tag).not.toBeNull();
         });
     });
+});
 
+describe("render - TextView (4)", () => {
     describe("nested TextTags", () => {
         it("supports nested tags", async () => {
             const ref = createRef<Gtk.TextView>();
@@ -185,7 +193,9 @@ describe("render - TextView", () => {
             expect(hasTagAtOffset(buffer as Gtk.TextBuffer, "c", 2)).toBe(true);
         });
     });
+});
 
+describe("render - TextView (5)", () => {
     describe("TextAnchor embedded widgets", () => {
         it("embeds widget at anchor position", async () => {
             const ref = createRef<Gtk.TextView>();
@@ -209,8 +219,10 @@ describe("render - TextView", () => {
             expect(button).toBeDefined();
         });
     });
+});
 
-    describe("dynamic updates", () => {
+describe("render - TextView (6)", () => {
+    describe("dynamic updates (1)", () => {
         it("updates text content on rerender", async () => {
             const ref = createRef<Gtk.TextView>();
 
@@ -247,7 +259,11 @@ describe("render - TextView", () => {
             expect(getBufferText(buffer as Gtk.TextBuffer)).toBe("Hello World");
             expect(hasTagAtOffset(buffer as Gtk.TextBuffer, "bold", 6)).toBe(true);
         });
+    });
+});
 
+describe("render - TextView (7)", () => {
+    describe("dynamic updates (2)", () => {
         it("renders conditional text segments", async () => {
             const ref = createRef<Gtk.TextView>();
 
@@ -285,7 +301,9 @@ describe("render - TextView", () => {
             expect(hasTagAtOffset(buffer as Gtk.TextBuffer, "bold", 0)).toBe(true);
         });
     });
+});
 
+describe("render - TextView (8)", () => {
     describe("callbacks", () => {
         it("does not call onBufferChanged during React reconciliation", async () => {
             const ref = createRef<Gtk.TextView>();
@@ -334,7 +352,9 @@ describe("render - TextView", () => {
             expect(buffer?.getEnableUndo()).toBe(false);
         });
     });
+});
 
+describe("render - TextView (9)", () => {
     describe("mixed content order", () => {
         it("maintains correct text order with mixed content", async () => {
             const ref = createRef<Gtk.TextView>();
@@ -373,8 +393,10 @@ describe("render - TextView", () => {
             expect(hasTagAtOffset(buffer as Gtk.TextBuffer, "C", 2)).toBe(true);
         });
     });
+});
 
-    describe("dynamic updates - comprehensive", () => {
+describe("render - TextView (10)", () => {
+    describe("dynamic updates - comprehensive (1)", () => {
         it("updates text inside a tag and maintains subsequent tag offsets", async () => {
             const ref = createRef<Gtk.TextView>();
 
@@ -404,7 +426,11 @@ describe("render - TextView", () => {
             expect(hasTagAtOffset(buffer as Gtk.TextBuffer, "first", 0)).toBe(true);
             expect(hasTagAtOffset(buffer as Gtk.TextBuffer, "second", 14)).toBe(true);
         });
+    });
+});
 
+describe("render - TextView (11)", () => {
+    describe("dynamic updates - comprehensive (2)", () => {
         it("adds new tag dynamically", async () => {
             const ref = createRef<Gtk.TextView>();
 
@@ -432,7 +458,11 @@ describe("render - TextView", () => {
             expect(getBufferText(buffer as Gtk.TextBuffer)).toBe("StartNewEnd");
             expect(hasTagAtOffset(buffer as Gtk.TextBuffer, "dynamic", 5)).toBe(true);
         });
+    });
+});
 
+describe("render - TextView (12)", () => {
+    describe("dynamic updates - comprehensive (3)", () => {
         it("removes tag dynamically", async () => {
             const ref = createRef<Gtk.TextView>();
 
@@ -476,7 +506,11 @@ describe("render - TextView", () => {
             expect(hasTagAtOffset(buffer as Gtk.TextBuffer, "A", 1)).toBe(true);
             expect(hasTagAtOffset(buffer as Gtk.TextBuffer, "B", 2)).toBe(true);
         });
+    });
+});
 
+describe("render - TextView (13)", () => {
+    describe("dynamic updates - comprehensive (4)", () => {
         it("handles text change inside nested tag", async () => {
             const ref = createRef<Gtk.TextView>();
 

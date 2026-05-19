@@ -36,7 +36,7 @@ export class PopoverMenuNode extends WidgetNode<PopoverMenuWidget, Props, Popove
         const prefix = application ? "app" : "menu";
 
         this.container.insertActionGroup(prefix, actionGroup);
-        const menu = new MenuModel("root", {}, rootContainer, actionGroup, application);
+        const menu = new MenuModel({ type: "root", props: {}, rootContainer, actionMap: actionGroup, application });
         this.menuController = new MenuChildController(menu);
         this.container.setMenuModel(menu.getMenu());
     }

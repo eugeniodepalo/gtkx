@@ -29,51 +29,21 @@ const lerpColor = (c1: Color, c2: Color, t: number): Color => ({
 
 const TIME_SPAN_US = 3_000_000;
 
-const FramesDemo = ({ window }: DemoProps) => {
-    const drawingRef = useRef<Gtk.DrawingArea>(null);
-    const [fps, setFps] = useState(0);
-
-    useEffect(() => {
-        const win = window.current;
-        if (win) {
-            win.setDefaultSize(600, 400);
-        }
-    }, [window]);
-
-    const fpsAttrs = useMemo(() => {
-        const attrs = new Pango.AttrList();
-        attrs.insert(Pango.attrFontFeaturesNew("tnum=1"));
-        return attrs;
-    }, []);
-    const tickIdRef = useRef<number | null>(null);
-    const fpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
+function useFrameAnimationRefs() {
     const color1Ref = useRef<Color>({ r: 0, g: 0, b: 0 });
     const color2Ref = useRef<Color>({ r: 0, g: 0, b: 0 });
     const time2Ref = useRef<number>(0);
     const nowRef = useRef<number>(0);
+    return { color1Ref, color2Ref, time2Ref, nowRef };
+}
 
-    const draw = useCallback((cr: Context, width: number, height: number) => {
-        const t = 1 - (time2Ref.current - nowRef.current) / TIME_SPAN_US;
-        const color = lerpColor(color1Ref.current, color2Ref.current, Math.max(0, Math.min(1, t)));
-        cr.setSourceRgb(color.r, color.g, color.b);
-        cr.rectangle(0, 0, width, height);
-        cr.fill();
-    }, []);
-
-    const tickCallback = useCallback((_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
-        const now = frameClock.getFrameTime();
-        nowRef.current = now;
-
-        if (now >= time2Ref.current) {
-            time2Ref.current = now + TIME_SPAN_US;
-            color1Ref.current = color2Ref.current;
-            color2Ref.current = randomColor();
-        }
-
-        drawingRef.current?.queueDraw();
-        return true;
-    }, []);
+function useFrameTickAndFps(
+    drawingRef: React.RefObject<Gtk.DrawingArea | null>,
+    tickCallback: (widget: Gtk.Widget, frameClock: Gdk.FrameClock) => boolean,
+    setFps: (fps: number) => void,
+) {
+    const tickIdRef = useRef<number | null>(null);
+    const fpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
         const area = drawingRef.current;
@@ -98,7 +68,56 @@ const FramesDemo = ({ window }: DemoProps) => {
                 fpsIntervalRef.current = null;
             }
         };
-    }, [tickCallback]);
+    }, [tickCallback, drawingRef, setFps]);
+}
+
+const FramesDemo = ({ window }: DemoProps) => {
+    const drawingRef = useRef<Gtk.DrawingArea>(null);
+    const [fps, setFps] = useState(0);
+    const animationRefs = useFrameAnimationRefs();
+
+    useEffect(() => {
+        const win = window.current;
+        if (win) {
+            win.setDefaultSize(600, 400);
+        }
+    }, [window]);
+
+    const fpsAttrs = useMemo(() => {
+        const attrs = new Pango.AttrList();
+        attrs.insert(Pango.attrFontFeaturesNew("tnum=1"));
+        return attrs;
+    }, []);
+
+    const draw = useCallback(
+        (cr: Context, width: number, height: number) => {
+            const { time2Ref, nowRef, color1Ref, color2Ref } = animationRefs;
+            const t = 1 - (time2Ref.current - nowRef.current) / TIME_SPAN_US;
+            const color = lerpColor(color1Ref.current, color2Ref.current, Math.max(0, Math.min(1, t)));
+            cr.setSourceRgb(color.r, color.g, color.b);
+            cr.rectangle(0, 0, width, height);
+            cr.fill();
+        },
+        [animationRefs],
+    );
+
+    const tickCallback = useCallback(
+        (_widget: Gtk.Widget, frameClock: Gdk.FrameClock): boolean => {
+            const { time2Ref, nowRef, color1Ref, color2Ref } = animationRefs;
+            const now = frameClock.getFrameTime();
+            nowRef.current = now;
+            if (now >= time2Ref.current) {
+                time2Ref.current = now + TIME_SPAN_US;
+                color1Ref.current = color2Ref.current;
+                color2Ref.current = randomColor();
+            }
+            drawingRef.current?.queueDraw();
+            return true;
+        },
+        [animationRefs],
+    );
+
+    useFrameTickAndFps(drawingRef, tickCallback, setFps);
 
     return (
         <>

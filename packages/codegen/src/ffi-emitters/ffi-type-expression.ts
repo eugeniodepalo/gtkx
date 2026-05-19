@@ -40,88 +40,91 @@ const ownership = (descriptor: FfiTypeDescriptor): string => stringify(descripto
  * @param writer - Stream writer for the generated source
  * @param descriptor - FFI type descriptor to render
  */
+type ComplexTypeWriter = (writer: Writer, descriptor: FfiTypeDescriptor) => void;
+
+const writeStringExpression: ComplexTypeWriter = (writer, descriptor) => {
+    writer.write(`t.string(${ownership(descriptor)})`);
+};
+
+const writeGObjectExpression: ComplexTypeWriter = (writer, descriptor) => {
+    writer.write(`t.object(${ownership(descriptor)})`);
+};
+
+const writeRefExpression: ComplexTypeWriter = (writer, descriptor) => {
+    writer.write("t.ref(");
+    if (typeof descriptor.innerType === "object") {
+        writeFfiTypeExpression(writer, descriptor.innerType);
+    }
+    writer.write(")");
+};
+
+const writeHashTableExpression: ComplexTypeWriter = (writer, descriptor) => {
+    writer.write("t.hashTable(");
+    if (descriptor.keyType !== undefined) {
+        writeFfiTypeExpression(writer, descriptor.keyType);
+    }
+    writer.write(", ");
+    if (descriptor.valueType !== undefined) {
+        writeFfiTypeExpression(writer, descriptor.valueType);
+    }
+    writer.write(`, ${ownership(descriptor)})`);
+};
+
+const writeEnumOrFlagsExpression: ComplexTypeWriter = (writer, descriptor) => {
+    writer.write(
+        `t.${descriptor.type}(${stringify(descriptor.library ?? "")}, ${stringify(descriptor.getTypeFn ?? "")}, ${descriptor.signed === true})`,
+    );
+};
+
+const writeCallbackExpression: ComplexTypeWriter = (writer, descriptor) => {
+    writer.write("t.callback(");
+    writeTypeArray(writer, descriptor.argTypes ?? []);
+    writer.write(", ");
+    if (descriptor.returnType !== undefined) {
+        writeFfiTypeExpression(writer, descriptor.returnType);
+    }
+    writer.write(")");
+};
+
+const writeTrampolineExpression: ComplexTypeWriter = (writer, descriptor) => {
+    writer.write("t.trampoline(");
+    writeTypeArray(writer, descriptor.argTypes ?? []);
+    writer.write(", ");
+    if (descriptor.returnType !== undefined) {
+        writeFfiTypeExpression(writer, descriptor.returnType);
+    }
+    writeTrampolineOptions(writer, descriptor);
+    writer.write(")");
+};
+
+const COMPLEX_TYPE_WRITERS: Record<string, ComplexTypeWriter | undefined> = {
+    string: writeStringExpression,
+    gobject: writeGObjectExpression,
+    boxed: writeBoxedExpression,
+    struct: writeStructExpression,
+    fundamental: writeFundamentalExpression,
+    ref: writeRefExpression,
+    hashtable: writeHashTableExpression,
+    enum: writeEnumOrFlagsExpression,
+    flags: writeEnumOrFlagsExpression,
+    array: writeArrayExpression,
+    callback: writeCallbackExpression,
+    trampoline: writeTrampolineExpression,
+};
+
 export function writeFfiTypeExpression(writer: Writer, descriptor: FfiTypeDescriptor): void {
     if (PRIMITIVE_TYPES.has(descriptor.type)) {
         writer.write(`t.${descriptor.type}`);
         return;
     }
 
-    switch (descriptor.type) {
-        case "string":
-            writer.write(`t.string(${ownership(descriptor)})`);
-            return;
-
-        case "gobject":
-            writer.write(`t.object(${ownership(descriptor)})`);
-            return;
-
-        case "boxed":
-            writeBoxedExpression(writer, descriptor);
-            return;
-
-        case "struct":
-            writeStructExpression(writer, descriptor);
-            return;
-
-        case "fundamental":
-            writeFundamentalExpression(writer, descriptor);
-            return;
-
-        case "ref":
-            writer.write("t.ref(");
-            if (typeof descriptor.innerType === "object") {
-                writeFfiTypeExpression(writer, descriptor.innerType);
-            }
-            writer.write(")");
-            return;
-
-        case "hashtable":
-            writer.write("t.hashTable(");
-            if (descriptor.keyType !== undefined) {
-                writeFfiTypeExpression(writer, descriptor.keyType);
-            }
-            writer.write(", ");
-            if (descriptor.valueType !== undefined) {
-                writeFfiTypeExpression(writer, descriptor.valueType);
-            }
-            writer.write(`, ${ownership(descriptor)})`);
-            return;
-
-        case "enum":
-        case "flags":
-            writer.write(
-                `t.${descriptor.type}(${stringify(descriptor.library ?? "")}, ${stringify(descriptor.getTypeFn ?? "")}, ${descriptor.signed === true})`,
-            );
-            return;
-
-        case "array":
-            writeArrayExpression(writer, descriptor);
-            return;
-
-        case "callback":
-            writer.write("t.callback(");
-            writeTypeArray(writer, descriptor.argTypes ?? []);
-            writer.write(", ");
-            if (descriptor.returnType !== undefined) {
-                writeFfiTypeExpression(writer, descriptor.returnType);
-            }
-            writer.write(")");
-            return;
-
-        case "trampoline":
-            writer.write("t.trampoline(");
-            writeTypeArray(writer, descriptor.argTypes ?? []);
-            writer.write(", ");
-            if (descriptor.returnType !== undefined) {
-                writeFfiTypeExpression(writer, descriptor.returnType);
-            }
-            writeTrampolineOptions(writer, descriptor);
-            writer.write(")");
-            return;
-
-        default:
-            writer.write(JSON.stringify(descriptor));
+    const handler = COMPLEX_TYPE_WRITERS[descriptor.type];
+    if (handler !== undefined) {
+        handler(writer, descriptor);
+        return;
     }
+
+    writer.write(JSON.stringify(descriptor));
 }
 
 function writeBoxedExpression(writer: Writer, descriptor: FfiTypeDescriptor): void {
@@ -148,14 +151,80 @@ function writeStructExpression(writer: Writer, descriptor: FfiTypeDescriptor): v
 }
 
 function writeFundamentalExpression(writer: Writer, descriptor: FfiTypeDescriptor): void {
-    writer.write(
-        `t.fundamental(${stringify(descriptor.library ?? "")}, ${stringify(descriptor.refFn ?? "")}, ${stringify(descriptor.unrefFn ?? "")}, ${ownership(descriptor)}`,
-    );
+    const optionParts = [`ownership: ${ownership(descriptor)}`];
     if (descriptor.typeName !== undefined) {
-        writer.write(`, ${stringify(descriptor.typeName)}`);
+        optionParts.push(`typeName: ${stringify(descriptor.typeName)}`);
+    }
+    writer.write(
+        `t.fundamental(${stringify(descriptor.library ?? "")}, ${stringify(descriptor.refFn ?? "")}, ${stringify(descriptor.unrefFn ?? "")}, { ${optionParts.join(", ")} })`,
+    );
+}
+
+type ArrayKindWriter = (writer: Writer, descriptor: FfiTypeDescriptor, item: FfiTypeDescriptor, own: string) => void;
+
+const writeListLikeArray = (helperName: string): ArrayKindWriter => {
+    return (writer, _descriptor, item, own) => {
+        writer.write(`t.${helperName}(`);
+        writeFfiTypeExpression(writer, item);
+        writer.write(`, ${own})`);
+    };
+};
+
+const writeGArrayExpression: ArrayKindWriter = (writer, descriptor, item, own) => {
+    writer.write("t.gArray(");
+    writeFfiTypeExpression(writer, item);
+    writer.write(`, ${own}`);
+    if (descriptor.elementSize !== undefined) {
+        writer.write(`, ${descriptor.elementSize}`);
     }
     writer.write(")");
-}
+};
+
+const writeByteArrayExpression: ArrayKindWriter = (writer, _descriptor, _item, own) => {
+    writer.write(`t.byteArray(${own})`);
+};
+
+const writeSizedArrayExpression: ArrayKindWriter = (writer, descriptor, item, own) => {
+    writer.write("t.sizedArray(");
+    writeFfiTypeExpression(writer, item);
+    writer.write(`, ${descriptor.sizeParamIndex ?? 0}, ${own}`);
+    if (descriptor.elementSize !== undefined) {
+        writer.write(`, ${descriptor.elementSize}`);
+    }
+    writer.write(")");
+};
+
+const writeFixedArrayExpression: ArrayKindWriter = (writer, descriptor, item, own) => {
+    writer.write("t.fixedArray(");
+    writeFfiTypeExpression(writer, item);
+    writer.write(`, ${descriptor.fixedSize ?? 0}, ${own}`);
+    if (descriptor.elementSize !== undefined) {
+        writer.write(`, ${descriptor.elementSize}`);
+    }
+    writer.write(")");
+};
+
+const writeDefaultArrayExpression = (
+    writer: Writer,
+    opts: { descriptor: FfiTypeDescriptor; item: FfiTypeDescriptor; own: string; kind: string },
+): void => {
+    const { descriptor, item, own, kind } = opts;
+    writer.write("t.array(");
+    writeFfiTypeExpression(writer, item);
+    writer.write(`, ${stringify(kind)}, ${own}`);
+    writeArrayOptions(writer, descriptor);
+    writer.write(")");
+};
+
+const ARRAY_KIND_WRITERS: Record<string, ArrayKindWriter | undefined> = {
+    glist: writeListLikeArray("list"),
+    gslist: writeListLikeArray("slist"),
+    gptrarray: writeListLikeArray("ptrArray"),
+    garray: writeGArrayExpression,
+    gbytearray: writeByteArrayExpression,
+    sized: writeSizedArrayExpression,
+    fixed: writeFixedArrayExpression,
+};
 
 function writeArrayExpression(writer: Writer, descriptor: FfiTypeDescriptor): void {
     const item = descriptor.itemType;
@@ -167,59 +236,12 @@ function writeArrayExpression(writer: Writer, descriptor: FfiTypeDescriptor): vo
         return;
     }
 
-    switch (kind) {
-        case "glist":
-            writer.write("t.list(");
-            writeFfiTypeExpression(writer, item);
-            writer.write(`, ${own})`);
-            return;
-        case "gslist":
-            writer.write("t.slist(");
-            writeFfiTypeExpression(writer, item);
-            writer.write(`, ${own})`);
-            return;
-        case "gptrarray":
-            writer.write("t.ptrArray(");
-            writeFfiTypeExpression(writer, item);
-            writer.write(`, ${own})`);
-            return;
-        case "garray":
-            writer.write("t.gArray(");
-            writeFfiTypeExpression(writer, item);
-            writer.write(`, ${own}`);
-            if (descriptor.elementSize !== undefined) {
-                writer.write(`, ${descriptor.elementSize}`);
-            }
-            writer.write(")");
-            return;
-        case "gbytearray":
-            writer.write(`t.byteArray(${own})`);
-            return;
-        case "sized":
-            writer.write("t.sizedArray(");
-            writeFfiTypeExpression(writer, item);
-            writer.write(`, ${descriptor.sizeParamIndex ?? 0}, ${own}`);
-            if (descriptor.elementSize !== undefined) {
-                writer.write(`, ${descriptor.elementSize}`);
-            }
-            writer.write(")");
-            return;
-        case "fixed":
-            writer.write("t.fixedArray(");
-            writeFfiTypeExpression(writer, item);
-            writer.write(`, ${descriptor.fixedSize ?? 0}, ${own}`);
-            if (descriptor.elementSize !== undefined) {
-                writer.write(`, ${descriptor.elementSize}`);
-            }
-            writer.write(")");
-            return;
-        default:
-            writer.write("t.array(");
-            writeFfiTypeExpression(writer, item);
-            writer.write(`, ${stringify(kind)}, ${own}`);
-            writeArrayOptions(writer, descriptor);
-            writer.write(")");
+    const handler = ARRAY_KIND_WRITERS[kind];
+    if (handler !== undefined) {
+        handler(writer, descriptor, item, own);
+        return;
     }
+    writeDefaultArrayExpression(writer, { descriptor, item, own, kind });
 }
 
 function writeArrayOptions(writer: Writer, descriptor: FfiTypeDescriptor): void {

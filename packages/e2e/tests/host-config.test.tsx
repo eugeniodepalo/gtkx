@@ -16,7 +16,7 @@ const buildLabelBox = (boxRef: RefObject<Gtk.Box | null>) => (items: string[]) =
     </GtkBox>
 );
 
-describe("host-config - children", () => {
+describe("host-config - children (1)", () => {
     describe("adding children", () => {
         it("appends child to appendable widget (Box)", async () => {
             await render(
@@ -40,7 +40,9 @@ describe("host-config - children", () => {
             expect(label).toBeDefined();
         });
     });
+});
 
+describe("host-config - children (2)", () => {
     describe("removing children", () => {
         it("removes child from parent", async () => {
             function App({ showChild }: { showChild: boolean }) {
@@ -70,7 +72,9 @@ describe("host-config - children", () => {
             expect(screen.queryByText("Child")).toBeNull();
         });
     });
+});
 
+describe("host-config - children (3)", () => {
     describe("inserting children", () => {
         it("inserts child before sibling", async () => {
             const boxRef = createRef<Gtk.Box>();
@@ -94,7 +98,9 @@ describe("host-config - children", () => {
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["A", "B", "C"]);
         });
     });
+});
 
+describe("host-config - children (4)", () => {
     describe("root level widgets", () => {
         it("renders root level window", async () => {
             const windowRef = createRef<Gtk.ApplicationWindow>();
@@ -140,7 +146,9 @@ describe("host-config - children", () => {
             expect(window2Ref.current).not.toBeNull();
         });
     });
+});
 
+describe("host-config - children (5)", () => {
     describe("child ordering", () => {
         it("maintains correct order after multiple operations", async () => {
             const boxRef = createRef<Gtk.Box>();
@@ -165,8 +173,10 @@ describe("host-config - children", () => {
             expect(getLabelTexts(boxRef.current as Gtk.Box)).toEqual(["C", "B", "A"]);
         });
     });
+});
 
-    describe("scoped queries with within", () => {
+describe("host-config - children (6)", () => {
+    describe("scoped queries with within (1)", () => {
         it("queries within a specific container", async () => {
             const containerRef = createRef<Gtk.Box>();
 
@@ -192,7 +202,11 @@ describe("host-config - children", () => {
             const innerButtons = await withinContainer.findAllByRole(Gtk.AccessibleRole.BUTTON);
             expect(innerButtons).toHaveLength(1);
         });
+    });
+});
 
+describe("host-config - children (7)", () => {
+    describe("scoped queries with within (2)", () => {
         it("finds text within specific parent", async () => {
             const section1Ref = createRef<Gtk.Box>();
             const section2Ref = createRef<Gtk.Box>();
@@ -225,7 +239,7 @@ describe("host-config - children", () => {
     });
 });
 
-describe("host-config - text instances", () => {
+describe("host-config - text instances (1)", () => {
     it("renders string child as Label", async () => {
         await render(<GtkBox orientation={Gtk.Orientation.VERTICAL}>Hello World</GtkBox>);
 
@@ -265,7 +279,9 @@ describe("host-config - text instances", () => {
         const unicodeLabel = await screen.findByText("你好世界 🌍 مرحبا");
         expect(unicodeLabel).toBeDefined();
     });
+});
 
+describe("host-config - text instances (2)", () => {
     it("removes text instance when child removed", async () => {
         function App({ showText }: { showText: boolean }) {
             return <GtkBox orientation={Gtk.Orientation.VERTICAL}>{showText && "Removable Text"}</GtkBox>;

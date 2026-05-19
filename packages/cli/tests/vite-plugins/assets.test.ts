@@ -20,16 +20,27 @@ type ResolveIdHook = (
 ) => Promise<string | undefined | null>;
 type LoadHook = (id: string) => string | undefined | null;
 
-describe("gtkxAssets", () => {
-    let tmpDir: string;
+let tmpDir: string;
 
+const setupAssetsTmpDir = (): void => {
     beforeEach(() => {
         tmpDir = mkdtempSync(join(tmpdir(), "gtkx-assets-test-"));
     });
-
     afterEach(() => {
         rmSync(tmpDir, { recursive: true, force: true });
     });
+};
+
+const callResolveId = async (
+    resolve: (source: string) => Promise<{ id: string; external?: boolean } | null>,
+    source: string,
+): Promise<string | undefined | null> => {
+    const plugin = gtkxAssets();
+    return (plugin.resolveId as ResolveIdHook).call({ resolve }, source);
+};
+
+describe("gtkxAssets (plugin shape)", () => {
+    setupAssetsTmpDir();
 
     it("returns a plugin with the expected name and pre-enforce", () => {
         const plugin = gtkxAssets();
@@ -48,42 +59,37 @@ describe("gtkxAssets", () => {
         expect(regex.test("font.woff2")).toBe(true);
         expect(regex.test("data.json")).toBe(false);
     });
+});
+
+describe("gtkxAssets (resolveId)", () => {
+    setupAssetsTmpDir();
 
     it("resolveId ignores non-CSS sources", async () => {
-        const plugin = gtkxAssets();
-        const result = await (plugin.resolveId as ResolveIdHook).call(
-            { resolve: () => Promise.resolve({ id: "" }) },
-            "./image.png",
-        );
+        const result = await callResolveId(() => Promise.resolve({ id: "" }), "./image.png");
         expect(result).toBeUndefined();
     });
 
     it("resolveId returns undefined when the resolved CSS is external", async () => {
-        const plugin = gtkxAssets();
-        const result = await (plugin.resolveId as ResolveIdHook).call(
-            { resolve: () => Promise.resolve({ id: "/abs/style.css", external: true }) },
+        const result = await callResolveId(
+            () => Promise.resolve({ id: "/abs/style.css", external: true }),
             "./style.css",
         );
         expect(result).toBeUndefined();
     });
 
     it("resolveId returns undefined when resolve yields null", async () => {
-        const plugin = gtkxAssets();
-        const result = await (plugin.resolveId as ResolveIdHook).call(
-            { resolve: () => Promise.resolve(null) },
-            "./style.css",
-        );
+        const result = await callResolveId(() => Promise.resolve(null), "./style.css");
         expect(result).toBeUndefined();
     });
 
     it("resolveId returns the virtual prefix for CSS imports", async () => {
-        const plugin = gtkxAssets();
-        const result = await (plugin.resolveId as ResolveIdHook).call(
-            { resolve: () => Promise.resolve({ id: "/abs/style.css" }) },
-            "./style.css",
-        );
+        const result = await callResolveId(() => Promise.resolve({ id: "/abs/style.css" }), "./style.css");
         expect(result).toBe("\0gtkx:/abs/style.css?inject");
     });
+});
+
+describe("gtkxAssets (load)", () => {
+    setupAssetsTmpDir();
 
     it("load injects CSS contents via injectGlobal for virtual ids", () => {
         const plugin = gtkxAssets();

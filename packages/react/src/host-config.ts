@@ -84,112 +84,192 @@ const createDetachGuard = (): ((instance: Node) => void) => {
     };
 };
 
+type SchedulingConfig = Pick<
+    HostConfig,
+    | "supportsMutation"
+    | "supportsPersistence"
+    | "supportsHydration"
+    | "supportsMicrotasks"
+    | "scheduleMicrotask"
+    | "isPrimaryRenderer"
+    | "noTimeout"
+    | "scheduleTimeout"
+    | "cancelTimeout"
+    | "getCurrentUpdatePriority"
+    | "setCurrentUpdatePriority"
+    | "resolveUpdatePriority"
+>;
+
+const createSchedulingConfig = (): SchedulingConfig => ({
+    supportsMutation: true,
+    supportsPersistence: false,
+    supportsHydration: false,
+    supportsMicrotasks: true,
+    scheduleMicrotask: (fn: () => unknown) => queueMicrotask(fn),
+    isPrimaryRenderer: true,
+    noTimeout: -1,
+    scheduleTimeout: (fn, delay) => {
+        const timeoutId = setTimeout(fn, delay ?? 0);
+        return typeof timeoutId === "number" ? timeoutId : Number(timeoutId);
+    },
+    cancelTimeout: (id) => {
+        clearTimeout(id);
+    },
+    getCurrentUpdatePriority: () => 2,
+    setCurrentUpdatePriority: () => {},
+    resolveUpdatePriority: () => 2,
+});
+
+type HostContextConfig = Pick<HostConfig, "getRootHostContext" | "getChildHostContext" | "shouldSetTextContent">;
+
+const createHostContextConfig = (): HostContextConfig => ({
+    getRootHostContext: () => ({}),
+    getChildHostContext: (parentHostContext, type) => {
+        const containerClass = resolveContainerClass(type);
+        if ((containerClass && isBuffered(containerClass.prototype)) || type === "TextTag") {
+            return { insideTextBuffer: true };
+        }
+        if (parentHostContext.insideTextBuffer) {
+            return {};
+        }
+        return parentHostContext;
+    },
+    shouldSetTextContent: () => false,
+});
+
+type InstanceConfig = Pick<
+    HostConfig,
+    "createInstance" | "createTextInstance" | "appendInitialChild" | "finalizeInitialChildren" | "getPublicInstance"
+>;
+
+const createInstanceConfig = (): InstanceConfig => ({
+    createInstance: (type, props, rootContainer) => createNode(type, props, undefined, rootContainer),
+    createTextInstance: (text, rootContainer, hostContext) => {
+        const props = hostContext.insideTextBuffer ? { text } : { label: text };
+        const type = hostContext.insideTextBuffer ? "TextSegment" : "GtkLabel";
+        const node = createNode(type, props, undefined, rootContainer);
+        withSignalsBlocked(node, () => node.commitUpdate(null, props));
+        return node;
+    },
+    appendInitialChild: (parent, child) => {
+        parent.appendInitialChild(child);
+    },
+    finalizeInitialChildren: (instance, _type, props) =>
+        withSignalsBlocked(instance, () => instance.finalizeInitialChildren(props)),
+    getPublicInstance: (instance) => instance.container as PublicInstance,
+});
+
+type MutationConfig = Pick<
+    HostConfig,
+    | "appendChild"
+    | "removeChild"
+    | "insertBefore"
+    | "appendChildToContainer"
+    | "removeChildFromContainer"
+    | "insertInContainerBefore"
+    | "clearContainer"
+>;
+
+const createMutationConfig = (): MutationConfig => ({
+    appendChild: (parent, child) => {
+        parent.appendChild(child);
+    },
+    removeChild: (parent, child) => {
+        parent.removeChild(child);
+    },
+    insertBefore: (parent, child, beforeChild) => {
+        parent.insertBefore(child, beforeChild);
+    },
+    removeChildFromContainer: (container, child) => {
+        getOrCreateContainerNode(container).removeChild(child);
+    },
+    appendChildToContainer: (container, child) => {
+        getOrCreateContainerNode(container).appendChild(child);
+    },
+    insertInContainerBefore: (container, child, beforeChild) => {
+        getOrCreateContainerNode(container).insertBefore(child, beforeChild);
+    },
+    clearContainer: () => {},
+});
+
+type CommitConfig = Pick<
+    HostConfig,
+    "commitUpdate" | "commitMount" | "commitTextUpdate" | "prepareForCommit" | "resetAfterCommit"
+>;
+
+const createCommitConfig = (): CommitConfig => ({
+    commitUpdate: (instance, _type, oldProps, newProps) =>
+        withSignalsBlocked(instance, () => instance.commitUpdate(oldProps, newProps)),
+    commitMount: (instance) => {
+        instance.commitMount?.();
+    },
+    commitTextUpdate: (textInstance, oldText, newText) => {
+        const key = textInstance.typeName === "TextSegment" ? "text" : "label";
+        withSignalsBlocked(textInstance, () => textInstance.commitUpdate({ [key]: oldText }, { [key]: newText }));
+    },
+    prepareForCommit: () => {
+        freeze();
+        return null;
+    },
+    resetAfterCommit: () => {
+        unfreeze();
+    },
+});
+
+type NoopConfig = Pick<
+    HostConfig,
+    | "preparePortalMount"
+    | "NotPendingTransition"
+    | "HostTransitionContext"
+    | "getInstanceFromNode"
+    | "beforeActiveInstanceBlur"
+    | "afterActiveInstanceBlur"
+    | "prepareScopeUpdate"
+    | "getInstanceFromScope"
+    | "resetFormInstance"
+    | "requestPostPaintCallback"
+    | "shouldAttemptEagerTransition"
+    | "trackSchedulerEvent"
+    | "resolveEventType"
+    | "resolveEventTimeStamp"
+    | "maySuspendCommit"
+    | "preloadInstance"
+    | "startSuspendingCommit"
+    | "suspendInstance"
+    | "waitForCommitToBeReady"
+>;
+
+const createNoopConfig = (): NoopConfig => ({
+    preparePortalMount: () => {},
+    NotPendingTransition: null,
+    HostTransitionContext: createReconcilerContext(0),
+    getInstanceFromNode: () => null,
+    beforeActiveInstanceBlur: () => {},
+    afterActiveInstanceBlur: () => {},
+    prepareScopeUpdate: () => {},
+    getInstanceFromScope: () => null,
+    resetFormInstance: () => {},
+    requestPostPaintCallback: () => {},
+    shouldAttemptEagerTransition: () => false,
+    trackSchedulerEvent: () => {},
+    resolveEventType: () => null,
+    resolveEventTimeStamp: () => Date.now(),
+    maySuspendCommit: () => false,
+    preloadInstance: () => false,
+    startSuspendingCommit: () => {},
+    suspendInstance: () => {},
+    waitForCommitToBeReady: () => null,
+});
+
 export function createHostConfig(): HostConfig {
-    const detachDeletedInstance = createDetachGuard();
     return {
-        supportsMutation: true,
-        supportsPersistence: false,
-        supportsHydration: false,
-        supportsMicrotasks: true,
-        scheduleMicrotask: (fn: () => unknown) => queueMicrotask(fn),
-        isPrimaryRenderer: true,
-        noTimeout: -1,
-        getRootHostContext: () => ({}),
-        getChildHostContext: (parentHostContext, type) => {
-            const containerClass = resolveContainerClass(type);
-            if ((containerClass && isBuffered(containerClass.prototype)) || type === "TextTag") {
-                return { insideTextBuffer: true };
-            }
-            if (parentHostContext.insideTextBuffer) {
-                return {};
-            }
-            return parentHostContext;
-        },
-        shouldSetTextContent: () => false,
-        createInstance: (type, props, rootContainer) => {
-            return createNode(type, props, undefined, rootContainer);
-        },
-        createTextInstance: (text, rootContainer, hostContext) => {
-            const props = hostContext.insideTextBuffer ? { text } : { label: text };
-            const type = hostContext.insideTextBuffer ? "TextSegment" : "GtkLabel";
-            const node = createNode(type, props, undefined, rootContainer);
-            withSignalsBlocked(node, () => node.commitUpdate(null, props));
-            return node;
-        },
-        appendInitialChild: (parent, child) => {
-            parent.appendInitialChild(child);
-        },
-        finalizeInitialChildren: (instance, _type, props) =>
-            withSignalsBlocked(instance, () => instance.finalizeInitialChildren(props)),
-        commitUpdate: (instance, _type, oldProps, newProps) =>
-            withSignalsBlocked(instance, () => instance.commitUpdate(oldProps, newProps)),
-        commitMount: (instance) => {
-            instance.commitMount?.();
-        },
-        appendChild: (parent, child) => {
-            parent.appendChild(child);
-        },
-        removeChild: (parent, child) => {
-            parent.removeChild(child);
-        },
-        insertBefore: (parent, child, beforeChild) => {
-            parent.insertBefore(child, beforeChild);
-        },
-        removeChildFromContainer: (container, child) => {
-            const parent = getOrCreateContainerNode(container);
-            parent.removeChild(child);
-        },
-        appendChildToContainer: (container, child) => {
-            const parent = getOrCreateContainerNode(container);
-            parent.appendChild(child);
-        },
-        insertInContainerBefore: (container, child, beforeChild) => {
-            const parent = getOrCreateContainerNode(container);
-            parent.insertBefore(child, beforeChild);
-        },
-        prepareForCommit: () => {
-            freeze();
-            return null;
-        },
-        resetAfterCommit: () => {
-            unfreeze();
-        },
-        commitTextUpdate: (textInstance, oldText, newText) => {
-            const key = textInstance.typeName === "TextSegment" ? "text" : "label";
-            withSignalsBlocked(textInstance, () => textInstance.commitUpdate({ [key]: oldText }, { [key]: newText }));
-        },
-        clearContainer: () => {},
-        preparePortalMount: () => {},
-        scheduleTimeout: (fn, delay) => {
-            const timeoutId = setTimeout(fn, delay ?? 0);
-            return typeof timeoutId === "number" ? timeoutId : Number(timeoutId);
-        },
-        cancelTimeout: (id) => {
-            clearTimeout(id);
-        },
-        getPublicInstance: (instance) => instance.container as PublicInstance,
-        getCurrentUpdatePriority: () => 2,
-        setCurrentUpdatePriority: () => {},
-        resolveUpdatePriority: () => 2,
-        NotPendingTransition: null,
-        HostTransitionContext: createReconcilerContext(0),
-        getInstanceFromNode: () => null,
-        beforeActiveInstanceBlur: () => {},
-        afterActiveInstanceBlur: () => {},
-        prepareScopeUpdate: () => {},
-        getInstanceFromScope: () => null,
-        detachDeletedInstance,
-        resetFormInstance: () => {},
-        requestPostPaintCallback: () => {},
-        shouldAttemptEagerTransition: () => false,
-        trackSchedulerEvent: () => {},
-        resolveEventType: () => null,
-        resolveEventTimeStamp: () => Date.now(),
-        maySuspendCommit: () => false,
-        preloadInstance: () => false,
-        startSuspendingCommit: () => {},
-        suspendInstance: () => {},
-        waitForCommitToBeReady: () => null,
+        ...createSchedulingConfig(),
+        ...createHostContextConfig(),
+        ...createInstanceConfig(),
+        ...createMutationConfig(),
+        ...createCommitConfig(),
+        ...createNoopConfig(),
+        detachDeletedInstance: createDetachGuard(),
     };
 }
 

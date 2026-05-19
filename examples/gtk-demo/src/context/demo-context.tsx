@@ -108,20 +108,27 @@ interface DemoProviderProps {
     children: ReactNode;
 }
 
+const findFirstDemoInItem = (item: TreeItem): Demo | null => {
+    if (item.type === "demo") return item.demo;
+    if (item.type !== "category") return null;
+    for (const child of item.children) {
+        if (child.type === "demo") return child.demo;
+    }
+    return null;
+};
+
+const findFirstDemo = (treeItems: TreeItem[]): Demo | null => {
+    for (const item of treeItems) {
+        const demo = findFirstDemoInItem(item);
+        if (demo) return demo;
+    }
+    return null;
+};
+
 export const DemoProvider = ({ demos, children }: DemoProviderProps) => {
     const treeItems = useMemo(() => buildTree(demos), [demos]);
 
-    const firstDemo = useMemo(() => {
-        for (const item of treeItems) {
-            if (item.type === "demo") return item.demo;
-            if (item.type === "category") {
-                for (const child of item.children) {
-                    if (child.type === "demo") return child.demo;
-                }
-            }
-        }
-        return null;
-    }, [treeItems]);
+    const firstDemo = useMemo(() => findFirstDemo(treeItems), [treeItems]);
 
     const [currentDemo, setCurrentDemo] = useState<Demo | null>(firstDemo);
     const [searchQuery, setSearchQuery] = useState("");

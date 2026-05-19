@@ -109,6 +109,102 @@ function createBlendCss(blendMode: string) {
     `;
 }
 
+const BlendStack = ({ stackRef }: { stackRef: (s: Gtk.Stack | null) => void }) => (
+    <GtkStack
+        ref={stackRef}
+        hexpand
+        vexpand
+        hhomogeneous={false}
+        vhomogeneous={false}
+        transitionType={Gtk.StackTransitionType.CROSSFADE}
+    >
+        <GtkStack.Page id="page0" title="Ducky">
+            <DuckyPage />
+        </GtkStack.Page>
+        <GtkStack.Page id="page1" title="Blends">
+            <BlendsPage />
+        </GtkStack.Page>
+        <GtkStack.Page id="page2" title="CMYK">
+            <CmykPage />
+        </GtkStack.Page>
+    </GtkStack>
+);
+
+const DuckyPage = () => (
+    <GtkGrid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} vexpand rowSpacing={12} columnSpacing={12}>
+        <GtkGrid.Child column={0} row={0}>
+            <GtkLabel label="Duck" />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={1} row={0}>
+            <GtkLabel label="Background" />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={0} row={1}>
+            <GtkImage cssClasses={["duck"]} />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={1} row={1}>
+            <GtkImage cssClasses={["gradient"]} />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={0} row={2} columnSpan={2}>
+            <GtkLabel label="Blended picture" />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={0} row={3} columnSpan={2}>
+            <GtkImage halign={Gtk.Align.CENTER} cssClasses={["blend0"]} />
+        </GtkGrid.Child>
+    </GtkGrid>
+);
+
+const BlendsPage = () => (
+    <GtkGrid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} vexpand rowSpacing={12} columnSpacing={12}>
+        <GtkGrid.Child column={0} row={0}>
+            <GtkLabel label="Red" />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={1} row={0}>
+            <GtkLabel label="Blue" />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={0} row={1}>
+            <GtkImage cssClasses={["red"]} />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={1} row={1}>
+            <GtkImage cssClasses={["blue"]} />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={0} row={2} columnSpan={2}>
+            <GtkLabel label="Blended picture" />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={0} row={3} columnSpan={2}>
+            <GtkImage halign={Gtk.Align.CENTER} cssClasses={["blend1"]} />
+        </GtkGrid.Child>
+    </GtkGrid>
+);
+
+const CmykPage = () => (
+    <GtkGrid halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} hexpand vexpand rowSpacing={6} columnSpacing={12}>
+        <GtkGrid.Child column={0} row={0}>
+            <GtkLabel label="Cyan" xalign={0} cssClasses={["dim-label"]} />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={1} row={0}>
+            <GtkLabel label="Magenta" xalign={0} cssClasses={["dim-label"]} />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={0} row={1}>
+            <GtkImage cssClasses={["cyan"]} />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={1} row={1}>
+            <GtkImage cssClasses={["magenta"]} />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={0} row={2}>
+            <GtkLabel label="Yellow" xalign={0} cssClasses={["dim-label"]} />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={1} row={2}>
+            <GtkLabel label="&lt;b&gt;Blended picture&lt;/b&gt;" useMarkup xalign={0} />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={0} row={3}>
+            <GtkImage cssClasses={["yellow"]} />
+        </GtkGrid.Child>
+        <GtkGrid.Child column={1} row={3}>
+            <GtkImage halign={Gtk.Align.CENTER} cssClasses={["blend2"]} />
+        </GtkGrid.Child>
+    </GtkGrid>
+);
+
 const CssBlendmodesDemo = () => {
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
     const [listbox, setListbox] = useState<Gtk.ListBox | null>(null);
@@ -119,19 +215,16 @@ const CssBlendmodesDemo = () => {
     const handleRowActivated = useCallback((row: Gtk.ListBoxRow) => {
         const index = row.getIndex();
         const mode = BLEND_MODES[index];
-        if (mode) {
-            setBlendMode(mode.id);
-        }
+        if (mode) setBlendMode(mode.id);
     }, []);
 
     useEffect(() => {
-        if (listbox) {
-            const normalIndex = BLEND_MODES.findIndex((m) => m.id === "normal");
-            const row = listbox.getRowAtIndex(normalIndex);
-            if (row) {
-                listbox.selectRow(row);
-                row.grabFocus();
-            }
+        if (!listbox) return;
+        const normalIndex = BLEND_MODES.findIndex((m) => m.id === "normal");
+        const row = listbox.getRowAtIndex(normalIndex);
+        if (row) {
+            listbox.selectRow(row);
+            row.grabFocus();
         }
     }, [listbox]);
 
@@ -166,108 +259,7 @@ const CssBlendmodesDemo = () => {
             </GtkGrid.Child>
 
             <GtkGrid.Child column={1} row={1}>
-                <GtkStack
-                    ref={setStack}
-                    hexpand
-                    vexpand
-                    hhomogeneous={false}
-                    vhomogeneous={false}
-                    transitionType={Gtk.StackTransitionType.CROSSFADE}
-                >
-                    <GtkStack.Page id="page0" title="Ducky">
-                        <GtkGrid
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.CENTER}
-                            vexpand
-                            rowSpacing={12}
-                            columnSpacing={12}
-                        >
-                            <GtkGrid.Child column={0} row={0}>
-                                <GtkLabel label="Duck" />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={1} row={0}>
-                                <GtkLabel label="Background" />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={0} row={1}>
-                                <GtkImage cssClasses={["duck"]} />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={1} row={1}>
-                                <GtkImage cssClasses={["gradient"]} />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={0} row={2} columnSpan={2}>
-                                <GtkLabel label="Blended picture" />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={0} row={3} columnSpan={2}>
-                                <GtkImage halign={Gtk.Align.CENTER} cssClasses={["blend0"]} />
-                            </GtkGrid.Child>
-                        </GtkGrid>
-                    </GtkStack.Page>
-
-                    <GtkStack.Page id="page1" title="Blends">
-                        <GtkGrid
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.CENTER}
-                            vexpand
-                            rowSpacing={12}
-                            columnSpacing={12}
-                        >
-                            <GtkGrid.Child column={0} row={0}>
-                                <GtkLabel label="Red" />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={1} row={0}>
-                                <GtkLabel label="Blue" />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={0} row={1}>
-                                <GtkImage cssClasses={["red"]} />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={1} row={1}>
-                                <GtkImage cssClasses={["blue"]} />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={0} row={2} columnSpan={2}>
-                                <GtkLabel label="Blended picture" />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={0} row={3} columnSpan={2}>
-                                <GtkImage halign={Gtk.Align.CENTER} cssClasses={["blend1"]} />
-                            </GtkGrid.Child>
-                        </GtkGrid>
-                    </GtkStack.Page>
-
-                    <GtkStack.Page id="page2" title="CMYK">
-                        <GtkGrid
-                            halign={Gtk.Align.CENTER}
-                            valign={Gtk.Align.CENTER}
-                            hexpand
-                            vexpand
-                            rowSpacing={6}
-                            columnSpacing={12}
-                        >
-                            <GtkGrid.Child column={0} row={0}>
-                                <GtkLabel label="Cyan" xalign={0} cssClasses={["dim-label"]} />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={1} row={0}>
-                                <GtkLabel label="Magenta" xalign={0} cssClasses={["dim-label"]} />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={0} row={1}>
-                                <GtkImage cssClasses={["cyan"]} />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={1} row={1}>
-                                <GtkImage cssClasses={["magenta"]} />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={0} row={2}>
-                                <GtkLabel label="Yellow" xalign={0} cssClasses={["dim-label"]} />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={1} row={2}>
-                                <GtkLabel label="&lt;b&gt;Blended picture&lt;/b&gt;" useMarkup xalign={0} />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={0} row={3}>
-                                <GtkImage cssClasses={["yellow"]} />
-                            </GtkGrid.Child>
-                            <GtkGrid.Child column={1} row={3}>
-                                <GtkImage halign={Gtk.Align.CENTER} cssClasses={["blend2"]} />
-                            </GtkGrid.Child>
-                        </GtkGrid>
-                    </GtkStack.Page>
-                </GtkStack>
+                <BlendStack stackRef={setStack} />
             </GtkGrid.Child>
         </GtkGrid>
     );

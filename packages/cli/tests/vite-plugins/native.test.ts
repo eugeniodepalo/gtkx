@@ -6,7 +6,20 @@ type BuildStartHook = (this: {
 type TransformHook = (code: string, id: string) => string | null | undefined;
 type ResolveIdHook = (id: string) => { id: string; external: boolean } | null;
 
-describe("gtkxNative", () => {
+const mockOs = (platform: string, arch: string): void => {
+    vi.resetModules();
+    vi.doMock("node:os", () => ({
+        platform: () => platform,
+        arch: () => arch,
+    }));
+};
+
+const unmockOs = (): void => {
+    vi.doUnmock("node:os");
+    vi.resetModules();
+};
+
+describe("gtkxNative (plugin shape)", () => {
     it("returns a plugin with the expected name and pre-enforce", async () => {
         const { gtkxNative } = await import("../../src/vite-plugins/native.js");
         const plugin = gtkxNative("/tmp");
@@ -30,13 +43,11 @@ describe("gtkxNative", () => {
         });
         expect((plugin.resolveId as ResolveIdHook)("./other.js")).toBeNull();
     });
+});
 
+describe("gtkxNative (buildStart platform guards)", () => {
     it("buildStart throws on unsupported platform", async () => {
-        vi.resetModules();
-        vi.doMock("node:os", () => ({
-            platform: () => "darwin",
-            arch: () => "x64",
-        }));
+        mockOs("darwin", "x64");
         const { gtkxNative } = await import("../../src/vite-plugins/native.js");
         const plugin = gtkxNative("/tmp");
 
@@ -46,16 +57,11 @@ describe("gtkxNative", () => {
             }),
         ).toThrow(/Unsupported build platform/);
 
-        vi.doUnmock("node:os");
-        vi.resetModules();
+        unmockOs();
     });
 
     it("buildStart throws on unsupported architecture", async () => {
-        vi.resetModules();
-        vi.doMock("node:os", () => ({
-            platform: () => "linux",
-            arch: () => "ia32",
-        }));
+        mockOs("linux", "ia32");
         const { gtkxNative } = await import("../../src/vite-plugins/native.js");
         const plugin = gtkxNative("/tmp");
 
@@ -65,16 +71,13 @@ describe("gtkxNative", () => {
             }),
         ).toThrow(/Unsupported build architecture/);
 
-        vi.doUnmock("node:os");
-        vi.resetModules();
+        unmockOs();
     });
+});
 
+describe("gtkxNative (buildStart success)", () => {
     it("buildStart emits the platform binary and transform rewrites the binding", async () => {
-        vi.resetModules();
-        vi.doMock("node:os", () => ({
-            platform: () => "linux",
-            arch: () => "x64",
-        }));
+        mockOs("linux", "x64");
         vi.doMock("node:module", () => ({
             createRequire: () => {
                 const fn = (id: string) => id;
@@ -104,9 +107,8 @@ describe("gtkxNative", () => {
         );
         expect(transformed).toBe('module.exports = require("./gtkx.node");');
 
-        vi.doUnmock("node:os");
         vi.doUnmock("node:module");
         vi.doUnmock("node:fs");
-        vi.resetModules();
+        unmockOs();
     });
 });

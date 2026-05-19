@@ -67,7 +67,7 @@ describe("valueGetType", () => {
     });
 });
 
-describe("valueFromJS / valueToJS round-trips", () => {
+describe("valueFromJS / valueToJS round-trips — primitives", () => {
     it("round-trips a boolean", () => {
         expect(valueToJS(valueFromJS(Type.BOOLEAN, true))).toBe(true);
         expect(valueToJS(valueFromJS(Type.BOOLEAN, false))).toBe(false);
@@ -98,7 +98,9 @@ describe("valueFromJS / valueToJS round-trips", () => {
     it("preserves null strings as null (not empty string)", () => {
         expect(valueToJS(valueFromJS(Type.STRING, null))).toBeNull();
     });
+});
 
+describe("valueFromJS / valueToJS round-trips — collections and references", () => {
     it("round-trips a string array via GStrv", () => {
         const strvGType = typeFromName("GStrv");
         expect(valueToJS(valueFromJS(strvGType, ["alpha", "beta", "gamma"]))).toEqual(["alpha", "beta", "gamma"]);
@@ -173,37 +175,13 @@ describe("valueToJS extra coverage", () => {
     });
 });
 
-describe("valueFromFfi (FFI-type-driven factory)", () => {
+describe("valueFromFfi — primitives", () => {
     it("builds a boolean value", () => {
         expect(valueFromFfi({ type: "boolean" }, true).getBoolean()).toBe(true);
     });
 
     it("builds a string value", () => {
         expect(valueFromFfi({ type: "string", ownership: "borrowed" }, "hi").getString()).toBe("hi");
-    });
-
-    it("builds an enum value from library/getTypeFn descriptor", () => {
-        const v = valueFromFfi(
-            { type: "enum", library: "libgtk-4.so.1", getTypeFn: "gtk_align_get_type", signed: false },
-            Gtk.Align.CENTER,
-        );
-        expect(v.getEnum()).toBe(Gtk.Align.CENTER);
-    });
-
-    it("builds a flags value from a flags-fundamental enum descriptor", () => {
-        const v = valueFromFfi(
-            { type: "enum", library: "libgobject-2.0.so.0", getTypeFn: "g_binding_flags_get_type", signed: false },
-            3,
-        );
-        expect(v.getFlags()).toBe(3);
-    });
-
-    it("builds a flags value from a flags descriptor", () => {
-        const v = valueFromFfi(
-            { type: "flags", library: "libgobject-2.0.so.0", getTypeFn: "g_binding_flags_get_type", signed: false },
-            5,
-        );
-        expect(v.getFlags()).toBe(5);
     });
 
     it("builds an int value for int8/int16/int32 descriptors", () => {
@@ -227,7 +205,35 @@ describe("valueFromFfi (FFI-type-driven factory)", () => {
         expect(valueFromFfi({ type: "float32" }, 1.5).getFloat()).toBeCloseTo(1.5, 3);
         expect(valueFromFfi({ type: "float64" }, Math.PI).getDouble()).toBeCloseTo(Math.PI);
     });
+});
 
+describe("valueFromFfi — enums and flags", () => {
+    it("builds an enum value from library/getTypeFn descriptor", () => {
+        const v = valueFromFfi(
+            { type: "enum", library: "libgtk-4.so.1", getTypeFn: "gtk_align_get_type", signed: false },
+            Gtk.Align.CENTER,
+        );
+        expect(v.getEnum()).toBe(Gtk.Align.CENTER);
+    });
+
+    it("builds a flags value from a flags-fundamental enum descriptor", () => {
+        const v = valueFromFfi(
+            { type: "enum", library: "libgobject-2.0.so.0", getTypeFn: "g_binding_flags_get_type", signed: false },
+            3,
+        );
+        expect(v.getFlags()).toBe(3);
+    });
+
+    it("builds a flags value from a flags descriptor", () => {
+        const v = valueFromFfi(
+            { type: "flags", library: "libgobject-2.0.so.0", getTypeFn: "g_binding_flags_get_type", signed: false },
+            5,
+        );
+        expect(v.getFlags()).toBe(5);
+    });
+});
+
+describe("valueFromFfi — objects and boxed", () => {
     it("builds a gobject value", () => {
         const label = new Gtk.Label({ label: "x" });
         expect(valueFromFfi({ type: "gobject", ownership: "borrowed" }, label).getObject()).not.toBeNull();
@@ -257,7 +263,9 @@ describe("valueFromFfi (FFI-type-driven factory)", () => {
             valueFromFfi({ type: "boxed", ownership: "borrowed", innerType: "NotARealGType" }, makeRgba(0, 0, 0, 1)),
         ).toThrow(/Cannot resolve gtype/);
     });
+});
 
+describe("valueFromFfi — arrays and errors", () => {
     it("builds a strv array value", () => {
         const v = valueFromFfi(
             {

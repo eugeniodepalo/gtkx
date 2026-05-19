@@ -4,9 +4,16 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { GtkxConfigNotFoundError, loadGtkxConfig } from "../../src/codegen/config-loader.js";
 
-describe("loadGtkxConfig", () => {
-    let cwd: string;
+let cwd: string;
 
+const writeConfig = (contents: string): void => {
+    writeFileSync(join(cwd, "gtkx.config.ts"), contents);
+};
+
+const defineConfigImport = (): string =>
+    `import { defineConfig } from "${join(import.meta.dirname, "../../src/config.ts")}";\n`;
+
+describe("loadGtkxConfig", () => {
     beforeEach(() => {
         cwd = mkdtempSync(join(tmpdir(), "gtkx-config-"));
     });
@@ -16,45 +23,30 @@ describe("loadGtkxConfig", () => {
     });
 
     it("loads a gtkx.config.ts file using defineConfig", async () => {
-        writeFileSync(
-            join(cwd, "gtkx.config.ts"),
-            `import { defineConfig } from "${join(import.meta.dirname, "../../src/config.ts")}";\n` +
-                `export default defineConfig({ libraries: ["Gtk-4.0"] });\n`,
-        );
-
+        writeConfig(`${defineConfigImport()}export default defineConfig({ libraries: ["Gtk-4.0"] });\n`);
         const result = await loadGtkxConfig(cwd);
-
         expect(result.config.libraries).toEqual(["Gtk-4.0"]);
         expect(result.configFile?.endsWith("gtkx.config.ts")).toBe(true);
         expect(result.rootDir).toBe(cwd);
     });
 
     it("loads a config exported as a plain object and validates it", async () => {
-        writeFileSync(
-            join(cwd, "gtkx.config.ts"),
-            "export default { libraries: ['Gtk-4.0', 'Adw-1'], girPath: ['/usr/share/gir-1.0'] };\n",
-        );
-
+        writeConfig("export default { libraries: ['Gtk-4.0', 'Adw-1'], girPath: ['/usr/share/gir-1.0'] };\n");
         const result = await loadGtkxConfig(cwd);
-
         expect(result.config.libraries).toEqual(["Gtk-4.0", "Adw-1"]);
         expect(result.config.girPath).toEqual(["/usr/share/gir-1.0"]);
     });
 
     it("accepts a config that omits libraries", async () => {
-        writeFileSync(join(cwd, "gtkx.config.ts"), "export default {};\n");
-
+        writeConfig("export default {};\n");
         const result = await loadGtkxConfig(cwd);
-
         expect(result.config.libraries).toBeUndefined();
         expect(result.configFile?.endsWith("gtkx.config.ts")).toBe(true);
     });
 
     it('accepts the "*" wildcard for libraries', async () => {
-        writeFileSync(join(cwd, "gtkx.config.ts"), 'export default { libraries: "*" };\n');
-
+        writeConfig('export default { libraries: "*" };\n');
         const result = await loadGtkxConfig(cwd);
-
         expect(result.config.libraries).toBe("*");
     });
 
@@ -63,14 +55,14 @@ describe("loadGtkxConfig", () => {
     });
 
     it("propagates validation errors from defineConfig", async () => {
-        writeFileSync(join(cwd, "gtkx.config.ts"), "export default { libraries: [] };\n");
+        writeConfig("export default { libraries: [] };\n");
         await expect(loadGtkxConfig(cwd)).rejects.toThrow(
             '`libraries` must be "*", a non-empty string array, or omitted',
         );
     });
 
     it("rejects an invalid library identifier", async () => {
-        writeFileSync(join(cwd, "gtkx.config.ts"), "export default { libraries: ['InvalidLib'] };\n");
+        writeConfig("export default { libraries: ['InvalidLib'] };\n");
         await expect(loadGtkxConfig(cwd)).rejects.toThrow(/invalid library identifier/);
     });
 });

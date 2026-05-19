@@ -20,7 +20,7 @@ const createRawNamespace = (overrides: Partial<RawNamespace> = {}): RawNamespace
     ...overrides,
 });
 
-describe("GirNormalizer", () => {
+describe("GirNormalizer (1)", () => {
     it("preserves namespace metadata", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -63,7 +63,9 @@ describe("GirNormalizer", () => {
 
         expect(cls?.qualifiedName).toBe("Gtk.Widget");
     });
+});
 
+describe("GirNormalizer (2)", () => {
     it("qualifies cross-namespace type references", () => {
         const normalizer = new GirNormalizer();
         const gobjectRaw = createRawNamespace({
@@ -113,7 +115,9 @@ describe("GirNormalizer", () => {
 
         expect(widget?.parent).toBe("GObject.Object");
     });
+});
 
+describe("GirNormalizer (3)", () => {
     it("qualifies unqualified type names from current namespace", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -154,7 +158,9 @@ describe("GirNormalizer", () => {
 
         expect(button?.parent).toBe("Gtk.Widget");
     });
+});
 
+describe("GirNormalizer (4)", () => {
     it("qualifies unresolvable types with current namespace", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -187,7 +193,9 @@ describe("GirNormalizer", () => {
         const method = result.get("Test")?.classes.get("Foo")?.methods[0];
         expect(method?.returnType.name).toBe("Test.NonExistentType");
     });
+});
 
+describe("GirNormalizer (5)", () => {
     it("leaves intrinsic types unqualified", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -213,7 +221,9 @@ describe("GirNormalizer", () => {
         expect(func?.returnType.name).toBe("gint");
         expect(func?.parameters[0]?.type.name).toBe("utf8");
     });
+});
 
+describe("GirNormalizer (6)", () => {
     it("normalizes ghashtable container types with a key and value parameter", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -243,7 +253,9 @@ describe("GirNormalizer", () => {
         expect(returnType?.getValueType()?.name).toBe("gint");
         expect(returnType?.elementType?.name).toBe("gint");
     });
+});
 
+describe("GirNormalizer (7)", () => {
     it("normalizes ghashtable container types without type parameters", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -266,7 +278,9 @@ describe("GirNormalizer", () => {
         expect(returnType?.name).toBe("GLib.HashTable");
         expect(returnType?.elementType).toBeNull();
     });
+});
 
+describe("GirNormalizer (8)", () => {
     it("normalizes gptrarray and garray container types", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -301,7 +315,9 @@ describe("GirNormalizer", () => {
         expect(arr?.name).toBe("GLib.Array");
         expect(arr?.elementType?.name).toBe("gint");
     });
+});
 
+describe("GirNormalizer (9)", () => {
     it("normalizes gbytearray container types with and without an element type", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -330,7 +346,9 @@ describe("GirNormalizer", () => {
         expect(bytes?.elementType?.name).toBe("guint8");
         expect(bare?.elementType).toBeNull();
     });
+});
 
+describe("GirNormalizer (10)", () => {
     it("normalizes glist and gslist container types as arrays", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -363,7 +381,9 @@ describe("GirNormalizer", () => {
         expect(slist?.elementType).toBeNull();
         expect(slist?.typeParameters).toHaveLength(0);
     });
+});
 
+describe("GirNormalizer (11)", () => {
     it("normalizes array types flagged by isArray or named array", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -394,60 +414,62 @@ describe("GirNormalizer", () => {
         expect(named?.name).toBe("array");
         expect(named?.elementType).toBeNull();
     });
+});
 
+const ORIENTABLE_INTERFACE_NAMESPACE = createRawNamespace({
+    name: "Gtk",
+    classes: [
+        {
+            name: "Widget",
+            cType: "GtkWidget",
+            implements: [],
+            methods: [],
+            constructors: [],
+            functions: [],
+            properties: [],
+            signals: [],
+            fieldNames: [],
+            fields: [],
+            virtualMethodNames: [],
+        },
+    ],
+    interfaces: [
+        {
+            name: "Orientable",
+            cType: "GtkOrientable",
+            glibTypeName: "GtkOrientable",
+            glibGetType: "gtk_orientable_get_type",
+            prerequisites: ["Widget"],
+            methods: [
+                {
+                    name: "get_orientation",
+                    cIdentifier: "gtk_orientable_get_orientation",
+                    returnType: { name: "gint" },
+                    parameters: [],
+                },
+            ],
+            functions: [
+                {
+                    name: "list",
+                    cIdentifier: "gtk_orientable_list",
+                    returnType: { name: "none" },
+                    parameters: [],
+                },
+            ],
+            properties: [{ name: "orientation", type: { name: "gint" } }],
+            signals: [{ name: "changed" }],
+            fieldNames: ["padding"],
+            virtualMethodNames: ["set_orientation"],
+            doc: "An orientable interface.",
+        },
+    ],
+});
+
+describe("GirNormalizer (12)", () => {
     it("normalizes interfaces with prerequisites, methods, properties and signals", () => {
         const normalizer = new GirNormalizer();
-        const raw = createRawNamespace({
-            name: "Gtk",
-            classes: [
-                {
-                    name: "Widget",
-                    cType: "GtkWidget",
-                    implements: [],
-                    methods: [],
-                    constructors: [],
-                    functions: [],
-                    properties: [],
-                    signals: [],
-                    fieldNames: [],
-                    fields: [],
-                    virtualMethodNames: [],
-                },
-            ],
-            interfaces: [
-                {
-                    name: "Orientable",
-                    cType: "GtkOrientable",
-                    glibTypeName: "GtkOrientable",
-                    glibGetType: "gtk_orientable_get_type",
-                    prerequisites: ["Widget"],
-                    methods: [
-                        {
-                            name: "get_orientation",
-                            cIdentifier: "gtk_orientable_get_orientation",
-                            returnType: { name: "gint" },
-                            parameters: [],
-                        },
-                    ],
-                    functions: [
-                        {
-                            name: "list",
-                            cIdentifier: "gtk_orientable_list",
-                            returnType: { name: "none" },
-                            parameters: [],
-                        },
-                    ],
-                    properties: [{ name: "orientation", type: { name: "gint" } }],
-                    signals: [{ name: "changed" }],
-                    fieldNames: ["padding"],
-                    virtualMethodNames: ["set_orientation"],
-                    doc: "An orientable interface.",
-                },
-            ],
-        });
-
         const iface = normalizer
-            .normalize(new Map([["Gtk", raw]]))
+            .normalize(new Map([["Gtk", ORIENTABLE_INTERFACE_NAMESPACE]]))
             .get("Gtk")
             ?.interfaces.get("Orientable");
 
@@ -461,7 +483,9 @@ describe("GirNormalizer", () => {
         expect(iface?.virtualMethodNames).toEqual(["set_orientation"]);
         expect(iface?.doc).toBe("An orientable interface.");
     });
+});
 
+describe("GirNormalizer (13)", () => {
     it("normalizes records with fields, methods and constructors", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -517,7 +541,9 @@ describe("GirNormalizer", () => {
         expect(record?.constructors[0]?.name).toBe("new");
         expect(record?.staticFunctions[0]?.name).toBe("zero");
     });
+});
 
+describe("GirNormalizer (14)", () => {
     it("normalizes enumerations and bitfields with members", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -558,7 +584,9 @@ describe("GirNormalizer", () => {
         expect(enumeration?.glibErrorDomain).toBe("gtk-orientation-error");
         expect(flags?.members[0]?.cIdentifier).toBe("GTK_STATE_FLAG_ACTIVE");
     });
+});
 
+describe("GirNormalizer (15)", () => {
     it("normalizes callbacks with return types and parameters", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -585,7 +613,9 @@ describe("GirNormalizer", () => {
         expect(callback?.parameters[0]?.name).toBe("res");
         expect(callback?.introspectable).toBe(true);
     });
+});
 
+describe("GirNormalizer (16)", () => {
     it("normalizes constants and aliases", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -619,7 +649,9 @@ describe("GirNormalizer", () => {
         expect(alias?.qualifiedName).toBe("Gtk.Allocation");
         expect(alias?.targetType.name).toBe("Gtk.Rectangle");
     });
+});
 
+describe("GirNormalizer (17)", () => {
     it("resolves a shadowed method to its shadowing name", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -658,83 +690,85 @@ describe("GirNormalizer", () => {
         expect(method?.name).toBe("set_property");
         expect(method?.shadows).toBe("set_property");
     });
+});
 
-    it("normalizes class methods with an instance parameter, constructors and signals with return types", () => {
-        const normalizer = new GirNormalizer();
-        const raw = createRawNamespace({
-            name: "Gtk",
-            classes: [
+const BUTTON_CLASS_NAMESPACE = createRawNamespace({
+    name: "Gtk",
+    classes: [
+        {
+            name: "Button",
+            cType: "GtkButton",
+            parent: undefined,
+            abstract: true,
+            glibTypeName: "GtkButton",
+            glibGetType: "gtk_button_get_type",
+            cSymbolPrefix: "button",
+            fundamental: true,
+            refFunc: "gtk_button_ref",
+            unrefFunc: "gtk_button_unref",
+            implements: [],
+            methods: [
                 {
-                    name: "Button",
-                    cType: "GtkButton",
-                    parent: undefined,
-                    abstract: true,
-                    glibTypeName: "GtkButton",
-                    glibGetType: "gtk_button_get_type",
-                    cSymbolPrefix: "button",
-                    fundamental: true,
-                    refFunc: "gtk_button_ref",
-                    unrefFunc: "gtk_button_unref",
-                    implements: [],
-                    methods: [
+                    name: "clicked",
+                    cIdentifier: "gtk_button_clicked",
+                    returnType: { name: "none" },
+                    parameters: [
                         {
-                            name: "clicked",
-                            cIdentifier: "gtk_button_clicked",
-                            returnType: { name: "none" },
-                            parameters: [
-                                {
-                                    name: "extra",
-                                    type: { name: "gint" },
-                                    direction: "inout",
-                                    callerAllocates: true,
-                                    nullable: true,
-                                    optional: true,
-                                    transferOwnership: "full",
-                                },
-                            ],
-                            instanceParameter: { name: "self", type: { name: "Button" } },
-                            throws: true,
+                            name: "extra",
+                            type: { name: "gint" },
+                            direction: "inout",
+                            callerAllocates: true,
+                            nullable: true,
+                            optional: true,
+                            transferOwnership: "full",
                         },
                     ],
-                    constructors: [
-                        {
-                            name: "new",
-                            cIdentifier: "gtk_button_new",
-                            returnType: { name: "Button" },
-                            parameters: [],
-                            throws: false,
-                        },
-                    ],
-                    functions: [],
-                    properties: [
-                        {
-                            name: "label",
-                            type: { name: "utf8" },
-                            readable: false,
-                            writable: true,
-                            constructOnly: true,
-                            defaultValueRaw: "hello",
-                            getter: "get_label",
-                            setter: "set_label",
-                        },
-                    ],
-                    signals: [
-                        {
-                            name: "activate",
-                            when: "first",
-                            returnType: { name: "gboolean" },
-                            parameters: [{ name: "detail", type: { name: "utf8" } }],
-                        },
-                    ],
-                    fieldNames: ["parent"],
-                    fields: [{ name: "parent", type: { name: "gint" } }],
-                    virtualMethodNames: ["do_clicked"],
+                    instanceParameter: { name: "self", type: { name: "Button" } },
+                    throws: true,
                 },
             ],
-        });
+            constructors: [
+                {
+                    name: "new",
+                    cIdentifier: "gtk_button_new",
+                    returnType: { name: "Button" },
+                    parameters: [],
+                    throws: false,
+                },
+            ],
+            functions: [],
+            properties: [
+                {
+                    name: "label",
+                    type: { name: "utf8" },
+                    readable: false,
+                    writable: true,
+                    constructOnly: true,
+                    defaultValueRaw: "hello",
+                    getter: "get_label",
+                    setter: "set_label",
+                },
+            ],
+            signals: [
+                {
+                    name: "activate",
+                    when: "first",
+                    returnType: { name: "gboolean" },
+                    parameters: [{ name: "detail", type: { name: "utf8" } }],
+                },
+            ],
+            fieldNames: ["parent"],
+            fields: [{ name: "parent", type: { name: "gint" } }],
+            virtualMethodNames: ["do_clicked"],
+        },
+    ],
+});
 
+describe("GirNormalizer (18)", () => {
+    it("normalizes class methods with an instance parameter, constructors and signals with return types", () => {
+        const normalizer = new GirNormalizer();
         const cls = normalizer
-            .normalize(new Map([["Gtk", raw]]))
+            .normalize(new Map([["Gtk", BUTTON_CLASS_NAMESPACE]]))
             .get("Gtk")
             ?.classes.get("Button");
 
@@ -753,7 +787,9 @@ describe("GirNormalizer", () => {
         expect(cls?.signals[0]?.parameters[0]?.name).toBe("detail");
         expect(cls?.fields[0]?.name).toBe("parent");
     });
+});
 
+describe("GirNormalizer (19)", () => {
     it("drops a class parent reference that does not resolve to a qualified name", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -783,7 +819,9 @@ describe("GirNormalizer", () => {
 
         expect(cls?.parent).toBeNull();
     });
+});
 
+describe("GirNormalizer (20)", () => {
     it("normalizes fields carrying an inline callback and an inline composite", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -831,7 +869,9 @@ describe("GirNormalizer", () => {
         expect(compositeField?.inlineComposite?.isUnion).toBe(true);
         expect(compositeField?.inlineComposite?.fields[0]?.name).toBe("reserved");
     });
+});
 
+describe("GirNormalizer (21)", () => {
     it("preserves an explicit inline callback name", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -866,7 +906,9 @@ describe("GirNormalizer", () => {
 
         expect(callback?.name).toBe("SnapshotFunc");
     });
+});
 
+describe("GirNormalizer (22)", () => {
     it("qualifies implemented interfaces, static functions and constructor parameters", () => {
         const normalizer = new GirNormalizer();
         const raw = createRawNamespace({
@@ -924,7 +966,9 @@ describe("GirNormalizer", () => {
         expect(cls?.staticFunctions[0]?.name).toBe("list");
         expect(cls?.constructors[0]?.parameters[0]?.name).toBe("label");
     });
+});
 
+describe("GirNormalizer (23)", () => {
     it("resolves an unqualified type defined in another namespace", () => {
         const normalizer = new GirNormalizer();
         const gdkRaw = createRawNamespace({

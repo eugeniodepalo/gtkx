@@ -245,114 +245,100 @@ describe("getRunCommand", () => {
     });
 });
 
-describe("createApp", () => {
-    const testDir = "/test-workspace";
+const testDir = "/test-workspace";
 
+const setupCreateAppCtx = (): void => {
     beforeEach(() => {
         vol.reset();
         vol.mkdirSync(testDir, { recursive: true });
         vi.spyOn(process, "cwd").mockReturnValue(testDir);
     });
-
     afterEach(() => {
         vol.reset();
         vi.restoreAllMocks();
     });
+};
+
+type CreateAppOptions = {
+    name: string;
+    appId: string;
+    packageManager: "pnpm" | "npm" | "yarn";
+    testing: "vitest" | "none";
+    claudeSkills: boolean;
+};
+
+const defaultOptions = (overrides: Partial<CreateAppOptions> = {}): CreateAppOptions => ({
+    name: "test-app",
+    appId: "org.test.app",
+    packageManager: "pnpm",
+    testing: "none",
+    claudeSkills: false,
+    ...overrides,
+});
+
+const invokeCreateApp = async (overrides: Partial<CreateAppOptions> = {}): Promise<void> => {
+    const { createApp } = await import("../src/create.js");
+    await createApp(defaultOptions(overrides));
+};
+
+describe("createApp (directory structure)", () => {
+    setupCreateAppCtx();
 
     it("creates project directory structure", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "vitest",
-            claudeSkills: false,
-        });
-
+        await invokeCreateApp({ testing: "vitest" });
         expect(vol.existsSync(`${testDir}/test-app`)).toBe(true);
         expect(vol.existsSync(`${testDir}/test-app/src`)).toBe(true);
         expect(vol.existsSync(`${testDir}/test-app/tests`)).toBe(true);
     });
 
+    it("does not create tests directory for none", async () => {
+        await invokeCreateApp();
+        expect(vol.existsSync(`${testDir}/test-app/tests`)).toBe(false);
+    });
+
+    it("does not scaffold a dev.tsx entry", async () => {
+        await invokeCreateApp();
+        expect(vol.existsSync(`${testDir}/test-app/src/dev.tsx`)).toBe(false);
+    });
+});
+
+describe("createApp (generated files)", () => {
+    setupCreateAppCtx();
+
     it("creates package.json with correct content", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "com.example.test",
-            packageManager: "npm",
-            testing: "vitest",
-            claudeSkills: false,
-        });
-
+        await invokeCreateApp({ appId: "com.example.test", packageManager: "npm", testing: "vitest" });
         const content = JSON.parse(vol.readFileSync(`${testDir}/test-app/package.json`, "utf-8") as string);
-
         expect(content.name).toBe("test-app");
         expect(content.gtkx).toBeUndefined();
         expect(content.scripts.test).toContain("vitest");
     });
 
     it("creates gtkx.config.ts with the default libraries", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "com.example.test",
-            packageManager: "npm",
-            testing: "none",
-            claudeSkills: false,
-        });
-
+        await invokeCreateApp({ appId: "com.example.test", packageManager: "npm" });
         const content = vol.readFileSync(`${testDir}/test-app/gtkx.config.ts`, "utf-8") as string;
-
         expect(content).toContain('import { defineConfig } from "@gtkx/cli"');
         expect(content).toContain('libraries: ["Gtk-4.0", "Adw-1"]');
         expect(content).not.toContain("appId");
     });
 
     it("creates tsconfig.json", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "none",
-            claudeSkills: false,
-        });
-
+        await invokeCreateApp();
         expect(vol.existsSync(`${testDir}/test-app/tsconfig.json`)).toBe(true);
-
         const content = JSON.parse(vol.readFileSync(`${testDir}/test-app/tsconfig.json`, "utf-8") as string);
         expect(content.compilerOptions.jsx).toBe("react-jsx");
     });
 
     it("creates app.tsx with correct title", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "my-cool-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "none",
-            claudeSkills: false,
-        });
-
+        await invokeCreateApp({ name: "my-cool-app" });
         const content = vol.readFileSync(`${testDir}/my-cool-app/src/app.tsx`, "utf-8") as string;
-
         expect(content).toContain('title="My Cool App"');
         expect(content).toContain("export const App");
         expect(content).not.toContain("appId");
     });
 
     it("creates index.tsx entry point that constructs the application and calls render", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "none",
-            claudeSkills: false,
-        });
-
+        await invokeCreateApp();
         const content = vol.readFileSync(`${testDir}/test-app/src/index.tsx`, "utf-8") as string;
-
         expect(content).toContain("import { render }");
         expect(content).toContain("import { App }");
         expect(content).toContain('new Gtk.Application(undefined, "org.test.app")');
@@ -360,74 +346,26 @@ describe("createApp", () => {
         expect(content).not.toContain("pkg.gtkx.appId");
     });
 
-    it("does not scaffold a dev.tsx entry", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "none",
-            claudeSkills: false,
-        });
-
-        expect(vol.existsSync(`${testDir}/test-app/src/dev.tsx`)).toBe(false);
-    });
-
     it("creates .gitignore", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "none",
-            claudeSkills: false,
-        });
-
+        await invokeCreateApp();
         const content = vol.readFileSync(`${testDir}/test-app/.gitignore`, "utf-8") as string;
-
         expect(content).toContain("node_modules/");
         expect(content).toContain("dist/");
     });
 
     it("creates vitest.config.ts for vitest", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "vitest",
-            claudeSkills: false,
-        });
-
+        await invokeCreateApp({ testing: "vitest" });
         expect(vol.existsSync(`${testDir}/test-app/vitest.config.ts`)).toBe(true);
-
         const content = vol.readFileSync(`${testDir}/test-app/vitest.config.ts`, "utf-8") as string;
         expect(content).toContain("defineConfig");
     });
+});
 
-    it("does not create tests directory for none", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "none",
-            claudeSkills: false,
-        });
-
-        expect(vol.existsSync(`${testDir}/test-app/tests`)).toBe(false);
-    });
+describe("createApp (claude skills)", () => {
+    setupCreateAppCtx();
 
     it("creates claude skills directory when enabled", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "none",
-            claudeSkills: true,
-        });
-
+        await invokeCreateApp({ claudeSkills: true });
         const skillsDir = `${testDir}/test-app/.claude/skills/developing-gtkx-apps`;
         expect(vol.existsSync(skillsDir)).toBe(true);
         expect(vol.existsSync(`${skillsDir}/SKILL.md`)).toBe(true);
@@ -436,70 +374,39 @@ describe("createApp", () => {
     });
 
     it("does not create claude directory when disabled", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "none",
-            claudeSkills: false,
-        });
-
+        await invokeCreateApp();
         expect(vol.existsSync(`${testDir}/test-app/.claude`)).toBe(false);
     });
+});
+
+describe("createApp (package manager variants)", () => {
+    setupCreateAppCtx();
 
     it("scaffolds project with pnpm", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app-pnpm",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "vitest",
-            claudeSkills: false,
-        });
-
+        await invokeCreateApp({ name: "test-app-pnpm", testing: "vitest" });
         expect(vol.existsSync(`${testDir}/test-app-pnpm`)).toBe(true);
         expect(vol.existsSync(`${testDir}/test-app-pnpm/package.json`)).toBe(true);
     });
 
     it("scaffolds project with npm", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app-npm",
-            appId: "org.test.app",
-            packageManager: "npm",
-            testing: "vitest",
-            claudeSkills: false,
-        });
-
+        await invokeCreateApp({ name: "test-app-npm", packageManager: "npm", testing: "vitest" });
         expect(vol.existsSync(`${testDir}/test-app-npm`)).toBe(true);
         expect(vol.existsSync(`${testDir}/test-app-npm/package.json`)).toBe(true);
     });
 
     it("scaffolds project with yarn", async () => {
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app-yarn",
-            appId: "org.test.app",
-            packageManager: "yarn",
-            testing: "vitest",
-            claudeSkills: false,
-        });
-
+        await invokeCreateApp({ name: "test-app-yarn", packageManager: "yarn", testing: "vitest" });
         expect(vol.existsSync(`${testDir}/test-app-yarn`)).toBe(true);
         expect(vol.existsSync(`${testDir}/test-app-yarn/package.json`)).toBe(true);
     });
+});
+
+describe("createApp (git initialization)", () => {
+    setupCreateAppCtx();
 
     it("initializes a git repository", async () => {
         const { execFileSync } = await import("node:child_process");
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "none",
-            claudeSkills: false,
-        });
+        await invokeCreateApp();
 
         const projectPath = `${testDir}/test-app`;
         const opts = { cwd: projectPath, stdio: "pipe" };
@@ -515,32 +422,19 @@ describe("createApp", () => {
             throw new Error("git not found");
         });
 
-        const { createApp } = await import("../src/create.js");
-        await createApp({
-            name: "test-app",
-            appId: "org.test.app",
-            packageManager: "pnpm",
-            testing: "none",
-            claudeSkills: false,
-        });
+        await invokeCreateApp();
 
         expect(vol.existsSync(`${testDir}/test-app`)).toBe(true);
         expect(vol.existsSync(`${testDir}/test-app/package.json`)).toBe(true);
     });
+});
 
-    describe("error handling", () => {
-        it("handles dependency installation failure gracefully", async () => {
-            const { createApp } = await import("../src/create.js");
-            await createApp({
-                name: "test-app",
-                appId: "org.test.app",
-                packageManager: "pnpm",
-                testing: "none",
-                claudeSkills: false,
-            });
+describe("createApp (error handling)", () => {
+    setupCreateAppCtx();
 
-            expect(vol.existsSync(`${testDir}/test-app`)).toBe(true);
-            expect(vol.existsSync(`${testDir}/test-app/package.json`)).toBe(true);
-        });
+    it("handles dependency installation failure gracefully", async () => {
+        await invokeCreateApp();
+        expect(vol.existsSync(`${testDir}/test-app`)).toBe(true);
+        expect(vol.existsSync(`${testDir}/test-app/package.json`)).toBe(true);
     });
 });

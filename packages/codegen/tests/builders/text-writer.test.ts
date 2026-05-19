@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Writer } from "../../src/builders/text-writer.js";
 
-describe("Writer", () => {
+describe("Writer (1)", () => {
     it("writes a simple string", () => {
         const w = new Writer();
         w.write("hello");
@@ -49,7 +49,9 @@ describe("Writer", () => {
         w.writeJoined(", ", ["a", "b", "c"]);
         expect(w.toString()).toBe("a, b, c");
     });
+});
 
+describe("Writer (2)", () => {
     it("handles writeJoined with single item", () => {
         const w = new Writer();
         w.writeJoined(", ", ["only"]);
@@ -97,7 +99,9 @@ describe("Writer", () => {
         w.write(builder);
         expect(w.toString()).toBe("from builder");
     });
+});
 
+describe("Writer (3)", () => {
     it("handles empty write", () => {
         const w = new Writer();
         w.write("");

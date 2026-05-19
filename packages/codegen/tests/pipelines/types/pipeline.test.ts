@@ -56,7 +56,7 @@ const repositoryWithClasses = (
     return { repository, namespace };
 };
 
-describe("collectEnumValues", () => {
+describe("collectEnumValues (1)", () => {
     it("keys enum members upper-cased by lowercase namespace name", () => {
         const enumeration = createNormalizedEnumeration({
             name: "Orientation",
@@ -92,7 +92,9 @@ describe("collectEnumValues", () => {
 
         expect(result.get("gtk")?.get("StateFlags")?.get("ACTIVE")).toBe(4);
     });
+});
 
+describe("collectEnumValues (2)", () => {
     it("drops members whose value is not a finite number", () => {
         const enumeration = createNormalizedEnumeration({
             name: "Weird",
@@ -253,7 +255,7 @@ describe("collectByOwner", () => {
     });
 });
 
-describe("collectClassFieldNames", () => {
+describe("collectClassFieldNames (1)", () => {
     it("camelCases class instance-struct field names", () => {
         const cls = createNormalizedClass({
             name: "Button",
@@ -298,7 +300,9 @@ describe("collectClassFieldNames", () => {
         expect(names?.has("ownField")).toBe(true);
         expect(names?.has("baseField")).toBe(true);
     });
+});
 
+describe("collectClassFieldNames (2)", () => {
     it("skips namespace names that do not resolve", () => {
         const missing: GirRepository = {
             getNamespaceNames: () => ["Ghost"],
@@ -309,7 +313,7 @@ describe("collectClassFieldNames", () => {
     });
 });
 
-describe("collectPrerequisiteFieldNames", () => {
+describe("collectPrerequisiteFieldNames (1)", () => {
     it("walks the inheritance chain of a prerequisite class", () => {
         const widget = createNormalizedClass({
             name: "Widget",
@@ -337,7 +341,9 @@ describe("collectPrerequisiteFieldNames", () => {
         expect(names.has("childField")).toBe(true);
         expect(names.has("widgetField")).toBe(true);
     });
+});
 
+describe("collectPrerequisiteFieldNames (2)", () => {
     it("walks transitive prerequisite interfaces and breaks cycles", () => {
         const ifaceA = createNormalizedInterface({
             name: "A",
@@ -394,7 +400,7 @@ describe("collectSignalActionMethodNames", () => {
     });
 });
 
-describe("collectNumericConstantNames", () => {
+describe("collectNumericConstantNames (1)", () => {
     it("collects numeric non-string constants and skips string-typed ones", () => {
         const numeric = createNormalizedConstant({
             name: "MAJOR_VERSION",
@@ -437,7 +443,9 @@ describe("collectNumericConstantNames", () => {
         expect(names?.has("PATH")).toBe(false);
         expect(names?.has("BLURB")).toBe(false);
     });
+});
 
+describe("collectNumericConstantNames (2)", () => {
     it("skips namespace names that do not resolve", () => {
         const missing: GirRepository = {
             getNamespaceNames: () => ["Ghost"],
@@ -470,7 +478,7 @@ describe("declaredParameterCount", () => {
     });
 });
 
-describe("collectMethodShadowRenames", () => {
+describe("collectMethodShadowRenames (1)", () => {
     it("renames a class method that collides with a parent method", () => {
         const { namespace } = repositoryWithClasses("Gtk", (repo) => [
             createNormalizedClass(
@@ -508,7 +516,9 @@ describe("collectMethodShadowRenames", () => {
             arity: 1,
         });
     });
+});
 
+describe("collectMethodShadowRenames (2)", () => {
     it("excludes the connect method and non-colliding methods", () => {
         const { namespace } = repositoryWithClasses("Gtk", (repo) => [
             createNormalizedClass(
@@ -595,7 +605,7 @@ describe("findConnectMethodDeclarer", () => {
     });
 });
 
-describe("collectConnectMethodRenames", () => {
+describe("collectConnectMethodRenames (1)", () => {
     it("records a connect rename for a class that declares the method", () => {
         const cls = createNormalizedClass({
             name: "Widget",
@@ -643,7 +653,9 @@ describe("collectConnectMethodRenames", () => {
 
         expect(collectConnectMethodRenames(singleNamespace(ns)).get("gtk")?.size).toBe(0);
     });
+});
 
+describe("collectConnectMethodRenames (2)", () => {
     it("skips namespace names that do not resolve", () => {
         const missing: GirRepository = {
             getNamespaceNames: () => ["Ghost"],
@@ -702,7 +714,7 @@ describe("buildAsyncEntries", () => {
     });
 });
 
-describe("collectInterfaceFlattenedMethods", () => {
+describe("collectInterfaceFlattenedMethods (1)", () => {
     it("flattens own methods and transitive prerequisite interface methods", () => {
         const base = createNormalizedInterface({
             name: "Base",
@@ -727,7 +739,9 @@ describe("collectInterfaceFlattenedMethods", () => {
 
         expect(methods.map((m) => m.name).sort()).toEqual(["base_method", "derived_method"]);
     });
+});
 
+describe("collectInterfaceFlattenedMethods (2)", () => {
     it("deduplicates methods shared by an interface and a prerequisite", () => {
         const base = createNormalizedInterface({
             name: "Base",
@@ -758,7 +772,9 @@ describe("collectInterfaceFlattenedMethods", () => {
 
         expect(collectInterfaceFlattenedMethods(singleNamespace(ns), "Gtk.Missing")).toEqual([]);
     });
+});
 
+describe("collectInterfaceFlattenedMethods (3)", () => {
     it("breaks prerequisite cycles", () => {
         const ifaceA = createNormalizedInterface({
             name: "A",
@@ -786,7 +802,7 @@ describe("collectInterfaceFlattenedMethods", () => {
     });
 });
 
-describe("collectAsyncMembers", () => {
+describe("collectAsyncMembers (1)", () => {
     it("collects async members for classes keyed by pascal-cased owner name", () => {
         const cls = createNormalizedClass({
             name: "InputStream",
@@ -806,7 +822,9 @@ describe("collectAsyncMembers", () => {
             { asyncMember: "readAsync", finishMember: "readFinish" },
         ]);
     });
+});
 
+describe("collectAsyncMembers (2)", () => {
     it("collects async members for interfaces and namespace-level functions", () => {
         const iface = createNormalizedInterface({
             name: "AsyncInitable",
@@ -843,7 +861,9 @@ describe("collectAsyncMembers", () => {
         ]);
         expect(result.get("gio")?.get("")).toEqual([{ asyncMember: "busGet", finishMember: "busGetFinish" }]);
     });
+});
 
+describe("collectAsyncMembers (3)", () => {
     it("merges static-function async members into the owner entry list", () => {
         const cls = createNormalizedClass({
             name: "File",
@@ -880,7 +900,9 @@ describe("collectAsyncMembers", () => {
             { asyncMember: "newAsync", finishMember: "newFinish" },
         ]);
     });
+});
 
+describe("collectAsyncMembers (4)", () => {
     it("collects async members declared on records", () => {
         const rec = createNormalizedRecord({
             name: "Task",
@@ -982,7 +1004,7 @@ describe("buildHashTableEntry", () => {
     });
 });
 
-describe("collectHashTableMembers", () => {
+describe("collectHashTableMembers (1)", () => {
     it("collects keyed hash-table members across classes, interfaces, records and functions", () => {
         const cls = createNormalizedClass({
             name: "Settings",
@@ -1038,7 +1060,9 @@ describe("collectHashTableMembers", () => {
         expect(owners?.get("Bag")?.[0]?.member).toBe("fill");
         expect(owners?.get("")?.[0]).toEqual(expect.objectContaining({ member: "dump", isFunction: true }));
     });
+});
 
+describe("collectHashTableMembers (2)", () => {
     it("produces no owner entries when nothing carries a keyed hash table", () => {
         const cls = createNormalizedClass({
             name: "Plain",

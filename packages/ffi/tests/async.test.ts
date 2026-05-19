@@ -18,7 +18,7 @@ describe("promisify", () => {
         const cancellableHandle = handle(99);
         setHandle(cancellable, cancellableHandle);
 
-        return promisify(asyncFn, () => "done", cancellable, ["a", "b"]).then((value) => {
+        return promisify(asyncFn, () => "done", cancellable, { leading: ["a", "b"] }).then((value) => {
             expect(value).toBe("done");
             const args = calls[0] ?? [];
             expect(args.slice(0, 3)).toEqual(["a", "b", cancellableHandle]);
@@ -33,7 +33,7 @@ describe("promisify", () => {
             (args[args.length - 1] as (source: NativeHandle, result: NativeHandle) => void)(handle(1), handle(2));
         };
 
-        return promisify(asyncFn, () => 0, undefined, ["lead"], ["progress"]).then(() => {
+        return promisify(asyncFn, () => 0, undefined, { leading: ["lead"], trailing: ["progress"] }).then(() => {
             expect(captured.slice(0, 3)).toEqual(["lead", undefined, "progress"]);
             expect(typeof captured[3]).toBe("function");
         });
@@ -45,7 +45,7 @@ describe("promisify", () => {
             (args[args.length - 1] as (source: NativeHandle, result: NativeHandle) => void)(handle(1), rawResult);
         };
 
-        return promisify(asyncFn, (result) => getHandle(result), undefined, []).then((resolvedHandle) => {
+        return promisify(asyncFn, (result) => getHandle(result), undefined, { leading: [] }).then((resolvedHandle) => {
             expect(resolvedHandle).toBe(rawResult);
         });
     });
@@ -63,7 +63,7 @@ describe("promisify", () => {
                     throw failure;
                 },
                 undefined,
-                [],
+                { leading: [] },
             ),
         ).rejects.toBe(failure);
     });

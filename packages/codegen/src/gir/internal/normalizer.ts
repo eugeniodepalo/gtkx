@@ -139,77 +139,15 @@ export class GirNormalizer {
     }
 
     private normalizeType(raw: RawType, currentNamespace: string): GirType {
-        if (raw.containerType === "ghashtable") {
-            const typeParams = (raw.typeParameters ?? []).map((tp) => this.normalizeType(tp, currentNamespace));
-            return new GirType({
-                name: `GLib.HashTable`,
-                cType: raw.cType,
-                containerType: raw.containerType,
-                transferOwnership: raw.transferOwnership,
-                nullable: raw.nullable ?? false,
-                isArray: false,
-                elementType: typeParams[1] ?? null,
-                typeParameters: typeParams,
-            });
-        }
-
-        if (raw.containerType === "gptrarray" || raw.containerType === "garray") {
-            const typeParams = (raw.typeParameters ?? []).map((tp) => this.normalizeType(tp, currentNamespace));
-            const typeName = raw.containerType === "gptrarray" ? "PtrArray" : "Array";
-            return new GirType({
-                name: `GLib.${typeName}`,
-                cType: raw.cType,
-                containerType: raw.containerType,
-                transferOwnership: raw.transferOwnership,
-                nullable: raw.nullable ?? false,
-                isArray: true,
-                elementType: typeParams[0] ?? null,
-                typeParameters: typeParams,
-            });
-        }
-
-        if (raw.containerType === "gbytearray") {
-            const elementType = raw.elementType ? this.normalizeType(raw.elementType, currentNamespace) : null;
-            return new GirType({
-                name: `GLib.ByteArray`,
-                cType: raw.cType,
-                containerType: raw.containerType,
-                transferOwnership: raw.transferOwnership,
-                nullable: raw.nullable ?? false,
-                isArray: true,
-                elementType,
-            });
-        }
-
-        if (raw.containerType === "glist" || raw.containerType === "gslist") {
-            const elementType = raw.elementType ? this.normalizeType(raw.elementType, currentNamespace) : null;
-            return new GirType({
-                name: "array",
-                cType: raw.cType,
-                containerType: raw.containerType,
-                transferOwnership: raw.transferOwnership,
-                nullable: raw.nullable ?? false,
-                isArray: true,
-                elementType,
-                typeParameters: elementType ? [elementType] : [],
-            });
-        }
+        const container = raw.containerType;
+        if (container === "ghashtable") return this.normalizeHashTable(raw, currentNamespace);
+        if (container === "gptrarray" || container === "garray")
+            return this.normalizePtrOrGArray(raw, currentNamespace);
+        if (container === "gbytearray") return this.normalizeByteArray(raw, currentNamespace);
+        if (container === "glist" || container === "gslist") return this.normalizeList(raw, currentNamespace);
 
         const isArray = raw.isArray === true || raw.name === "array";
-
-        if (isArray) {
-            return new GirType({
-                name: "array",
-                cType: raw.cType,
-                isArray: true,
-                elementType: raw.elementType ? this.normalizeType(raw.elementType, currentNamespace) : null,
-                transferOwnership: raw.transferOwnership,
-                nullable: raw.nullable ?? false,
-                sizeParamIndex: raw.sizeParamIndex,
-                zeroTerminated: raw.zeroTerminated,
-                fixedSize: raw.fixedSize,
-            });
-        }
+        if (isArray) return this.normalizeArrayType(raw, currentNamespace);
 
         return new GirType({
             name: this.qualifyTypeName(raw.name, currentNamespace),
@@ -218,6 +156,76 @@ export class GirNormalizer {
             elementType: null,
             transferOwnership: raw.transferOwnership,
             nullable: raw.nullable ?? false,
+        });
+    }
+
+    private normalizeHashTable(raw: RawType, currentNamespace: string): GirType {
+        const typeParams = (raw.typeParameters ?? []).map((tp) => this.normalizeType(tp, currentNamespace));
+        return new GirType({
+            name: `GLib.HashTable`,
+            cType: raw.cType,
+            containerType: raw.containerType,
+            transferOwnership: raw.transferOwnership,
+            nullable: raw.nullable ?? false,
+            isArray: false,
+            elementType: typeParams[1] ?? null,
+            typeParameters: typeParams,
+        });
+    }
+
+    private normalizePtrOrGArray(raw: RawType, currentNamespace: string): GirType {
+        const typeParams = (raw.typeParameters ?? []).map((tp) => this.normalizeType(tp, currentNamespace));
+        const typeName = raw.containerType === "gptrarray" ? "PtrArray" : "Array";
+        return new GirType({
+            name: `GLib.${typeName}`,
+            cType: raw.cType,
+            containerType: raw.containerType,
+            transferOwnership: raw.transferOwnership,
+            nullable: raw.nullable ?? false,
+            isArray: true,
+            elementType: typeParams[0] ?? null,
+            typeParameters: typeParams,
+        });
+    }
+
+    private normalizeByteArray(raw: RawType, currentNamespace: string): GirType {
+        const elementType = raw.elementType ? this.normalizeType(raw.elementType, currentNamespace) : null;
+        return new GirType({
+            name: `GLib.ByteArray`,
+            cType: raw.cType,
+            containerType: raw.containerType,
+            transferOwnership: raw.transferOwnership,
+            nullable: raw.nullable ?? false,
+            isArray: true,
+            elementType,
+        });
+    }
+
+    private normalizeList(raw: RawType, currentNamespace: string): GirType {
+        const elementType = raw.elementType ? this.normalizeType(raw.elementType, currentNamespace) : null;
+        return new GirType({
+            name: "array",
+            cType: raw.cType,
+            containerType: raw.containerType,
+            transferOwnership: raw.transferOwnership,
+            nullable: raw.nullable ?? false,
+            isArray: true,
+            elementType,
+            typeParameters: elementType ? [elementType] : [],
+        });
+    }
+
+    private normalizeArrayType(raw: RawType, currentNamespace: string): GirType {
+        return new GirType({
+            name: "array",
+            cType: raw.cType,
+            isArray: true,
+            elementType: raw.elementType ? this.normalizeType(raw.elementType, currentNamespace) : null,
+            transferOwnership: raw.transferOwnership,
+            nullable: raw.nullable ?? false,
+            sizeParamIndex: raw.sizeParamIndex,
+            zeroTerminated: raw.zeroTerminated,
+            fixedSize: raw.fixedSize,
         });
     }
 

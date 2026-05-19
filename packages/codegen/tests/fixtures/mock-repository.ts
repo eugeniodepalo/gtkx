@@ -39,60 +39,108 @@ export interface MockGirRepository {
     findClasses(predicate: (cls: GirClass) => boolean): GirClass[];
 }
 
-export function createMockRepository(namespaces: Map<string, GirNamespace> = new Map()): GirRepository {
-    const repo: MockGirRepository = {
+const PRIMITIVE_TYPE_NAMES: ReadonlySet<string> = new Set([
+    "gint",
+    "guint",
+    "gint8",
+    "guint8",
+    "gint16",
+    "guint16",
+    "gint32",
+    "guint32",
+    "gint64",
+    "guint64",
+    "gfloat",
+    "gdouble",
+    "gboolean",
+    "gchar",
+    "guchar",
+    "gshort",
+    "gushort",
+    "glong",
+    "gulong",
+    "gsize",
+    "gssize",
+    "gpointer",
+    "gconstpointer",
+    "utf8",
+    "filename",
+    "none",
+]);
+
+function buildNamespaceLookups(
+    namespaces: Map<string, GirNamespace>,
+): Pick<MockGirRepository, "getNamespace" | "getNamespaceNames" | "getAllNamespaces"> {
+    return {
         getNamespace(name: string): GirNamespace | null {
             return namespaces.get(name) ?? null;
         },
-
         getNamespaceNames(): string[] {
             return [...namespaces.keys()];
         },
-
         getAllNamespaces(): Map<string, GirNamespace> {
             return namespaces;
         },
+    };
+}
 
+function buildResolveByKind(
+    namespaces: Map<string, GirNamespace>,
+): Pick<
+    MockGirRepository,
+    | "resolveClass"
+    | "resolveInterface"
+    | "resolveRecord"
+    | "resolveEnum"
+    | "resolveFlags"
+    | "resolveCallback"
+    | "resolveConstant"
+    | "resolveFunction"
+> {
+    return {
         resolveClass(qn: string): GirClass | null {
             const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.classes.get(name) ?? null;
         },
-
         resolveInterface(qn: string): GirInterface | null {
             const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.interfaces.get(name) ?? null;
         },
-
         resolveRecord(qn: string): GirRecord | null {
             const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.records.get(name) ?? null;
         },
-
         resolveEnum(qn: string): GirEnumeration | null {
             const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.enumerations.get(name) ?? null;
         },
-
         resolveFlags(qn: string): GirEnumeration | null {
             const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.bitfields.get(name) ?? null;
         },
-
         resolveCallback(qn: string): GirCallback | null {
             const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.callbacks.get(name) ?? null;
         },
-
         resolveConstant(qn: string): GirConstant | null {
             const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.constants.get(name) ?? null;
         },
-
         resolveFunction(qn: string): GirFunction | null {
             const { namespace, name } = splitQualifiedName(qn);
             return namespaces.get(namespace)?.functions.get(name) ?? null;
         },
+    };
+}
 
+function buildTypeKindAndTraversal(
+    namespaces: Map<string, GirNamespace>,
+    getRepo: () => MockGirRepository,
+): Pick<
+    MockGirRepository,
+    "getTypeKind" | "getInheritanceChain" | "getImplementedInterfaces" | "getDerivedClasses" | "getImplementors"
+> {
+    return {
         getTypeKind(qn: string): TypeKind | null {
             const { namespace, name } = splitQualifiedName(qn);
             const ns = namespaces.get(namespace);
@@ -107,17 +155,14 @@ export function createMockRepository(namespaces: Map<string, GirNamespace> = new
 
             return null;
         },
-
         getInheritanceChain(qn: string): string[] {
-            const cls = repo.resolveClass(qn);
+            const cls = getRepo().resolveClass(qn);
             return cls?.getInheritanceChain() ?? [];
         },
-
         getImplementedInterfaces(qn: string): string[] {
-            const cls = repo.resolveClass(qn);
+            const cls = getRepo().resolveClass(qn);
             return cls?.getAllImplementedInterfaces() ?? [];
         },
-
         getDerivedClasses(qn: string): string[] {
             const derived: string[] = [];
             for (const ns of namespaces.values()) {
@@ -129,7 +174,6 @@ export function createMockRepository(namespaces: Map<string, GirNamespace> = new
             }
             return derived;
         },
-
         getImplementors(interfaceName: string): string[] {
             const implementors: string[] = [];
             for (const ns of namespaces.values()) {
@@ -141,49 +185,25 @@ export function createMockRepository(namespaces: Map<string, GirNamespace> = new
             }
             return implementors;
         },
+    };
+}
 
+function buildPredicates(
+    namespaces: Map<string, GirNamespace>,
+    getRepo: () => MockGirRepository,
+): Pick<MockGirRepository, "isGObject" | "isBoxed" | "isPrimitive" | "findClasses"> {
+    return {
         isGObject(qn: string): boolean {
-            const cls = repo.resolveClass(qn);
+            const cls = getRepo().resolveClass(qn);
             return cls?.hasGType() ?? false;
         },
-
         isBoxed(qn: string): boolean {
-            const record = repo.resolveRecord(qn);
+            const record = getRepo().resolveRecord(qn);
             return record?.isBoxed() ?? false;
         },
-
         isPrimitive(typeName: string): boolean {
-            const primitives = new Set([
-                "gint",
-                "guint",
-                "gint8",
-                "guint8",
-                "gint16",
-                "guint16",
-                "gint32",
-                "guint32",
-                "gint64",
-                "guint64",
-                "gfloat",
-                "gdouble",
-                "gboolean",
-                "gchar",
-                "guchar",
-                "gshort",
-                "gushort",
-                "glong",
-                "gulong",
-                "gsize",
-                "gssize",
-                "gpointer",
-                "gconstpointer",
-                "utf8",
-                "filename",
-                "none",
-            ]);
-            return primitives.has(typeName);
+            return PRIMITIVE_TYPE_NAMES.has(typeName);
         },
-
         findClasses(predicate: (cls: GirClass) => boolean): GirClass[] {
             const results: GirClass[] = [];
             for (const ns of namespaces.values()) {
@@ -195,6 +215,15 @@ export function createMockRepository(namespaces: Map<string, GirNamespace> = new
             }
             return results;
         },
+    };
+}
+
+export function createMockRepository(namespaces: Map<string, GirNamespace> = new Map()): GirRepository {
+    const repo: MockGirRepository = {
+        ...buildNamespaceLookups(namespaces),
+        ...buildResolveByKind(namespaces),
+        ...buildTypeKindAndTraversal(namespaces, () => repo),
+        ...buildPredicates(namespaces, () => repo),
     };
 
     return repo as unknown as GirRepository;

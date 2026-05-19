@@ -10,97 +10,86 @@ import {
     VOID_TYPES,
 } from "../../src/gir/intrinsics.js";
 
-describe("isIntrinsicType", () => {
-    describe("void types", () => {
-        it.each(["void", "none"])("returns true for %s", (type) => {
-            expect(isIntrinsicType(type)).toBe(true);
-        });
+describe("isIntrinsicType / void types", () => {
+    it.each(["void", "none"])("returns true for %s", (type) => {
+        expect(isIntrinsicType(type)).toBe(true);
     });
+});
 
-    describe("boolean types", () => {
-        it("returns true for gboolean", () => {
-            expect(isIntrinsicType("gboolean")).toBe(true);
-        });
+describe("isIntrinsicType / boolean types", () => {
+    it("returns true for gboolean", () => {
+        expect(isIntrinsicType("gboolean")).toBe(true);
     });
+});
 
-    describe("signed integer types", () => {
-        it.each([
-            "gint",
-            "gint8",
-            "gint16",
-            "gint32",
-            "gint64",
-            "gchar",
-            "gshort",
-            "glong",
-            "gssize",
-            "goffset",
-            "gintptr",
-        ])("returns true for %s", (type) => {
-            expect(isIntrinsicType(type)).toBe(true);
-        });
+describe("isIntrinsicType / signed integer types", () => {
+    it.each([
+        "gint",
+        "gint8",
+        "gint16",
+        "gint32",
+        "gint64",
+        "gchar",
+        "gshort",
+        "glong",
+        "gssize",
+        "goffset",
+        "gintptr",
+    ])("returns true for %s", (type) => {
+        expect(isIntrinsicType(type)).toBe(true);
     });
+});
 
-    describe("unsigned integer types", () => {
-        it.each([
-            "guint",
-            "guint8",
-            "guint16",
-            "guint32",
-            "guint64",
-            "guchar",
-            "gushort",
-            "gulong",
-            "gsize",
-            "guintptr",
-        ])("returns true for %s", (type) => {
-            expect(isIntrinsicType(type)).toBe(true);
-        });
+describe("isIntrinsicType / unsigned integer types", () => {
+    it.each([
+        "guint",
+        "guint8",
+        "guint16",
+        "guint32",
+        "guint64",
+        "guchar",
+        "gushort",
+        "gulong",
+        "gsize",
+        "guintptr",
+    ])("returns true for %s", (type) => {
+        expect(isIntrinsicType(type)).toBe(true);
     });
+});
 
-    describe("float types", () => {
-        it.each(["gfloat", "gdouble"])("returns true for %s", (type) => {
-            expect(isIntrinsicType(type)).toBe(true);
-        });
+describe("isIntrinsicType / float types", () => {
+    it.each(["gfloat", "gdouble"])("returns true for %s", (type) => {
+        expect(isIntrinsicType(type)).toBe(true);
     });
+});
 
-    describe("pointer types", () => {
-        it.each(["gpointer", "gconstpointer"])("returns true for %s", (type) => {
-            expect(isIntrinsicType(type)).toBe(true);
-        });
+describe("isIntrinsicType / pointer types", () => {
+    it.each(["gpointer", "gconstpointer"])("returns true for %s", (type) => {
+        expect(isIntrinsicType(type)).toBe(true);
     });
+});
 
-    describe("string types", () => {
-        it.each(["utf8", "filename"])("returns true for %s", (type) => {
-            expect(isIntrinsicType(type)).toBe(true);
-        });
+describe("isIntrinsicType / string types", () => {
+    it.each(["utf8", "filename"])("returns true for %s", (type) => {
+        expect(isIntrinsicType(type)).toBe(true);
     });
+});
 
-    describe("GType system types", () => {
-        it.each(["GType", "GParamSpec", "GVariant"])("returns true for %s", (type) => {
-            expect(isIntrinsicType(type)).toBe(true);
-        });
+describe("isIntrinsicType / GType system types", () => {
+    it.each(["GType", "GParamSpec", "GVariant"])("returns true for %s", (type) => {
+        expect(isIntrinsicType(type)).toBe(true);
     });
+});
 
-    describe("C types", () => {
-        it.each([
-            "int",
-            "uint",
-            "long",
-            "ulong",
-            "float",
-            "double",
-            "size_t",
-            "ssize_t",
-        ])("returns true for %s", (type) => {
-            expect(isIntrinsicType(type)).toBe(true);
-        });
+describe("isIntrinsicType / C types", () => {
+    it.each(["int", "uint", "long", "ulong", "float", "double", "size_t", "ssize_t"])("returns true for %s", (type) => {
+        expect(isIntrinsicType(type)).toBe(true);
     });
+});
 
-    describe("non-intrinsic types", () => {
-        it.each(["GtkWidget", "GObject", "Gio.File", "MyCustomType", "Widget", ""])("returns false for %s", (type) => {
-            expect(isIntrinsicType(type)).toBe(false);
-        });
+describe("isIntrinsicType / non-intrinsic types", () => {
+    it.each(["GtkWidget", "GObject", "Gio.File", "MyCustomType", "Widget", ""])("returns false for %s", (type) => {
+        expect(isIntrinsicType(type)).toBe(false);
     });
 });
 
@@ -120,7 +109,7 @@ describe("isStringType", () => {
     });
 });
 
-describe("isNumericType", () => {
+describe("isNumericType (1)", () => {
     describe("integer types", () => {
         it.each([
             "gint",
@@ -164,7 +153,9 @@ describe("isNumericType", () => {
     it("returns true for GType (treated as numeric)", () => {
         expect(isNumericType("GType")).toBe(true);
     });
+});
 
+describe("isNumericType (2)", () => {
     it("returns false for non-numeric types", () => {
         expect(isNumericType("utf8")).toBe(false);
         expect(isNumericType("gboolean")).toBe(false);

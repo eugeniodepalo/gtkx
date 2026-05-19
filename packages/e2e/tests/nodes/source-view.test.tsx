@@ -5,7 +5,7 @@ import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { getBufferText } from "../helpers/buffer-text.js";
 
-describe("render - SourceView", () => {
+describe("render - SourceView (1)", () => {
     describe("basic rendering", () => {
         it("creates SourceView widget", { timeout: 10000 }, async () => {
             const ref = createRef<GtkSource.View>();
@@ -53,8 +53,10 @@ describe("render - SourceView", () => {
             expect(getBufferText(buffer)).toBe("Updated");
         });
     });
+});
 
-    describe("undo/redo support", () => {
+describe("render - SourceView (2)", () => {
+    describe("undo/redo support (1)", () => {
         it("sets enableUndo property", async () => {
             const ref = createRef<GtkSource.View>();
 
@@ -97,7 +99,11 @@ describe("render - SourceView", () => {
                 expect(onCanUndoChanged).toHaveBeenCalled();
             });
         });
+    });
+});
 
+describe("render - SourceView (3)", () => {
+    describe("undo/redo support (2)", () => {
         it("calls onCanRedoChanged when redo state changes", async () => {
             const ref = createRef<GtkSource.View>();
             const onCanRedoChanged = vi.fn();
@@ -116,8 +122,10 @@ describe("render - SourceView", () => {
             });
         });
     });
+});
 
-    describe("syntax highlighting", () => {
+describe("render - SourceView (4)", () => {
+    describe("syntax highlighting (1)", () => {
         it("sets language by string identifier", async () => {
             const ref = createRef<GtkSource.View>();
 
@@ -161,7 +169,11 @@ describe("render - SourceView", () => {
             const scheme = buffer.getStyleScheme();
             expect(scheme?.getId()).toBe("classic");
         });
+    });
+});
 
+describe("render - SourceView (5)", () => {
+    describe("syntax highlighting (2)", () => {
         it("sets styleScheme by GtkSource.StyleScheme object", async () => {
             const ref = createRef<GtkSource.View>();
             const schemeManager = GtkSource.StyleSchemeManager.getDefault();
@@ -203,7 +215,11 @@ describe("render - SourceView", () => {
             const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
             expect(buffer.getHighlightSyntax()).toBe(true);
         });
+    });
+});
 
+describe("render - SourceView (6)", () => {
+    describe("syntax highlighting (3)", () => {
         it("highlightSyntax can be explicitly disabled with language", async () => {
             const ref = createRef<GtkSource.View>();
 
@@ -217,7 +233,9 @@ describe("render - SourceView", () => {
             expect(buffer.getHighlightSyntax()).toBe(false);
         });
     });
+});
 
+describe("render - SourceView (7)", () => {
     describe("additional buffer props", () => {
         it("sets highlightMatchingBrackets property", async () => {
             const ref = createRef<GtkSource.View>();
@@ -267,8 +285,10 @@ describe("render - SourceView", () => {
             expect(buffer.getImplicitTrailingNewline()).toBe(true);
         });
     });
+});
 
-    describe("callbacks", () => {
+describe("render - SourceView (8)", () => {
+    describe("callbacks (1)", () => {
         it("calls onBufferChanged when text changes programmatically", async () => {
             const ref = createRef<GtkSource.View>();
             const onBufferChanged = vi.fn();
@@ -301,7 +321,11 @@ describe("render - SourceView", () => {
 
             expect(onBufferChanged).not.toHaveBeenCalled();
         });
+    });
+});
 
+describe("render - SourceView (9)", () => {
+    describe("callbacks (2)", () => {
         it("calls onCursorMoved when cursor position changes", async () => {
             const ref = createRef<GtkSource.View>();
             const onCursorMoved = vi.fn();
@@ -338,7 +362,11 @@ describe("render - SourceView", () => {
                 expect(onHighlightUpdated).toHaveBeenCalled();
             });
         });
+    });
+});
 
+describe("render - SourceView (10)", () => {
+    describe("callbacks (3)", () => {
         it("removes callback when set to null", async () => {
             const ref = createRef<GtkSource.View>();
             const onBufferChanged = vi.fn();
@@ -366,8 +394,10 @@ describe("render - SourceView", () => {
             expect(onBufferChanged.mock.calls.length).toBe(callCountBeforeRemoval);
         });
     });
+});
 
-    describe("dynamic updates", () => {
+describe("render - SourceView (11)", () => {
+    describe("dynamic updates (1)", () => {
         it("updates language when prop changes", async () => {
             const ref = createRef<GtkSource.View>();
 
@@ -407,7 +437,11 @@ describe("render - SourceView", () => {
             await rerender(<App scheme="tango" />);
             expect(buffer.getStyleScheme()?.getId()).toBe("tango");
         });
+    });
+});
 
+describe("render - SourceView (12)", () => {
+    describe("dynamic updates (2)", () => {
         it("removes language when set to undefined", async () => {
             const ref = createRef<GtkSource.View>();
 

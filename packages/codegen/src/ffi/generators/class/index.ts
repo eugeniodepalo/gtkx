@@ -39,7 +39,7 @@ import { type ParentInfo, parseParentReference } from "../../../utils/parent-ref
 import { splitQualifiedName } from "../../../utils/qualified-name.js";
 import { type ClassMetaAnalyzers, ClassMetaBuilder } from "./class-meta-builder.js";
 import { ClassStructStaticBuilder } from "./class-struct-static-builder.js";
-import { ConstructorBuilder } from "./constructor-builder.js";
+import { type ConstructionMetaPlan, ConstructorBuilder } from "./constructor-builder.js";
 import { MethodBuilder } from "./method-builder.js";
 import { PropertyAccessorBuilder } from "./property-accessor-builder.js";
 import { SignalBuilder } from "./signal-builder.js";
@@ -66,6 +66,17 @@ type ClassGenerationResult = {
  * - Property accessors
  * - Widget metadata
  */
+/**
+ * Options for {@link ClassGenerator}.
+ */
+export type ClassGeneratorOptions = {
+    cls: GirClass;
+    ffiMapper: FfiMapper;
+    file: FileBuilder;
+    repository: GirRepository;
+    options: FfiGeneratorOptions;
+};
+
 export class ClassGenerator {
     private readonly className: string;
     private readonly constructorBuilder: ConstructorBuilder;
@@ -76,43 +87,86 @@ export class ClassGenerator {
     private readonly propertyAccessorBuilder: PropertyAccessorBuilder;
     private readonly classMetaBuilder: ClassMetaBuilder;
     private readonly methodRenames = new Map<string, string>();
+    private readonly cls: GirClass;
+    private readonly file: FileBuilder;
+    private readonly repository: GirRepository;
+    private readonly options: FfiGeneratorOptions;
 
-    constructor(
-        private readonly cls: GirClass,
-        ffiMapper: FfiMapper,
-        private readonly file: FileBuilder,
-        private readonly repository: GirRepository,
-        private readonly options: FfiGeneratorOptions,
-    ) {
+    constructor(opts: ClassGeneratorOptions) {
+        const { cls, ffiMapper, file, repository, options } = opts;
+        this.cls = cls;
+        this.file = file;
+        this.repository = repository;
+        this.options = options;
         this.className = normalizeClassName(cls.name);
         const selfNames = new Set([this.className]);
 
-        this.constructorBuilder = new ConstructorBuilder(cls, ffiMapper, file, repository, options, selfNames);
-        this.methodBuilder = new MethodBuilder(ffiMapper, file, this.methodRenames, options, selfNames);
-        this.staticBuilder = new StaticFunctionBuilder(cls, ffiMapper, file, options, selfNames);
-        this.classStructStaticBuilder = new ClassStructStaticBuilder(
-            cls,
-            ffiMapper,
-            file,
-            repository,
-            options,
-            selfNames,
-        );
-        this.signalBuilder = new SignalBuilder(cls, ffiMapper, file, repository, options, selfNames);
-        this.propertyAccessorBuilder = new PropertyAccessorBuilder(
-            cls,
-            ffiMapper,
-            file,
-            repository,
-            options,
-            selfNames,
-        );
+        const builders = this.createBuilders({ cls, ffiMapper, file, repository, options, selfNames });
+        this.constructorBuilder = builders.constructorBuilder;
+        this.methodBuilder = builders.methodBuilder;
+        this.staticBuilder = builders.staticBuilder;
+        this.classStructStaticBuilder = builders.classStructStaticBuilder;
+        this.signalBuilder = builders.signalBuilder;
+        this.propertyAccessorBuilder = builders.propertyAccessorBuilder;
 
         const analyzers: ClassMetaAnalyzers = {
             property: new PropertyAnalyzer(repository, ffiMapper),
             signal: new SignalAnalyzer(repository, ffiMapper),
         };
         this.classMetaBuilder = new ClassMetaBuilder(cls, repository, options.namespace, analyzers);
+    }
+
+    private createBuilders(deps: {
+        cls: GirClass;
+        ffiMapper: FfiMapper;
+        file: FileBuilder;
+        repository: GirRepository;
+        options: FfiGeneratorOptions;
+        selfNames: Set<string>;
+    }): {
+        constructorBuilder: ConstructorBuilder;
+        methodBuilder: MethodBuilder;
+        staticBuilder: StaticFunctionBuilder;
+        classStructStaticBuilder: ClassStructStaticBuilder;
+        signalBuilder: SignalBuilder;
+        propertyAccessorBuilder: PropertyAccessorBuilder;
+    } {
+        const { cls, ffiMapper, file, repository, options, selfNames } = deps;
+        return {
+            constructorBuilder: new ConstructorBuilder({
+                cls,
+                ffiMapper,
+                imports: file,
+                repository,
+                options,
+                selfNames,
+            }),
+            methodBuilder: new MethodBuilder({
+                ffiMapper,
+                imports: file,
+                methodRenames: this.methodRenames,
+                options,
+                selfNames,
+            }),
+            staticBuilder: new StaticFunctionBuilder({ cls, ffiMapper, imports: file, options, selfNames }),
+            classStructStaticBuilder: new ClassStructStaticBuilder({
+                cls,
+                ffiMapper,
+                imports: file,
+                repository,
+                options,
+                selfNames,
+            }),
+            signalBuilder: new SignalBuilder({ cls, ffiMapper, imports: file, repository, options, selfNames }),
+            propertyAccessorBuilder: new PropertyAccessorBuilder({
+                cls,
+                ffiMapper,
+                imports: file,
+                repository,
+                options,
+                selfNames,
+            }),
+        };
     }
 
     /**
@@ -131,7 +185,6 @@ export class ClassGenerator {
         const { interfaceMethodsByNamespace } = this.collectInterfaceMethods(parentMethodNames);
 
         const filteredClassMethods = this.filterClassMethods(parentMethodNames);
-
         const parentInfo = parseParentReference(this.cls.parent, this.options.namespace);
         const selfTypeDescriptor = this.getSelfTypeDescriptor();
 
@@ -139,12 +192,41 @@ export class ClassGenerator {
         this.constructorBuilder.setParentFactoryMethodNames(parentFactoryMethodNames);
 
         const { metaPlan, factoryMethods } = this.constructorBuilder.build();
-
         const cls = this.buildClassDeclaration(parentInfo);
 
         this.emitConstructorPropertiesNamespace(parentInfo);
 
-        const allMethodStructures: MethodStructure[] = [
+        const allMethodStructures = this.collectAllMethodStructures({
+            factoryMethods,
+            filteredClassMethods,
+            interfaceMethodsByNamespace,
+            selfTypeDescriptor,
+        });
+        for (const struct of allMethodStructures) {
+            addMethodStructure(cls, struct);
+        }
+
+        for (const { accessor } of this.propertyAccessorBuilder.buildAccessors()) {
+            cls.addAccessor(accessor);
+        }
+
+        this.file.add(cls);
+        this.emitRegistrationAndMeta(metaPlan);
+
+        const widgetMeta = this.classMetaBuilder.buildCodegenWidgetMeta();
+        const controllerMeta = this.classMetaBuilder.buildCodegenControllerMeta();
+
+        return { widgetMeta, controllerMeta };
+    }
+
+    private collectAllMethodStructures(opts: {
+        factoryMethods: MethodStructure[];
+        filteredClassMethods: GirMethod[];
+        interfaceMethodsByNamespace: Map<string, GirMethod[]>;
+        selfTypeDescriptor: SelfTypeDescriptor;
+    }): MethodStructure[] {
+        const { factoryMethods, filteredClassMethods, interfaceMethodsByNamespace, selfTypeDescriptor } = opts;
+        return [
             ...factoryMethods,
             ...this.staticBuilder.buildStructures(),
             ...this.classStructStaticBuilder.buildStructures(),
@@ -154,18 +236,9 @@ export class ClassGenerator {
             ),
             ...this.signalBuilder.buildConnectMethodStructures(),
         ];
+    }
 
-        for (const struct of allMethodStructures) {
-            addMethodStructure(cls, struct);
-        }
-
-        const propertyEmissions = this.propertyAccessorBuilder.buildAccessors();
-        for (const { accessor } of propertyEmissions) {
-            cls.addAccessor(accessor);
-        }
-
-        this.file.add(cls);
-
+    private emitRegistrationAndMeta(metaPlan: ConstructionMetaPlan): void {
         if (this.cls.glibGetType) {
             const getTypeCall = this.buildGTypeCall(this.cls.glibGetType, this.cls.glibTypeName);
             this.file.addImport("../../registry.js", ["registerNativeClass"]);
@@ -180,11 +253,6 @@ export class ClassGenerator {
         if (signalMetaWriter) {
             this.file.addDeferredBlock(signalMetaWriter);
         }
-
-        const widgetMeta = this.classMetaBuilder.buildCodegenWidgetMeta();
-        const controllerMeta = this.classMetaBuilder.buildCodegenControllerMeta();
-
-        return { widgetMeta, controllerMeta };
     }
 
     private emitConstructorPropertiesNamespace(parentInfo: ParentInfo): void {
@@ -269,15 +337,24 @@ export class ClassGenerator {
         return ifaceQualifiedName.split(".")[0] ?? this.options.namespace;
     }
 
-    private collectMethodsForInterface(
-        method: GirMethod,
-        ifaceName: string,
-        sourceNamespace: string,
-        classMethodNames: Set<string>,
-        parentMethodNames: Set<string>,
-        seenInterfaceMethodNames: Set<string>,
-        interfaceMethodsByNamespace: Map<string, GirMethod[]>,
-    ): void {
+    private collectMethodsForInterface(opts: {
+        method: GirMethod;
+        ifaceName: string;
+        sourceNamespace: string;
+        classMethodNames: Set<string>;
+        parentMethodNames: Set<string>;
+        seenInterfaceMethodNames: Set<string>;
+        interfaceMethodsByNamespace: Map<string, GirMethod[]>;
+    }): void {
+        const {
+            method,
+            ifaceName,
+            sourceNamespace,
+            classMethodNames,
+            parentMethodNames,
+            seenInterfaceMethodNames,
+            interfaceMethodsByNamespace,
+        } = opts;
         if (classMethodNames.has(method.name) || parentMethodNames.has(method.name)) return;
 
         if (seenInterfaceMethodNames.has(method.name)) {
@@ -307,15 +384,15 @@ export class ClassGenerator {
             const sourceNamespace = this.resolveInterfaceNamespace(ifaceQualifiedName);
 
             for (const method of iface.methods) {
-                this.collectMethodsForInterface(
+                this.collectMethodsForInterface({
                     method,
-                    iface.name,
+                    ifaceName: iface.name,
                     sourceNamespace,
                     classMethodNames,
                     parentMethodNames,
                     seenInterfaceMethodNames,
                     interfaceMethodsByNamespace,
-                );
+                });
             }
         }
 
@@ -364,13 +441,13 @@ export class ClassGenerator {
     private getSelfTypeDescriptor(): SelfTypeDescriptor {
         const fundamentalInfo = this.getFundamentalTypeInfo();
         if (fundamentalInfo) {
-            return fundamentalSelfType(
-                fundamentalInfo.lib,
-                fundamentalInfo.refFn,
-                fundamentalInfo.unrefFn,
-                "borrowed",
-                fundamentalInfo.typeName,
-            );
+            return fundamentalSelfType({
+                library: fundamentalInfo.lib,
+                refFn: fundamentalInfo.refFn,
+                unrefFn: fundamentalInfo.unrefFn,
+                ownership: "borrowed",
+                typeName: fundamentalInfo.typeName,
+            });
         }
         return SELF_TYPE_GOBJECT;
     }

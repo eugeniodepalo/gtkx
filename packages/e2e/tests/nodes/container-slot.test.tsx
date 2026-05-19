@@ -15,8 +15,8 @@ import { createElement, createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { countChildren } from "../helpers/child-count.js";
 
-describe("render - ContainerSlot", () => {
-    describe("AdwActionRow (addPrefix/addSuffix)", () => {
+describe("render - ContainerSlot (1)", () => {
+    describe("AdwActionRow (addPrefix/addSuffix) (1)", () => {
         it("creates ActionRow widget", async () => {
             const ref = createRef<Adw.ActionRow>();
 
@@ -51,7 +51,11 @@ describe("render - ContainerSlot", () => {
             expect(prefixRef.current).not.toBeNull();
             expect(suffixRef.current).not.toBeNull();
         });
+    });
+});
 
+describe("render - ContainerSlot (2)", () => {
+    describe("AdwActionRow (addPrefix/addSuffix) (2)", () => {
         it("removes prefix and suffix children", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const labelRefs = [createRef<Gtk.Label>(), createRef<Gtk.Label>(), createRef<Gtk.Label>()];
@@ -100,7 +104,11 @@ describe("render - ContainerSlot", () => {
 
             expect(prefixRef.current).not.toBeNull();
         });
+    });
+});
 
+describe("render - ContainerSlot (3)", () => {
+    describe("AdwActionRow (addPrefix/addSuffix) (3)", () => {
         it("adds child as suffix via addSuffix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const suffixRef = createRef<Gtk.Label>();
@@ -139,7 +147,11 @@ describe("render - ContainerSlot", () => {
             expect(prefixRef.current).not.toBeNull();
             expect(suffixRef.current).not.toBeNull();
         });
+    });
+});
 
+describe("render - ContainerSlot (4)", () => {
+    describe("AdwActionRow (addPrefix/addSuffix) (4)", () => {
         it("removes prefix child", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const prefixRef = createRef<Gtk.Label>();
@@ -172,7 +184,11 @@ describe("render - ContainerSlot", () => {
             expect(prefixRef.current).toBeNull();
             expect(alwaysRef.current).not.toBeNull();
         });
+    });
+});
 
+describe("render - ContainerSlot (5)", () => {
+    describe("AdwActionRow (addPrefix/addSuffix) (5)", () => {
         it("adds multiple children as prefix via addPrefix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const firstRef = createRef<Gtk.Label>();
@@ -212,7 +228,11 @@ describe("render - ContainerSlot", () => {
             expect(firstRef.current).not.toBeNull();
             expect(secondRef.current).not.toBeNull();
         });
+    });
+});
 
+describe("render - ContainerSlot (6)", () => {
+    describe("AdwActionRow (addPrefix/addSuffix) (6)", () => {
         it("removes individual children from addPrefix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const firstRef = createRef<Gtk.Label>();
@@ -242,8 +262,10 @@ describe("render - ContainerSlot", () => {
             expect(secondRef.current).toBeNull();
         });
     });
+});
 
-    describe("AdwExpanderRow (rows/actions)", () => {
+describe("render - ContainerSlot (7)", () => {
+    describe("AdwExpanderRow (rows/actions) (1)", () => {
         it("creates ExpanderRow widget", async () => {
             const ref = createRef<Adw.ExpanderRow>();
 
@@ -285,7 +307,11 @@ describe("render - ContainerSlot", () => {
             expect(prefixRef.current?.getLabel()).toBe("Prefix");
             expect(suffixRef.current?.getLabel()).toBe("Suffix");
         });
+    });
+});
 
+describe("render - ContainerSlot (8)", () => {
+    describe("AdwExpanderRow (rows/actions) (2)", () => {
         it("adds nested rows to ExpanderRow", async () => {
             const rowRef = createRef<Adw.ActionRow>();
 
@@ -317,7 +343,11 @@ describe("render - ContainerSlot", () => {
             expect(row1Ref.current?.getTitle()).toBe("Option 1");
             expect(row2Ref.current?.getTitle()).toBe("Option 2");
         });
+    });
+});
 
+describe("render - ContainerSlot (9)", () => {
+    describe("AdwExpanderRow (rows/actions) (3)", () => {
         it("removes nested rows when unmounted", async () => {
             const expanderRef = createRef<Adw.ExpanderRow>();
 
@@ -352,7 +382,11 @@ describe("render - ContainerSlot", () => {
 
             expect(actionRef.current?.getLabel()).toBe("Action");
         });
+    });
+});
 
+describe("render - ContainerSlot (10)", () => {
+    describe("AdwExpanderRow (rows/actions) (4)", () => {
         it("adds multiple action widgets", async () => {
             const action1Ref = createRef<Gtk.Button>();
             const action2Ref = createRef<Gtk.Button>();
@@ -390,8 +424,10 @@ describe("render - ContainerSlot", () => {
             expect(ref.current).not.toBeNull();
         });
     });
+});
 
-    describe("GtkHeaderBar (packStart/packEnd)", () => {
+describe("render - ContainerSlot (11)", () => {
+    describe("GtkHeaderBar (packStart/packEnd) (1)", () => {
         it("packs child at start via packStart", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const startRef = createRef<Gtk.Label>();
@@ -423,7 +459,11 @@ describe("render - ContainerSlot", () => {
             expect(endRef.current).not.toBeNull();
             expect(endRef.current?.getLabel()).toBe("End");
         });
+    });
+});
 
+describe("render - ContainerSlot (12)", () => {
+    describe("GtkHeaderBar (packStart/packEnd) (2)", () => {
         it("combines packStart and packEnd", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const startRef = createRef<Gtk.Label>();
@@ -471,7 +511,11 @@ describe("render - ContainerSlot", () => {
             expect(startRef.current).toBeNull();
             expect(alwaysRef.current).not.toBeNull();
         });
+    });
+});
 
+describe("render - ContainerSlot (13)", () => {
+    describe("GtkHeaderBar (packStart/packEnd) (3)", () => {
         it("packs multiple children at start via packStart", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const firstRef = createRef<Gtk.Label>();
@@ -507,7 +551,11 @@ describe("render - ContainerSlot", () => {
             expect(firstRef.current).not.toBeNull();
             expect(secondRef.current).not.toBeNull();
         });
+    });
+});
 
+describe("render - ContainerSlot (14)", () => {
+    describe("GtkHeaderBar (packStart/packEnd) (4)", () => {
         it("swaps keyed children in packStart without duplication", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
 
@@ -538,7 +586,11 @@ describe("render - ContainerSlot", () => {
 
             expect(countChildren(headerBarRef.current)).toBe(initialCount);
         });
+    });
+});
 
+describe("render - ContainerSlot (15)", () => {
+    describe("GtkHeaderBar (packStart/packEnd) (5)", () => {
         it("reorders children in packStart via insertBefore", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const firstRef = createRef<Gtk.Button>();
@@ -574,7 +626,11 @@ describe("render - ContainerSlot", () => {
             expect(firstRef.current?.getLabel()).toBe("A");
             expect(secondRef.current?.getLabel()).toBe("B");
         });
+    });
+});
 
+describe("render - ContainerSlot (16)", () => {
+    describe("GtkHeaderBar (packStart/packEnd) (6)", () => {
         it("removes individual children from packStart", async () => {
             const headerBarRef = createRef<Gtk.HeaderBar>();
             const firstRef = createRef<Gtk.Label>();
@@ -602,8 +658,10 @@ describe("render - ContainerSlot", () => {
             expect(secondRef.current).toBeNull();
         });
     });
+});
 
-    describe("AdwToolbarView (topBar/bottomBar)", () => {
+describe("render - ContainerSlot (17)", () => {
+    describe("AdwToolbarView (topBar/bottomBar) (1)", () => {
         it("adds child to top bar via addTopBar", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
             const contentRef = createRef<Gtk.Label>();
@@ -637,7 +695,11 @@ describe("render - ContainerSlot", () => {
             expect(contentRef.current).not.toBeNull();
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
+    });
+});
 
+describe("render - ContainerSlot (18)", () => {
+    describe("AdwToolbarView (topBar/bottomBar) (2)", () => {
         it("handles multiple top bars", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
             const secondTopRef = createRef<Gtk.Label>();
@@ -683,7 +745,9 @@ describe("render - ContainerSlot", () => {
             expect(toolbarRef.current?.getContent()).not.toBeNull();
         });
     });
+});
 
+describe("render - ContainerSlot (19)", () => {
     describe("error handling", () => {
         it("throws when the requested method does not exist on the parent", async () => {
             await expect(

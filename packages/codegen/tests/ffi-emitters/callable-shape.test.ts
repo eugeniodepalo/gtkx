@@ -72,7 +72,7 @@ class FakeFfiMapper {
     }
 }
 
-describe("buildCallableShape — input parameters", () => {
+describe("buildCallableShape — input parameters (1)", () => {
     it("emits a signature param and a wire arg for a plain primitive input", () => {
         const param = makeParam({ name: "value", typeName: "gint" });
         const mapper = new FakeFfiMapper().setMapping(param, {
@@ -101,7 +101,9 @@ describe("buildCallableShape — input parameters", () => {
         expect(shape.hiddenOuts).toEqual([]);
         expect(shape.returnTupleEntries).toEqual([]);
     });
+});
 
+describe("buildCallableShape — input parameters (2)", () => {
     it("passes getHandle for gobject inputs and tryGetHandle when nullable", () => {
         const required = makeParam({ name: "widget", typeName: "Gtk.Widget" });
         const nullable = makeParam({ name: "parent", typeName: "Gtk.Widget", nullable: true });
@@ -147,7 +149,9 @@ describe("buildCallableShape — input parameters", () => {
 
         expect(shape.callArgs[0]?.value).toBe("getHandle(anything)");
     });
+});
 
+describe("buildCallableShape — input parameters (3)", () => {
     it("maps array-of-handle inputs to .map(item => getHandle(item))", () => {
         const param = makeParam({ name: "widgets", typeName: "Gtk.Widget" });
         const mapper = new FakeFfiMapper().setMapping(param, {
@@ -191,7 +195,9 @@ describe("buildCallableShape — input parameters", () => {
             "lookup ? globalThis.Array.from(lookup).map(([k, v]) => [k, tryGetHandle(v)]) : null",
         );
     });
+});
 
+describe("buildCallableShape — input parameters (4)", () => {
     it("converts hashtable inputs of primitives to a plain entry array", () => {
         const param = makeParam({ name: "dict" });
         const mapper = new FakeFfiMapper().setMapping(param, {
@@ -216,7 +222,7 @@ describe("buildCallableShape — input parameters", () => {
     });
 });
 
-describe("buildCallableShape — length parameters", () => {
+describe("buildCallableShape — length parameters (1)", () => {
     function buildArrayWithLength(opts: { dataNullable?: boolean }): { array: GirParameter; len: GirParameter } {
         const array = new GirParameter({
             name: "items",
@@ -262,6 +268,27 @@ describe("buildCallableShape — length parameters", () => {
         expect(shape.signatureParams.map((p) => p.name)).toEqual(["items"]);
         expect(shape.callArgs[1]?.value).toBe("items.length");
     });
+});
+
+describe("buildCallableShape — length parameters (2)", () => {
+    function buildArrayWithLength(opts: { dataNullable?: boolean }): { array: GirParameter; len: GirParameter } {
+        const array = new GirParameter({
+            name: "items",
+            type: new GirType({
+                name: "gint",
+                isArray: true,
+                elementType: makeType("gint"),
+                nullable: false,
+                sizeParamIndex: 1,
+            }),
+            direction: "in",
+            callerAllocates: false,
+            nullable: opts.dataNullable ?? false,
+            optional: false,
+        });
+        const len = makeParam({ name: "n_items", typeName: "gint" });
+        return { array, len };
+    }
 
     it("guards length expressions when the data array is nullable", () => {
         const { array, len } = buildArrayWithLength({ dataNullable: true });
@@ -288,7 +315,9 @@ describe("buildCallableShape — length parameters", () => {
 
         expect(shape.callArgs[1]?.value).toBe("(items?.length ?? 0)");
     });
+});
 
+describe("buildCallableShape — length parameters (3)", () => {
     it("falls back to length-with-optional-chain for non-array, non-string data mappings", () => {
         const data = new GirParameter({
             name: "buf",
@@ -331,7 +360,7 @@ describe("buildCallableShape — length parameters", () => {
     });
 });
 
-describe("buildCallableShape — out parameters", () => {
+describe("buildCallableShape — out parameters (1)", () => {
     it("hides a primitive out param and surfaces it as a return-tuple entry", () => {
         const out = makeParam({ name: "result", direction: "out", typeName: "gint" });
         const mapper = new FakeFfiMapper().setMapping(out, {
@@ -378,7 +407,9 @@ describe("buildCallableShape — out parameters", () => {
         expect(shape.hiddenOuts[0]?.initialValue).toBe("value");
         expect(shape.returnTupleEntries).toEqual([{ kind: "inout-param", tsType: "number", nullable: false }]);
     });
+});
 
+describe("buildCallableShape — out parameters (2)", () => {
     it("uses a fallback default when the inout primitive caller value may be omitted", () => {
         const inout = makeParam({
             name: "value",
@@ -403,7 +434,9 @@ describe("buildCallableShape — out parameters", () => {
 
         expect(shape.hiddenOuts[0]?.initialValue).toBe("value ?? 0");
     });
+});
 
+describe("buildCallableShape — out parameters (3)", () => {
     it("treats inout non-ref params as plain inputs that surface in the signature", () => {
         const inout = makeParam({
             name: "widget",
@@ -428,7 +461,9 @@ describe("buildCallableShape — out parameters", () => {
         expect(shape.hiddenOuts).toEqual([]);
         expect(shape.callArgs[0]?.value).toBe("getHandle(widget)");
     });
+});
 
+describe("buildCallableShape — out parameters (4)", () => {
     it("allocates an opaque caller-allocates out param via the public signature", () => {
         const out = makeParam({
             name: "ev",
@@ -455,7 +490,9 @@ describe("buildCallableShape — out parameters", () => {
         expect(shape.callArgs[0]?.value).toBe("getHandle(ev)");
         expect(shape.returnTupleEntries).toEqual([]);
     });
+});
 
+describe("buildCallableShape — out parameters (5)", () => {
     it("uses a ref-handle hidden allocation when the out param targets a gobject", () => {
         const out = makeParam({
             name: "result",
@@ -482,7 +519,9 @@ describe("buildCallableShape — out parameters", () => {
         expect(shape.hiddenOuts[0]?.initialValue).toBe("null");
         expect(shape.hiddenOuts[0]?.varName).toBe("resultRef");
     });
+});
 
+describe("buildCallableShape — out parameters (6)", () => {
     it("widens the ref-handle TS type to a nullable union when the out param is nullable", () => {
         const out = makeParam({
             name: "maybe",
@@ -508,7 +547,9 @@ describe("buildCallableShape — out parameters", () => {
         expect(shape.hiddenOuts[0]?.tsType).toBe("Gtk.Widget | null");
         expect(shape.returnTupleEntries[0]?.nullable).toBe(true);
     });
+});
 
+describe("buildCallableShape — out parameters (7)", () => {
     it("uses an alloc-struct hidden allocation for caller-allocates structs the mapper can locally allocate", () => {
         const out = makeParam({
             name: "rect",

@@ -14,7 +14,7 @@ const resetKey = (key: string, fallback: () => void): void => {
     }
 };
 
-describe("useSetting", () => {
+describe("useSetting (1)", () => {
     it("reads the initial boolean value from the schema default", async () => {
         resetKey("enabled", () => {});
         const { result } = await renderHook(() => useSetting(SCHEMA_ID, "enabled", "boolean"));
@@ -58,7 +58,9 @@ describe("useSetting", () => {
             expect(result.current[0]).toBe("updated");
         });
     });
+});
 
+describe("useSetting (2)", () => {
     it("reads and writes string array values", async () => {
         resetKey("tags", () => {});
         const { result } = await renderHook(() => useSetting(SCHEMA_ID, "tags", "strv"));
@@ -96,7 +98,9 @@ describe("useSetting", () => {
             expect(result.current[0]).toBe(99);
         });
     });
+});
 
+describe("useSetting (3)", () => {
     it("disconnects the signal handler on unmount", async () => {
         resetKey("count", () => {});
         const { result, unmount } = await renderHook(() => useSetting(SCHEMA_ID, "count", "int"));

@@ -11,7 +11,7 @@ const installAdjustment = (row: Adw.SpinRow, lower: number, upper: number, value
     return adjustment;
 };
 
-describe("render - SpinRow", () => {
+describe("render - SpinRow (1)", () => {
     it("creates a SpinRow with a value", async () => {
         const ref = createRef<Adw.SpinRow>();
 
@@ -44,7 +44,9 @@ describe("render - SpinRow", () => {
         const lastCall = onValueChanged.mock.calls.at(-1);
         expect(lastCall?.[0]).toBe(7);
     });
+});
 
+describe("render - SpinRow (2)", () => {
     it("removes the listener when onValueChanged is set to null", async () => {
         const handler = vi.fn();
         const ref = createRef<Adw.SpinRow>();
@@ -77,7 +79,7 @@ describe("render - SpinRow", () => {
     });
 });
 
-describe("render - SwitchRow", () => {
+describe("render - SwitchRow (1)", () => {
     it("creates a SwitchRow", async () => {
         const ref = createRef<Adw.SwitchRow>();
 
@@ -106,7 +108,9 @@ describe("render - SwitchRow", () => {
         const lastCall = onActiveChanged.mock.calls.at(-1);
         expect(lastCall?.[0]).toBe(true);
     });
+});
 
+describe("render - SwitchRow (2)", () => {
     it("clears the listener when onActiveChanged becomes null", async () => {
         const handler = vi.fn();
         const ref = createRef<Adw.SwitchRow>();

@@ -168,11 +168,24 @@ export interface ApplyPropsOptions {
  * @param options - descriptor table and generic-path tuning
  */
 export function applyProps(node: Node, oldProps: Props | null, newProps: Props, options?: ApplyPropsOptions): void {
-    const container = node.container as Container;
-    const table = options?.table ?? EMPTY_TABLE;
+    const context: ApplyContext = {
+        node,
+        container: node.container as Container,
+        oldProps,
+        newProps,
+        table: options?.table ?? EMPTY_TABLE,
+    };
 
-    applyGenericProps(node, container, oldProps, newProps, table, options?.exclude, options?.defaultBlockable ?? true);
-    applyTableDescriptors(node, container, oldProps, newProps, table);
+    applyGenericProps(context, options?.exclude, options?.defaultBlockable ?? true);
+    applyTableDescriptors(context);
+}
+
+interface ApplyContext {
+    readonly node: Node;
+    readonly container: Container;
+    readonly oldProps: Props | null;
+    readonly newProps: Props;
+    readonly table: PropDescriptorTable;
 }
 
 /**
@@ -206,12 +219,10 @@ type PendingSignal = { signalName: string; newValue: unknown };
 type PendingProperty = { name: string; oldValue: unknown; newValue: unknown };
 
 const collectGenericChanges = (
-    container: Container,
-    oldProps: Props | null,
-    newProps: Props,
-    table: PropDescriptorTable,
+    context: ApplyContext,
     exclude: ((name: string) => boolean) | undefined,
 ): { pendingSignals: PendingSignal[]; pendingProperties: PendingProperty[] } => {
+    const { container, oldProps, newProps, table } = context;
     const names = new Set([...Object.keys(oldProps ?? {}), ...Object.keys(newProps)]);
     const pendingSignals: PendingSignal[] = [];
     const pendingProperties: PendingProperty[] = [];
@@ -236,19 +247,16 @@ const collectGenericChanges = (
 };
 
 const applyGenericProps = (
-    node: Node,
-    container: Container,
-    oldProps: Props | null,
-    newProps: Props,
-    table: PropDescriptorTable,
+    context: ApplyContext,
     exclude: ((name: string) => boolean) | undefined,
     defaultBlockable: boolean,
 ): void => {
-    const { pendingSignals, pendingProperties } = collectGenericChanges(container, oldProps, newProps, table, exclude);
+    const { node, container } = context;
+    const { pendingSignals, pendingProperties } = collectGenericChanges(context, exclude);
 
     for (const { signalName, newValue } of pendingSignals) {
         const handler = typeof newValue === "function" ? (newValue as SignalHandler) : undefined;
-        node.signalStore.set(node, container, signalName, handler, { blockable: defaultBlockable });
+        node.signalStore.set({ owner: node, obj: container, signal: signalName, handler, blockable: defaultBlockable });
     }
 
     for (const { name, oldValue, newValue } of pendingProperties) {
@@ -266,13 +274,8 @@ const setProperty = (container: Container, key: string, value: unknown): void =>
     Reflect.set(container, propName, value);
 };
 
-const applyTableDescriptors = (
-    node: Node,
-    container: Container,
-    oldProps: Props | null,
-    newProps: Props,
-    table: PropDescriptorTable,
-): void => {
+const applyTableDescriptors = (context: ApplyContext): void => {
+    const { node, container, oldProps, newProps, table } = context;
     const ranImperatives = new Set<ImperativeHandler>();
 
     for (const [key, descriptor] of Object.entries(table)) {
@@ -311,7 +314,7 @@ const applySignalDescriptor = (
     const blockable = descriptor.blockable ?? true;
 
     for (const signalName of descriptor.signals) {
-        node.signalStore.set(node, container, signalName, handler, { blockable });
+        node.signalStore.set({ owner: node, obj: container, signal: signalName, handler, blockable });
     }
 };
 

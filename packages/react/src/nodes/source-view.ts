@@ -22,6 +22,14 @@ type SourceViewProps = Pick<
     | "onHighlightUpdated"
 >;
 
+interface BufferPropChanges {
+    readonly languageChanged: boolean;
+    readonly styleSchemeChanged: boolean;
+    readonly highlightSyntaxChanged: boolean;
+    readonly highlightBracketsChanged: boolean;
+    readonly trailingNewlineChanged: boolean;
+}
+
 export class SourceViewNode extends TextViewNode {
     protected override createBufferController(): TextBufferController<GtkSource.Buffer> {
         return new TextBufferController<GtkSource.Buffer>(this, this.container, () => new GtkSource.Buffer());
@@ -61,50 +69,61 @@ export class SourceViewNode extends TextViewNode {
     }
 
     private applyBufferProps(oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
-        const languageChanged = hasChanged(oldProps, newProps, "language");
-        const styleSchemeChanged = hasChanged(oldProps, newProps, "styleScheme");
-        const highlightSyntaxChanged = hasChanged(oldProps, newProps, "highlightSyntax");
-        const highlightBracketsChanged = hasChanged(oldProps, newProps, "highlightMatchingBrackets");
-        const trailingNewlineChanged = hasChanged(oldProps, newProps, "implicitTrailingNewline");
-
-        if (
-            !languageChanged &&
-            !styleSchemeChanged &&
-            !highlightSyntaxChanged &&
-            !highlightBracketsChanged &&
-            !trailingNewlineChanged
-        ) {
-            return;
-        }
+        const changes = this.collectBufferPropChanges(oldProps, newProps);
+        if (!this.anyBufferPropChanged(changes)) return;
 
         const buffer = this.ensureBufferController().ensureBuffer();
 
-        if (languageChanged) {
-            if (newProps.language !== undefined) {
-                buffer.setLanguage(this.resolveLanguage(newProps.language));
-            } else if (oldProps?.language !== undefined) {
-                buffer.setLanguage(null);
-            }
-        }
-
-        if (styleSchemeChanged) {
-            if (newProps.styleScheme !== undefined) {
-                buffer.setStyleScheme(this.resolveStyleScheme(newProps.styleScheme));
-            } else if (oldProps?.styleScheme !== undefined) {
-                buffer.setStyleScheme(null);
-            }
-        }
-
-        if (highlightSyntaxChanged || languageChanged) {
+        if (changes.languageChanged) this.applyLanguage(buffer, oldProps, newProps);
+        if (changes.styleSchemeChanged) this.applyStyleScheme(buffer, oldProps, newProps);
+        if (changes.highlightSyntaxChanged || changes.languageChanged) {
             buffer.setHighlightSyntax(newProps.highlightSyntax ?? newProps.language !== undefined);
         }
-
-        if (highlightBracketsChanged) {
+        if (changes.highlightBracketsChanged) {
             buffer.setHighlightMatchingBrackets(newProps.highlightMatchingBrackets ?? true);
         }
-
-        if (trailingNewlineChanged && newProps.implicitTrailingNewline !== undefined) {
+        if (changes.trailingNewlineChanged && newProps.implicitTrailingNewline !== undefined) {
             buffer.setImplicitTrailingNewline(newProps.implicitTrailingNewline);
+        }
+    }
+
+    private collectBufferPropChanges(oldProps: SourceViewProps | null, newProps: SourceViewProps): BufferPropChanges {
+        return {
+            languageChanged: hasChanged(oldProps, newProps, "language"),
+            styleSchemeChanged: hasChanged(oldProps, newProps, "styleScheme"),
+            highlightSyntaxChanged: hasChanged(oldProps, newProps, "highlightSyntax"),
+            highlightBracketsChanged: hasChanged(oldProps, newProps, "highlightMatchingBrackets"),
+            trailingNewlineChanged: hasChanged(oldProps, newProps, "implicitTrailingNewline"),
+        };
+    }
+
+    private anyBufferPropChanged(changes: BufferPropChanges): boolean {
+        return (
+            changes.languageChanged ||
+            changes.styleSchemeChanged ||
+            changes.highlightSyntaxChanged ||
+            changes.highlightBracketsChanged ||
+            changes.trailingNewlineChanged
+        );
+    }
+
+    private applyLanguage(buffer: GtkSource.Buffer, oldProps: SourceViewProps | null, newProps: SourceViewProps): void {
+        if (newProps.language !== undefined) {
+            buffer.setLanguage(this.resolveLanguage(newProps.language));
+        } else if (oldProps?.language !== undefined) {
+            buffer.setLanguage(null);
+        }
+    }
+
+    private applyStyleScheme(
+        buffer: GtkSource.Buffer,
+        oldProps: SourceViewProps | null,
+        newProps: SourceViewProps,
+    ): void {
+        if (newProps.styleScheme !== undefined) {
+            buffer.setStyleScheme(this.resolveStyleScheme(newProps.styleScheme));
+        } else if (oldProps?.styleScheme !== undefined) {
+            buffer.setStyleScheme(null);
         }
     }
 
@@ -114,13 +133,15 @@ export class SourceViewNode extends TextViewNode {
 
         const { onCursorMoved, onHighlightUpdated } = props;
 
-        this.signalStore.set(this, buffer, "cursor-moved", onCursorMoved);
+        this.signalStore.set({ owner: this, obj: buffer, signal: "cursor-moved", handler: onCursorMoved });
 
-        this.signalStore.set(
-            this,
-            buffer,
-            "highlight-updated",
-            onHighlightUpdated ? (start: Gtk.TextIter, end: Gtk.TextIter) => onHighlightUpdated(start, end) : undefined,
-        );
+        this.signalStore.set({
+            owner: this,
+            obj: buffer,
+            signal: "highlight-updated",
+            handler: onHighlightUpdated
+                ? (start: Gtk.TextIter, end: Gtk.TextIter) => onHighlightUpdated(start, end)
+                : undefined,
+        });
     }
 }

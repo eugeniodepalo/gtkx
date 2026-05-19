@@ -6,7 +6,7 @@ import { method } from "../../../src/builders/members/method.js";
 import { param } from "../../../src/builders/members/parameter.js";
 import { stringify } from "../../../src/builders/stringify.js";
 
-describe("ClassDeclarationBuilder", () => {
+describe("ClassDeclarationBuilder (1)", () => {
     it("generates a simple class", () => {
         const cls = classDecl("Button", { exported: true, extends: "Widget" });
         expect(stringify(cls)).toBe("export class Button extends Widget {\n}\n");
@@ -47,7 +47,9 @@ describe("ClassDeclarationBuilder", () => {
         expect(output).toContain("constructor(labelOrHandle: string | NativeHandle)");
         expect(output).toContain("super(labelOrHandle as NativeHandle);");
     });
+});
 
+describe("ClassDeclarationBuilder (2)", () => {
     it("generates class with typed methods in TS mode", () => {
         const cls = classDecl("Button", { exported: true })
             .addMethod(
@@ -80,7 +82,9 @@ describe("ClassDeclarationBuilder", () => {
         const cls = classDecl("BaseType", { exported: true, abstract: true });
         expect(stringify(cls)).toBe("export abstract class BaseType {\n}\n");
     });
+});
 
+describe("ClassDeclarationBuilder (3)", () => {
     it("emits a writer-callback method body", () => {
         const cls = classDecl("Button", { exported: true }).addMethod(
             method("doStuff", {

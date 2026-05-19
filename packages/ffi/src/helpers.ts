@@ -84,15 +84,18 @@ const structT = (innerType: string, ownership: Ownership = "borrowed", size?: nu
     return result;
 };
 
-const fundamentalT = (
-    library: string,
-    refFn: string,
-    unrefFn: string,
-    ownership: Ownership = "borrowed",
-    typeName?: string,
-): Type => {
+/** Optional configuration for {@link t.fundamental}. */
+export type FundamentalOptions = {
+    /** Owned (`"full"`) or borrowed (`"borrowed"`) value. */
+    ownership?: Ownership;
+    /** Fundamental GType name (e.g., `"GBytes"`). */
+    typeName?: string;
+};
+
+const fundamentalT = (library: string, refFn: string, unrefFn: string, options: FundamentalOptions = {}): Type => {
+    const ownership = options.ownership ?? "borrowed";
     const result: Type = { type: "fundamental", ownership, library, refFn, unrefFn };
-    if (typeName !== undefined) result.typeName = typeName;
+    if (options.typeName !== undefined) result.typeName = options.typeName;
     return result;
 };
 

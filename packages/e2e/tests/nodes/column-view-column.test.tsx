@@ -31,8 +31,12 @@ const renderColumns = async (columnViewRef: RefObject<Gtk.ColumnView | null>, co
     );
 };
 
-describe("render - ColumnViewColumn", () => {
-    describe("ColumnViewColumnNode", () => {
+const getColumn = (columnView: Gtk.ColumnView, index: number): Gtk.ColumnViewColumn => {
+    return columnView.getColumns().getItem(index) as Gtk.ColumnViewColumn;
+};
+
+describe("render - ColumnViewColumn (1)", () => {
+    describe("ColumnViewColumnNode (1)", () => {
         it("adds column to ColumnView", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
@@ -69,7 +73,11 @@ describe("render - ColumnViewColumn", () => {
             const column = columns?.getItem(0) as Gtk.ColumnViewColumn;
             expect(column?.getExpand()).toBe(true);
         });
+    });
+});
 
+describe("render - ColumnViewColumn (2)", () => {
+    describe("ColumnViewColumnNode (2)", () => {
         it("sets column property", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
@@ -97,7 +105,11 @@ describe("render - ColumnViewColumn", () => {
 
             expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(3);
         });
+    });
+});
 
+describe("render - ColumnViewColumn (3)", () => {
+    describe("ColumnViewColumnNode (3)", () => {
         it("updates column title on prop change", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
@@ -119,7 +131,11 @@ describe("render - ColumnViewColumn", () => {
             column = columnViewRef.current?.getColumns()?.getItem(0) as Gtk.ColumnViewColumn;
             expect(column?.getTitle()).toBe("Updated");
         });
+    });
+});
 
+describe("render - ColumnViewColumn (4)", () => {
+    describe("ColumnViewColumnNode (4)", () => {
         it("removes column from ColumnView", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
@@ -148,12 +164,10 @@ describe("render - ColumnViewColumn", () => {
             expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(2);
         });
     });
+});
 
-    describe("header menu", () => {
-        const getColumn = (columnView: Gtk.ColumnView, index: number): Gtk.ColumnViewColumn => {
-            return columnView.getColumns().getItem(index) as Gtk.ColumnViewColumn;
-        };
-
+describe("render - ColumnViewColumn (5)", () => {
+    describe("header menu (1)", () => {
         it("sets header menu when menu items are added", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
@@ -202,7 +216,11 @@ describe("render - ColumnViewColumn", () => {
             expect(column.getHeaderMenu()).not.toBeNull();
             expect(column.getHeaderMenu()?.getNItems()).toBe(2);
         });
+    });
+});
 
+describe("render - ColumnViewColumn (6)", () => {
+    describe("header menu (2)", () => {
         it("supports menu submenus", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
@@ -244,7 +262,11 @@ describe("render - ColumnViewColumn", () => {
             column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
             expect(column.getHeaderMenu()?.getNItems()).toBe(1);
         });
+    });
+});
 
+describe("render - ColumnViewColumn (7)", () => {
+    describe("header menu (3)", () => {
         it("cleans up menu when all items removed", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
@@ -268,7 +290,11 @@ describe("render - ColumnViewColumn", () => {
             column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
             expect(column.getHeaderMenu()).toBeNull();
         });
+    });
+});
 
+describe("render - ColumnViewColumn (8)", () => {
+    describe("header menu (4)", () => {
         it("supports multiple columns with independent menus", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
@@ -294,7 +320,11 @@ describe("render - ColumnViewColumn", () => {
             expect(ageCol.getHeaderMenu()?.getNItems()).toBe(2);
             expect(emailCol.getHeaderMenu()).toBeNull();
         });
+    });
+});
 
+describe("render - ColumnViewColumn (9)", () => {
+    describe("header menu (5)", () => {
         it("cleans up menu when column is removed", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
             const onActivate = vi.fn();
@@ -320,135 +350,132 @@ describe("render - ColumnViewColumn", () => {
             await render(<App showColumn={false} />);
             expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(1);
         });
+    });
+});
 
-        it("x-showcase pattern: fragment-wrapped menus with sortable columns and list items", async () => {
-            const columnViewRef = createRef<Gtk.ColumnView>();
+type ShowcasePerson = { name: string; role: string; salary: number };
+type ShowcaseSortColumn = "name" | "role" | "salary" | null;
 
-            type Person = { name: string; role: string; salary: number };
+const showcasePeople: ShowcasePerson[] = [
+    { name: "Alice", role: "Dev", salary: 95000 },
+    { name: "Bob", role: "Designer", salary: 85000 },
+    { name: "Charlie", role: "Manager", salary: 120000 },
+];
 
-            const people: Person[] = [
-                { name: "Alice", role: "Dev", salary: 95000 },
-                { name: "Bob", role: "Designer", salary: 85000 },
-                { name: "Charlie", role: "Manager", salary: 120000 },
-            ];
+const ShowcaseColumnMenu = ({
+    column,
+    onSort,
+    children,
+}: {
+    column: ShowcaseSortColumn;
+    onSort: (col: string | null, order: Gtk.SortType) => void;
+    children?: ReactNode;
+}) => (
+    <>
+        <MenuSection>
+            <MenuItem id="sort-asc" label="Sort Ascending" onActivate={() => onSort(column, Gtk.SortType.ASCENDING)} />
+            <MenuItem
+                id="sort-desc"
+                label="Sort Descending"
+                onActivate={() => onSort(column, Gtk.SortType.DESCENDING)}
+            />
+            <MenuItem id="sort-clear" label="Clear Sort" onActivate={() => onSort(null, Gtk.SortType.ASCENDING)} />
+        </MenuSection>
+        {children}
+    </>
+);
 
-            type SortColumn = "name" | "role" | "salary" | null;
+function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.ColumnView | null> }) {
+    const [sortColumn, setSortColumn] = useState<ShowcaseSortColumn>(null);
+    const [sortOrder, setSortOrder] = useState<Gtk.SortType>(Gtk.SortType.ASCENDING);
 
-            const ColumnMenu = ({
-                column,
-                onSort,
-                children,
-            }: {
-                column: SortColumn;
-                onSort: (col: string | null, order: Gtk.SortType) => void;
-                children?: ReactNode;
-            }) => (
-                <>
-                    <MenuSection>
-                        <MenuItem
-                            id="sort-asc"
-                            label="Sort Ascending"
-                            onActivate={() => onSort(column, Gtk.SortType.ASCENDING)}
-                        />
-                        <MenuItem
-                            id="sort-desc"
-                            label="Sort Descending"
-                            onActivate={() => onSort(column, Gtk.SortType.DESCENDING)}
-                        />
-                        <MenuItem
-                            id="sort-clear"
-                            label="Clear Sort"
-                            onActivate={() => onSort(null, Gtk.SortType.ASCENDING)}
-                        />
-                    </MenuSection>
-                    {children}
-                </>
-            );
+    const handleSortChange = useCallback((column: string | null, order: Gtk.SortType) => {
+        setSortColumn(column as ShowcaseSortColumn);
+        setSortOrder(order);
+    }, []);
 
-            function App() {
-                const [sortColumn, setSortColumn] = useState<SortColumn>(null);
-                const [sortOrder, setSortOrder] = useState<Gtk.SortType>(Gtk.SortType.ASCENDING);
-
-                const handleSortChange = useCallback((column: string | null, order: Gtk.SortType) => {
-                    setSortColumn(column as SortColumn);
-                    setSortOrder(order);
-                }, []);
-
-                const sortedPeople = useMemo(() => {
-                    if (!sortColumn) return people;
-                    return [...people].sort((a, b) => {
-                        const av = a[sortColumn];
-                        const bv = b[sortColumn];
-                        const cmp = typeof av === "number" ? av - (bv as number) : String(av).localeCompare(String(bv));
-                        return sortOrder === Gtk.SortType.ASCENDING ? cmp : -cmp;
-                    });
-                }, [sortColumn, sortOrder]);
-
-                return (
-                    <ScrollWrapper>
-                        <GtkColumnView
-                            ref={columnViewRef}
-                            estimatedRowHeight={48}
-                            sortColumn={sortColumn}
-                            sortOrder={sortOrder}
-                            onSortChanged={handleSortChange}
-                            items={sortedPeople.map((person) => ({ id: person.name, value: person }))}
-                        >
-                            <GtkColumnView.Column
-                                id="name"
-                                title="Name"
-                                expand
-                                sortable
-                                renderCell={(item: Person) => <GtkLabel label={item.name} />}
-                            >
-                                <ColumnMenu column="name" onSort={handleSortChange} />
-                            </GtkColumnView.Column>
-                            <GtkColumnView.Column
-                                id="role"
-                                title="Role"
-                                fixedWidth={100}
-                                sortable
-                                renderCell={(item: Person) => <GtkLabel label={item.role} />}
-                            >
-                                <ColumnMenu column="role" onSort={handleSortChange}>
-                                    <MenuSection>
-                                        <MenuItem id="hide" label="Hide Column" onActivate={() => {}} />
-                                    </MenuSection>
-                                </ColumnMenu>
-                            </GtkColumnView.Column>
-                            <GtkColumnView.Column
-                                id="salary"
-                                title="Salary"
-                                fixedWidth={100}
-                                sortable
-                                renderCell={(item: Person) => <GtkLabel label={item.salary.toString()} />}
-                            >
-                                <ColumnMenu column="salary" onSort={handleSortChange}>
-                                    <MenuSection>
-                                        <MenuItem id="hide" label="Hide Column" onActivate={() => {}} />
-                                    </MenuSection>
-                                </ColumnMenu>
-                            </GtkColumnView.Column>
-                        </GtkColumnView>
-                    </ScrollWrapper>
-                );
-            }
-
-            await render(<App />);
-
-            const nameCol = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
-            const roleCol = getColumn(columnViewRef.current as Gtk.ColumnView, 1);
-            const salaryCol = getColumn(columnViewRef.current as Gtk.ColumnView, 2);
-
-            expect(nameCol.getHeaderMenu()).not.toBeNull();
-            expect(roleCol.getHeaderMenu()).not.toBeNull();
-            expect(salaryCol.getHeaderMenu()).not.toBeNull();
-
-            expect(nameCol.getHeaderMenu()?.getNItems()).toBe(1);
-            expect(roleCol.getHeaderMenu()?.getNItems()).toBe(2);
-            expect(salaryCol.getHeaderMenu()?.getNItems()).toBe(2);
+    const sortedPeople = useMemo(() => {
+        if (!sortColumn) return showcasePeople;
+        return [...showcasePeople].sort((a, b) => {
+            const av = a[sortColumn];
+            const bv = b[sortColumn];
+            const cmp = typeof av === "number" ? av - (bv as number) : String(av).localeCompare(String(bv));
+            return sortOrder === Gtk.SortType.ASCENDING ? cmp : -cmp;
         });
+    }, [sortColumn, sortOrder]);
 
+    return (
+        <ScrollWrapper>
+            <GtkColumnView
+                ref={columnViewRef}
+                estimatedRowHeight={48}
+                sortColumn={sortColumn}
+                sortOrder={sortOrder}
+                onSortChanged={handleSortChange}
+                items={sortedPeople.map((person) => ({ id: person.name, value: person }))}
+            >
+                <GtkColumnView.Column
+                    id="name"
+                    title="Name"
+                    expand
+                    sortable
+                    renderCell={(item: ShowcasePerson) => <GtkLabel label={item.name} />}
+                >
+                    <ShowcaseColumnMenu column="name" onSort={handleSortChange} />
+                </GtkColumnView.Column>
+                <GtkColumnView.Column
+                    id="role"
+                    title="Role"
+                    fixedWidth={100}
+                    sortable
+                    renderCell={(item: ShowcasePerson) => <GtkLabel label={item.role} />}
+                >
+                    <ShowcaseColumnMenu column="role" onSort={handleSortChange}>
+                        <MenuSection>
+                            <MenuItem id="hide" label="Hide Column" onActivate={() => {}} />
+                        </MenuSection>
+                    </ShowcaseColumnMenu>
+                </GtkColumnView.Column>
+                <GtkColumnView.Column
+                    id="salary"
+                    title="Salary"
+                    fixedWidth={100}
+                    sortable
+                    renderCell={(item: ShowcasePerson) => <GtkLabel label={item.salary.toString()} />}
+                >
+                    <ShowcaseColumnMenu column="salary" onSort={handleSortChange}>
+                        <MenuSection>
+                            <MenuItem id="hide" label="Hide Column" onActivate={() => {}} />
+                        </MenuSection>
+                    </ShowcaseColumnMenu>
+                </GtkColumnView.Column>
+            </GtkColumnView>
+        </ScrollWrapper>
+    );
+}
+
+describe("render - ColumnViewColumn (10) > header menu (6)", () => {
+    it("x-showcase pattern: fragment-wrapped menus with sortable columns and list items", async () => {
+        const columnViewRef = createRef<Gtk.ColumnView>();
+
+        await render(<ShowcaseSortableApp columnViewRef={columnViewRef} />);
+
+        const nameCol = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
+        const roleCol = getColumn(columnViewRef.current as Gtk.ColumnView, 1);
+        const salaryCol = getColumn(columnViewRef.current as Gtk.ColumnView, 2);
+
+        expect(nameCol.getHeaderMenu()).not.toBeNull();
+        expect(roleCol.getHeaderMenu()).not.toBeNull();
+        expect(salaryCol.getHeaderMenu()).not.toBeNull();
+
+        expect(nameCol.getHeaderMenu()?.getNItems()).toBe(1);
+        expect(roleCol.getHeaderMenu()?.getNItems()).toBe(2);
+        expect(salaryCol.getHeaderMenu()?.getNItems()).toBe(2);
+    });
+});
+
+describe("render - ColumnViewColumn (11)", () => {
+    describe("header menu (7)", () => {
         it("activates menu actions on each column via activateAction", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
             const nameSortAsc = vi.fn();
@@ -510,7 +537,11 @@ describe("render - ColumnViewColumn", () => {
             expect(roleSortAsc).toHaveBeenCalledTimes(1);
             expect(salarySortAsc).toHaveBeenCalledTimes(1);
         });
+    });
+});
 
+describe("render - ColumnViewColumn (12)", () => {
+    describe("header menu (8)", () => {
         it("iterates menu model items for each column header", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 

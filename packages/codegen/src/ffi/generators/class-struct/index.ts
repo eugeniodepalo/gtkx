@@ -53,16 +53,30 @@ type VfuncEntry = {
  * is called once, and the resulting `FileBuilder` content is stringified
  * by the caller.
  */
+/**
+ * Options for {@link ClassStructGenerator}.
+ */
+export type ClassStructGeneratorOptions = {
+    ffiMapper: FfiMapper;
+    file: FileBuilder;
+    options: FfiGeneratorOptions;
+    repo: GirRepository;
+    logger?: VtableLogger;
+};
+
 export class ClassStructGenerator {
     private readonly fieldBuilder: FieldBuilder;
+    private readonly ffiMapper: FfiMapper;
+    private readonly file: FileBuilder;
+    private readonly repo: GirRepository;
+    private readonly logger: VtableLogger;
 
-    constructor(
-        private readonly ffiMapper: FfiMapper,
-        private readonly file: FileBuilder,
-        options: FfiGeneratorOptions,
-        private readonly repo: GirRepository,
-        private readonly logger: VtableLogger = log,
-    ) {
+    constructor(opts: ClassStructGeneratorOptions) {
+        const { ffiMapper, file, options, repo, logger = log } = opts;
+        this.ffiMapper = ffiMapper;
+        this.file = file;
+        this.repo = repo;
+        this.logger = logger;
         this.fieldBuilder = new FieldBuilder(ffiMapper, file, repo, options.namespace);
     }
 

@@ -41,37 +41,76 @@ function loadInitialWords(): string[] {
 
 const initialWords = loadInitialWords();
 
-const ListViewWordsDemo = ({ window }: DemoProps) => {
-    const [words, setWords] = useState(initialWords);
-    const [searchText, setSearchText] = useState("");
+const loadWordsFromFile = async (
+    filePath: string,
+    setWords: (words: string[]) => void,
+    setSearchText: (text: string) => void,
+) => {
+    try {
+        const text = await readFile(filePath, "utf-8");
+        const wordList = text
+            .split("\n")
+            .map((w) => w.trim())
+            .filter((w) => w.length > 0);
+        setWords(wordList);
+        setSearchText("");
+    } catch {}
+};
+
+interface FilterCtx {
+    cancelled: boolean;
+}
+
+const runFilterStep = ({
+    ctx,
+    words,
+    lower,
+    result,
+    offset,
+    setFilterProgress,
+    setFilteredWords,
+}: {
+    ctx: FilterCtx;
+    words: string[];
+    lower: string;
+    result: string[];
+    offset: number;
+    setFilterProgress: (n: number) => void;
+    setFilteredWords: (w: string[]) => void;
+}) => {
+    if (ctx.cancelled) return;
+
+    const end = Math.min(offset + FILTER_CHUNK_SIZE, words.length);
+    for (let i = offset; i < end; i++) {
+        const w = words[i];
+        if (w?.toLowerCase().includes(lower)) result.push(w);
+    }
+    const newOffset = end;
+    const progress = words.length > 0 ? newOffset / words.length : 1;
+    setFilterProgress(progress);
+    setFilteredWords([...result]);
+
+    if (newOffset < words.length) {
+        setTimeout(
+            () =>
+                runFilterStep({
+                    ctx,
+                    words,
+                    lower,
+                    result,
+                    offset: newOffset,
+                    setFilterProgress,
+                    setFilteredWords,
+                }),
+            0,
+        );
+    }
+};
+
+function useFilteredWords(words: string[], searchText: string) {
     const [filteredWords, setFilteredWords] = useState(initialWords);
     const [filterProgress, setFilterProgress] = useState(1);
-    const filterRef = useRef<{ cancelled: boolean }>({ cancelled: false });
-
-    const loadFile = useCallback(async (filePath: string) => {
-        try {
-            const text = await readFile(filePath, "utf-8");
-            const wordList = text
-                .split("\n")
-                .map((w) => w.trim())
-                .filter((w) => w.length > 0);
-            setWords(wordList);
-            setFilteredWords(wordList);
-            setSearchText("");
-        } catch {}
-    }, []);
-
-    const handleOpen = useCallback(async () => {
-        const dialog = new Gtk.FileDialog();
-        dialog.setTitle("Open file");
-        try {
-            const file = await dialog.open(window.current, null);
-            const path = file.getPath();
-            if (path) {
-                await loadFile(path);
-            }
-        } catch {}
-    }, [window, loadFile]);
+    const filterRef = useRef<FilterCtx>({ cancelled: false });
 
     useEffect(() => {
         filterRef.current.cancelled = true;
@@ -86,41 +125,63 @@ const ListViewWordsDemo = ({ window }: DemoProps) => {
 
         const lower = searchText.toLowerCase();
         const result: string[] = [];
-        let offset = 0;
-
         setFilterProgress(0);
-
-        const filterStep = () => {
-            if (ctx.cancelled) return;
-
-            const end = Math.min(offset + FILTER_CHUNK_SIZE, words.length);
-            for (let i = offset; i < end; i++) {
-                const w = words[i];
-                if (w?.toLowerCase().includes(lower)) {
-                    result.push(w);
-                }
-            }
-            offset = end;
-
-            const progress = words.length > 0 ? offset / words.length : 1;
-            setFilterProgress(progress);
-            setFilteredWords([...result]);
-
-            if (offset < words.length) {
-                setTimeout(filterStep, 0);
-            }
-        };
-
-        setTimeout(filterStep, 0);
+        setTimeout(
+            () => runFilterStep({ ctx, words, lower, result, offset: 0, setFilterProgress, setFilteredWords }),
+            0,
+        );
 
         return () => {
             ctx.cancelled = true;
         };
     }, [words, searchText]);
 
-    const handleSearchChanged = (entry: Gtk.SearchEntry) => {
-        setSearchText(entry.getText());
-    };
+    return { filteredWords, filterProgress };
+}
+
+const WordsList = ({ filteredWords, filterProgress }: { filteredWords: string[]; filterProgress: number }) => (
+    <GtkOverlay vexpand hexpand>
+        <GtkScrolledWindow vexpand hexpand>
+            <GtkListView
+                vexpand
+                hexpand
+                estimatedItemHeight={32}
+                selectionMode={Gtk.SelectionMode.NONE}
+                items={filteredWords.map((word) => ({ id: word, value: word }))}
+                renderItem={(word: string) => (
+                    <GtkInscription
+                        text={word}
+                        xalign={0}
+                        natChars={20}
+                        textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
+                    />
+                )}
+            />
+        </GtkScrolledWindow>
+        {filterProgress < 1 && (
+            <GtkOverlay.Child>
+                <GtkProgressBar fraction={filterProgress} halign={Gtk.Align.FILL} valign={Gtk.Align.START} hexpand />
+            </GtkOverlay.Child>
+        )}
+    </GtkOverlay>
+);
+
+const ListViewWordsDemo = ({ window }: DemoProps) => {
+    const [words, setWords] = useState(initialWords);
+    const [searchText, setSearchText] = useState("");
+    const { filteredWords, filterProgress } = useFilteredWords(words, searchText);
+
+    const loadFile = useCallback((filePath: string) => loadWordsFromFile(filePath, setWords, setSearchText), []);
+
+    const handleOpen = useCallback(async () => {
+        const dialog = new Gtk.FileDialog();
+        dialog.setTitle("Open file");
+        try {
+            const file = await dialog.open(window.current, null);
+            const path = file.getPath();
+            if (path) await loadFile(path);
+        } catch {}
+    }, [window, loadFile]);
 
     return (
         <>
@@ -135,39 +196,10 @@ const ListViewWordsDemo = ({ window }: DemoProps) => {
                 <GtkSearchEntry
                     text={searchText}
                     placeholderText="Search words..."
-                    onSearchChanged={handleSearchChanged}
+                    onSearchChanged={(entry: Gtk.SearchEntry) => setSearchText(entry.getText())}
                     hexpand
                 />
-
-                <GtkOverlay vexpand hexpand>
-                    <GtkScrolledWindow vexpand hexpand>
-                        <GtkListView
-                            vexpand
-                            hexpand
-                            estimatedItemHeight={32}
-                            selectionMode={Gtk.SelectionMode.NONE}
-                            items={filteredWords.map((word) => ({ id: word, value: word }))}
-                            renderItem={(word: string) => (
-                                <GtkInscription
-                                    text={word}
-                                    xalign={0}
-                                    natChars={20}
-                                    textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
-                                />
-                            )}
-                        />
-                    </GtkScrolledWindow>
-                    {filterProgress < 1 && (
-                        <GtkOverlay.Child>
-                            <GtkProgressBar
-                                fraction={filterProgress}
-                                halign={Gtk.Align.FILL}
-                                valign={Gtk.Align.START}
-                                hexpand
-                            />
-                        </GtkOverlay.Child>
-                    )}
-                </GtkOverlay>
+                <WordsList filteredWords={filteredWords} filterProgress={filterProgress} />
             </GtkBox>
         </>
     );

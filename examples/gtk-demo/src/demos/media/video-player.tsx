@@ -3,7 +3,7 @@ import * as Gio from "@gtkx/ffi/gio";
 import * as GObject from "@gtkx/ffi/gobject";
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcutController, GtkVideo } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import bbbPngPath from "./bbb.png";
 import gtkLogoCursorPath from "./gtk_logo_cursor.png";
@@ -12,91 +12,100 @@ import sourceCode from "./video-player.tsx?raw";
 
 const Slot = "Slot" as const;
 
+const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.File) => void) => {
+    const dialog = new Gtk.FileDialog();
+    dialog.setTitle("Select a video");
+
+    const filters = Gio.ListStore.new(GObject.typeFromName("GtkFileFilter"));
+
+    const allFilter = new Gtk.FileFilter();
+    allFilter.setName("All Files");
+    allFilter.addPattern("*");
+    filters.append(allFilter);
+
+    const imageFilter = new Gtk.FileFilter();
+    imageFilter.setName("Images");
+    imageFilter.addMimeType("image/*");
+    filters.append(imageFilter);
+
+    const videoFilter = new Gtk.FileFilter();
+    videoFilter.setName("Video");
+    videoFilter.addMimeType("video/*");
+    filters.append(videoFilter);
+
+    dialog.setFilters(filters);
+    dialog.setDefaultFilter(videoFilter);
+
+    try {
+        const file = await dialog.open(window, null);
+        setVideoFile(file);
+    } catch {}
+};
+
+interface VideoPlayerHeaderProps {
+    logoPaintable: Gdk.Texture;
+    bbbPaintable: Gdk.Texture;
+    onOpen: () => void;
+    onLogo: () => void;
+    onBBB: () => void;
+    onFullscreen: () => void;
+}
+
+const VideoPlayerHeader = ({
+    logoPaintable,
+    bbbPaintable,
+    onOpen,
+    onLogo,
+    onBBB,
+    onFullscreen,
+}: VideoPlayerHeaderProps) => (
+    <Slot id="titlebar">
+        <GtkHeaderBar>
+            <GtkHeaderBar.PackStart>
+                <GtkButton label="_Open" useUnderline onClicked={() => void onOpen()} />
+                <GtkButton accessibleLabel="GTK Logo" onClicked={onLogo}>
+                    <GtkImage paintable={logoPaintable} pixelSize={24} />
+                </GtkButton>
+                <GtkButton accessibleLabel="Big Buck Bunny" onClicked={onBBB}>
+                    <GtkImage paintable={bbbPaintable} pixelSize={24} />
+                </GtkButton>
+            </GtkHeaderBar.PackStart>
+            <GtkHeaderBar.PackEnd>
+                <GtkButton iconName="view-fullscreen-symbolic" accessibleLabel="Fullscreen" onClicked={onFullscreen} />
+            </GtkHeaderBar.PackEnd>
+        </GtkHeaderBar>
+    </Slot>
+);
+
 const VideoPlayerDemo = ({ window }: DemoProps) => {
     const [videoFile, setVideoFile] = useState<Gio.File | null>(null);
     const logoPaintable = useMemo(() => Gdk.Texture.newFromFilename(gtkLogoCursorPath), []);
     const bbbPaintable = useMemo(() => Gdk.Texture.newFromFilename(bbbPngPath), []);
 
-    const handleOpen = async () => {
-        const dialog = new Gtk.FileDialog();
-        dialog.setTitle("Select a video");
-
-        const filters = Gio.ListStore.new(GObject.typeFromName("GtkFileFilter"));
-
-        const allFilter = new Gtk.FileFilter();
-        allFilter.setName("All Files");
-        allFilter.addPattern("*");
-        filters.append(allFilter);
-
-        const imageFilter = new Gtk.FileFilter();
-        imageFilter.setName("Images");
-        imageFilter.addMimeType("image/*");
-        filters.append(imageFilter);
-
-        const videoFilter = new Gtk.FileFilter();
-        videoFilter.setName("Video");
-        videoFilter.addMimeType("video/*");
-        filters.append(videoFilter);
-
-        dialog.setFilters(filters);
-        dialog.setDefaultFilter(videoFilter);
-
-        try {
-            const file = await dialog.open(window.current, null);
-            setVideoFile(file);
-        } catch {
-            /* User cancelled */
-        }
-    };
-
-    const handleLogo = () => {
-        const file = Gio.fileNewForPath(gtkLogoPath);
-        setVideoFile(file);
-    };
-
-    const handleBBB = () => {
-        const file = Gio.fileNewForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg");
-        setVideoFile(file);
-    };
-
-    const handleFullscreen = () => {
+    const handleOpen = useCallback(() => openVideoDialog(window.current, setVideoFile), [window]);
+    const handleLogo = useCallback(() => setVideoFile(Gio.fileNewForPath(gtkLogoPath)), []);
+    const handleBBB = useCallback(
+        () => setVideoFile(Gio.fileNewForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg")),
+        [],
+    );
+    const handleFullscreen = useCallback(() => window.current?.fullscreen(), [window]);
+    const handleToggleFullscreen = useCallback(() => {
         const win = window.current;
         if (!win) return;
-        win.fullscreen();
-    };
-
-    const handleToggleFullscreen = () => {
-        const win = window.current;
-        if (!win) return;
-        if (win.isFullscreen()) {
-            win.unfullscreen();
-        } else {
-            win.fullscreen();
-        }
-    };
+        if (win.isFullscreen()) win.unfullscreen();
+        else win.fullscreen();
+    }, [window]);
 
     return (
         <>
-            <Slot id="titlebar">
-                <GtkHeaderBar>
-                    <GtkHeaderBar.PackStart>
-                        <GtkButton label="_Open" useUnderline onClicked={() => void handleOpen()} />
-                        <GtkButton accessibleLabel="GTK Logo" onClicked={handleLogo}>
-                            <GtkImage paintable={logoPaintable} pixelSize={24} />
-                        </GtkButton>
-                        <GtkButton accessibleLabel="Big Buck Bunny" onClicked={handleBBB}>
-                            <GtkImage paintable={bbbPaintable} pixelSize={24} />
-                        </GtkButton>
-                    </GtkHeaderBar.PackStart>
-                    <GtkHeaderBar.PackEnd>
-                        <GtkButton
-                            iconName="view-fullscreen-symbolic"
-                            accessibleLabel="Fullscreen"
-                            onClicked={handleFullscreen}
-                        />
-                    </GtkHeaderBar.PackEnd>
-                </GtkHeaderBar>
-            </Slot>
+            <VideoPlayerHeader
+                logoPaintable={logoPaintable}
+                bbbPaintable={bbbPaintable}
+                onOpen={handleOpen}
+                onLogo={handleLogo}
+                onBBB={handleBBB}
+                onFullscreen={handleFullscreen}
+            />
             <GtkShortcutController scope={Gtk.ShortcutScope.GLOBAL}>
                 <GtkShortcutController.Shortcut trigger="F11" onActivate={handleToggleFullscreen} />
             </GtkShortcutController>

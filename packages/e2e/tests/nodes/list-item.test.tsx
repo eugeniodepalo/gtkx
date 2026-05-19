@@ -24,8 +24,8 @@ const buildValueDropDown = (dropDownRef: RefObject<Gtk.DropDown | null>) => (ite
     <GtkDropDown ref={dropDownRef} items={items.map((item) => ({ id: item, value: item }))} />
 );
 
-describe("render - ListItem", () => {
-    describe("ListItem", () => {
+describe("render - ListItem (1)", () => {
+    describe("ListItem (1)", () => {
         it("renders list item in ListView", async () => {
             await render(
                 <ScrollWrapper>
@@ -57,7 +57,11 @@ describe("render - ListItem", () => {
             expect(screen.queryAllByText("Second")).toHaveLength(1);
             expect(screen.queryAllByText("Third")).toHaveLength(1);
         });
+    });
+});
 
+describe("render - ListItem (2)", () => {
+    describe("ListItem (2)", () => {
         it("updates item value on prop change", async () => {
             function App({ value }: { value: { text: string } }) {
                 return (
@@ -96,7 +100,11 @@ describe("render - ListItem", () => {
             expect(screen.queryAllByText("Second")).toHaveLength(0);
             expect(screen.queryAllByText("Third")).toHaveLength(0);
         });
+    });
+});
 
+describe("render - ListItem (3)", () => {
+    describe("ListItem (3)", () => {
         it("inserts item before existing item", async () => {
             const { rerender } = await renderChildren(
                 [
@@ -118,8 +126,10 @@ describe("render - ListItem", () => {
             expect(screen.queryAllByText("Last")).toHaveLength(1);
         });
     });
+});
 
-    describe("ListItem in DropDown", () => {
+describe("render - ListItem (4)", () => {
+    describe("ListItem in DropDown (1)", () => {
         it("renders list item in DropDown", async () => {
             await render(<GtkDropDown items={[{ id: "item1", value: "Item Value" }]} />);
 
@@ -144,7 +154,11 @@ describe("render - ListItem", () => {
             expect(screen.queryAllByText("Updated").length).toBeGreaterThan(0);
             expect(screen.queryAllByText("Initial")).toHaveLength(0);
         });
+    });
+});
 
+describe("render - ListItem (5)", () => {
+    describe("ListItem in DropDown (2)", () => {
         it("maintains order with multiple items", async () => {
             const dropDownRef = createRef<Gtk.DropDown>();
 

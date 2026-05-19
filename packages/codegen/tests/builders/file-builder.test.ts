@@ -5,7 +5,7 @@ import { fileBuilder } from "../../src/builders/file-builder.js";
 import { method } from "../../src/builders/members/method.js";
 import { stringify } from "../../src/builders/stringify.js";
 
-describe("FileBuilder", () => {
+describe("FileBuilder (1)", () => {
     it("renders a file with imports and a class", () => {
         const file = fileBuilder()
             .addImport("../../object.js", ["NativeObject", "NativeHandle"])
@@ -50,7 +50,9 @@ describe("FileBuilder", () => {
         const output = stringify(file);
         expect(output).toContain('import { type Type } from "./types.js";');
     });
+});
 
+describe("FileBuilder (2)", () => {
     it("adds blank line between imports and declarations", () => {
         const file = fileBuilder()
             .addImport("./foo.js", ["Foo"])
@@ -77,7 +79,9 @@ describe("FileBuilder", () => {
         expect(output).not.toContain("import");
         expect(output).toContain("export enum Foo");
     });
+});
 
+describe("FileBuilder (3)", () => {
     describe("setMode", () => {
         it("drops type-only imports and intra-namespace paths in JS mode", () => {
             const file = fileBuilder()

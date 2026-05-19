@@ -73,32 +73,41 @@ export type GtkxConfig = {
  * });
  * ```
  */
-export const defineConfig = (config: GtkxConfig): GtkxConfig => {
-    const { libraries } = config;
-
-    if (libraries !== undefined && libraries !== LIBRARIES_WILDCARD) {
-        if (!Array.isArray(libraries) || libraries.length === 0) {
-            throw new Error('gtkx.config.ts: `libraries` must be "*", a non-empty string array, or omitted');
-        }
-
-        for (const library of libraries) {
-            if (typeof library !== "string" || !GIR_NAMESPACE_PATTERN.test(library)) {
-                if (library === LIBRARIES_WILDCARD) {
-                    throw new Error(
-                        'gtkx.config.ts: to generate every library, set `libraries: "*"` as a bare string, not an array entry',
-                    );
-                }
-                throw new Error(
-                    `gtkx.config.ts: invalid library identifier "${String(library)}" — must be of the form "Name-Version" (e.g. "Gtk-4.0")`,
-                );
-            }
-        }
+const validateLibraryEntry = (library: unknown): void => {
+    if (typeof library === "string" && GIR_NAMESPACE_PATTERN.test(library)) {
+        return;
     }
+    if (library === LIBRARIES_WILDCARD) {
+        throw new Error(
+            'gtkx.config.ts: to generate every library, set `libraries: "*"` as a bare string, not an array entry',
+        );
+    }
+    throw new Error(
+        `gtkx.config.ts: invalid library identifier "${String(library)}" — must be of the form "Name-Version" (e.g. "Gtk-4.0")`,
+    );
+};
 
-    if (config.girPath !== undefined && !Array.isArray(config.girPath)) {
+const validateLibraries = (libraries: GtkxConfig["libraries"]): void => {
+    if (libraries === undefined || libraries === LIBRARIES_WILDCARD) {
+        return;
+    }
+    if (!Array.isArray(libraries) || libraries.length === 0) {
+        throw new Error('gtkx.config.ts: `libraries` must be "*", a non-empty string array, or omitted');
+    }
+    for (const library of libraries) {
+        validateLibraryEntry(library);
+    }
+};
+
+const validateGirPath = (girPath: GtkxConfig["girPath"]): void => {
+    if (girPath !== undefined && !Array.isArray(girPath)) {
         throw new Error("gtkx.config.ts: `girPath` must be an array of strings if provided");
     }
+};
 
+export const defineConfig = (config: GtkxConfig): GtkxConfig => {
+    validateLibraries(config.libraries);
+    validateGirPath(config.girPath);
     return config;
 };
 

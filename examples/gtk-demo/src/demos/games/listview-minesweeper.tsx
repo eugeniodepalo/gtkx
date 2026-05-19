@@ -72,70 +72,74 @@ const createBoard = (): Cell[] => {
     return cells;
 };
 
+const revealCell = (index: number, currentBoard: Cell[]): Cell[] => {
+    const cell = currentBoard[index];
+    if (!cell || cell.isRevealed) return currentBoard;
+
+    const newBoard = [...currentBoard];
+    newBoard[index] = { ...cell, isRevealed: true };
+    return newBoard;
+};
+
+const playGameSound = (win: boolean, soundStreamRef: React.RefObject<Gtk.MediaFile | null>) => {
+    const dataDirs = (process.env.XDG_DATA_DIRS ?? "/usr/local/share:/usr/share").split(":");
+    const sound = win ? "complete.oga" : "suspend-error.oga";
+    const path = dataDirs
+        .map((dir) => `${dir}/sounds/freedesktop/stereo/${sound}`)
+        .find((candidate) => existsSync(candidate));
+    if (!path) return;
+    const stream = Gtk.MediaFile.newForFilename(path);
+    stream.setVolume(1);
+    stream.play();
+    soundStreamRef.current = stream;
+};
+
+const evaluateBoard = (board: Cell[], index: number): "won" | "lost" | "continue" => {
+    const clickedCell = board[index];
+    if (clickedCell?.isMine) return "lost";
+    const unrevealedSafeCells = board.filter((c) => !c.isRevealed && !c.isMine).length;
+    return unrevealedSafeCells === 0 ? "won" : "continue";
+};
+
+const getCellDisplay = (cell: Cell): string => {
+    if (!cell.isRevealed) return "?";
+    if (cell.isMine) return "\u{1F4A3}";
+    if (cell.adjacentMines === 0) return "";
+    return String(cell.adjacentMines);
+};
+
 const ListViewMinesweeperDemo = () => {
     const [board, setBoard] = useState<Cell[]>(createBoard);
     const [gameState, setGameState] = useState<GameState>("playing");
     const soundStreamRef = useRef<Gtk.MediaFile | null>(null);
 
-    const revealCell = useCallback((index: number, currentBoard: Cell[]): Cell[] => {
-        const cell = currentBoard[index];
-        if (!cell || cell.isRevealed) return currentBoard;
-
-        const newBoard = [...currentBoard];
-        newBoard[index] = { ...cell, isRevealed: true };
-        return newBoard;
-    }, []);
-
-    const playSound = useCallback((win: boolean) => {
-        const dataDirs = (process.env.XDG_DATA_DIRS ?? "/usr/local/share:/usr/share").split(":");
-        const sound = win ? "complete.oga" : "suspend-error.oga";
-        const path = dataDirs
-            .map((dir) => `${dir}/sounds/freedesktop/stereo/${sound}`)
-            .find((candidate) => existsSync(candidate));
-        if (!path) return;
-        const stream = Gtk.MediaFile.newForFilename(path);
-        stream.setVolume(1);
-        stream.play();
-        soundStreamRef.current = stream;
-    }, []);
+    const playSound = useCallback((win: boolean) => playGameSound(win, soundStreamRef), []);
 
     const handleCellClick = useCallback(
         (index: number) => {
             if (gameState !== "playing") return;
-
             const cell = board[index];
             if (!cell || cell.isRevealed) return;
 
             const newBoard = revealCell(index, board);
             setBoard(newBoard);
 
-            const clickedCell = newBoard[index];
-            if (clickedCell?.isMine) {
+            const result = evaluateBoard(newBoard, index);
+            if (result === "lost") {
                 setGameState("lost");
                 playSound(false);
-                return;
-            }
-
-            const unrevealedSafeCells = newBoard.filter((c) => !c.isRevealed && !c.isMine).length;
-            if (unrevealedSafeCells === 0) {
+            } else if (result === "won") {
                 setGameState("won");
                 playSound(true);
             }
         },
-        [board, gameState, revealCell, playSound],
+        [board, gameState, playSound],
     );
 
     const resetGame = useCallback(() => {
         setBoard(createBoard());
         setGameState("playing");
     }, []);
-
-    const getCellDisplay = (cell: Cell): string => {
-        if (!cell.isRevealed) return "?";
-        if (cell.isMine) return "\u{1F4A3}";
-        if (cell.adjacentMines === 0) return "";
-        return String(cell.adjacentMines);
-    };
 
     return (
         <>

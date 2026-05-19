@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "../src/index.js";
 
-describe("screen", () => {
+describe("screen find single", () => {
     it("finds element by role", async () => {
         await render(<GtkButton label="Test" />);
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Test" });
@@ -43,7 +43,9 @@ describe("screen", () => {
         const entry = await screen.findByName("my-input");
         expect(entry).toBeDefined();
     });
+});
 
+describe("screen find all", () => {
     it("finds all elements by role", async () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -107,99 +109,103 @@ describe("screen", () => {
         const entries = await screen.findAllByName("field");
         expect(entries.length).toBe(2);
     });
+});
 
-    describe("error handling", () => {
-        it("throws when no render has been performed", async () => {
-            await cleanup();
-            expect(() => screen.findByRole(Gtk.AccessibleRole.BUTTON, { timeout: 100 })).toThrow(
-                "No render has been performed",
-            );
-        });
+describe("screen error handling", () => {
+    it("throws when no render has been performed", async () => {
+        await cleanup();
+        expect(() => screen.findByRole(Gtk.AccessibleRole.BUTTON, { timeout: 100 })).toThrow(
+            "No render has been performed",
+        );
+    });
+});
+
+describe("screen screenshot capture", () => {
+    it("captures the first window when no selector is provided", async () => {
+        await render(<GtkLabel label="Snapshot" />);
+
+        const result = await screen.screenshot();
+
+        expect(result.mimeType).toBe("image/png");
+        expect(result.data.length).toBeGreaterThan(0);
+        expect(result.width).toBeGreaterThan(0);
+        expect(result.height).toBeGreaterThan(0);
     });
 
-    describe("screenshot", () => {
-        it("captures the first window when no selector is provided", async () => {
-            await render(<GtkLabel label="Snapshot" />);
+    it("captures the window at the requested index", async () => {
+        await render(<GtkLabel label="Indexed" />);
 
-            const result = await screen.screenshot();
+        const result = await screen.screenshot(0);
 
-            expect(result.mimeType).toBe("image/png");
-            expect(result.data.length).toBeGreaterThan(0);
-            expect(result.width).toBeGreaterThan(0);
-            expect(result.height).toBeGreaterThan(0);
+        expect(result.mimeType).toBe("image/png");
+        expect(result.data.length).toBeGreaterThan(0);
+    });
+
+    it("throws when the index is out of range", async () => {
+        await render(<GtkLabel label="Bounds" />);
+
+        await expect(screen.screenshot(99)).rejects.toThrow(/Window at index 99 not found/);
+    });
+});
+
+describe("screen screenshot selectors", () => {
+    it("captures a window matching a title substring", async () => {
+        await render(<GtkLabel label="Titled" />, {
+            wrapper: ({ children }) => (
+                <GtkApplicationWindow title="Settings Window" defaultWidth={120} defaultHeight={80}>
+                    {children}
+                </GtkApplicationWindow>
+            ),
         });
 
-        it("captures the window at the requested index", async () => {
-            await render(<GtkLabel label="Indexed" />);
+        const result = await screen.screenshot("Settings");
 
-            const result = await screen.screenshot(0);
+        expect(result.mimeType).toBe("image/png");
+    });
 
-            expect(result.mimeType).toBe("image/png");
-            expect(result.data.length).toBeGreaterThan(0);
+    it("captures a window matching a title regex", async () => {
+        await render(<GtkLabel label="Pattern" />, {
+            wrapper: ({ children }) => (
+                <GtkApplicationWindow title="Demo Pattern App" defaultWidth={120} defaultHeight={80}>
+                    {children}
+                </GtkApplicationWindow>
+            ),
         });
 
-        it("throws when the index is out of range", async () => {
-            await render(<GtkLabel label="Bounds" />);
+        const result = await screen.screenshot(/^Demo/);
 
-            await expect(screen.screenshot(99)).rejects.toThrow(/Window at index 99 not found/);
+        expect(result.mimeType).toBe("image/png");
+    });
+});
+
+describe("screen screenshot errors", () => {
+    it("throws when no window matches a string selector", async () => {
+        await render(<GtkLabel label="Unmatched" />, {
+            wrapper: ({ children }) => (
+                <GtkApplicationWindow title="Real Title" defaultWidth={120} defaultHeight={80}>
+                    {children}
+                </GtkApplicationWindow>
+            ),
         });
 
-        it("captures a window matching a title substring", async () => {
-            await render(<GtkLabel label="Titled" />, {
-                wrapper: ({ children }) => (
-                    <GtkApplicationWindow title="Settings Window" defaultWidth={120} defaultHeight={80}>
-                        {children}
-                    </GtkApplicationWindow>
-                ),
-            });
+        await expect(screen.screenshot("Nonexistent")).rejects.toThrow(/No window found with title matching/);
+    });
 
-            const result = await screen.screenshot("Settings");
-
-            expect(result.mimeType).toBe("image/png");
+    it("throws when no window matches a regex selector", async () => {
+        await render(<GtkLabel label="Unmatched" />, {
+            wrapper: ({ children }) => (
+                <GtkApplicationWindow title="Real Title" defaultWidth={120} defaultHeight={80}>
+                    {children}
+                </GtkApplicationWindow>
+            ),
         });
 
-        it("captures a window matching a title regex", async () => {
-            await render(<GtkLabel label="Pattern" />, {
-                wrapper: ({ children }) => (
-                    <GtkApplicationWindow title="Demo Pattern App" defaultWidth={120} defaultHeight={80}>
-                        {children}
-                    </GtkApplicationWindow>
-                ),
-            });
+        await expect(screen.screenshot(/^Bogus/)).rejects.toThrow(/No window found with title matching/);
+    });
 
-            const result = await screen.screenshot(/^Demo/);
+    it("throws when no windows are available", async () => {
+        await cleanup();
 
-            expect(result.mimeType).toBe("image/png");
-        });
-
-        it("throws when no window matches a string selector", async () => {
-            await render(<GtkLabel label="Unmatched" />, {
-                wrapper: ({ children }) => (
-                    <GtkApplicationWindow title="Real Title" defaultWidth={120} defaultHeight={80}>
-                        {children}
-                    </GtkApplicationWindow>
-                ),
-            });
-
-            await expect(screen.screenshot("Nonexistent")).rejects.toThrow(/No window found with title matching/);
-        });
-
-        it("throws when no window matches a regex selector", async () => {
-            await render(<GtkLabel label="Unmatched" />, {
-                wrapper: ({ children }) => (
-                    <GtkApplicationWindow title="Real Title" defaultWidth={120} defaultHeight={80}>
-                        {children}
-                    </GtkApplicationWindow>
-                ),
-            });
-
-            await expect(screen.screenshot(/^Bogus/)).rejects.toThrow(/No window found with title matching/);
-        });
-
-        it("throws when no windows are available", async () => {
-            await cleanup();
-
-            await expect(screen.screenshot()).rejects.toThrow(/No windows available for screenshot/);
-        });
+        await expect(screen.screenshot()).rejects.toThrow(/No windows available for screenshot/);
     });
 });

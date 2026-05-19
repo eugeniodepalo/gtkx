@@ -39,6 +39,42 @@ function renderSvgToSurface(path: string, width: number, height: number): ImageS
     }
 }
 
+const pickSvgFile = async (window: Gtk.Window | null): Promise<string | null> => {
+    const dialog = new Gtk.FileDialog();
+    dialog.setTitle("Open SVG image");
+
+    const filters = Gio.ListStore.new(GObject.typeFromName("GtkFileFilter"));
+    const filter = new Gtk.FileFilter();
+    filter.setName("SVG images");
+    filter.addMimeType("image/svg+xml");
+    filters.append(filter);
+    dialog.setFilters(filters);
+
+    try {
+        const file = await dialog.open(window, null);
+        return file.getPath();
+    } catch {
+        return null;
+    }
+};
+
+const drawSvg = (cr: Context, filePath: string, width: number, height: number) => {
+    if (width <= 0 || height <= 0) return;
+
+    const surface = renderSvgToSurface(filePath, width, height);
+    if (!surface) {
+        cr.setSourceRgba(238 / 255, 106 / 255, 167 / 255, 1);
+        cr.rectangle(0, 0, width, height);
+        cr.fill();
+        return;
+    }
+
+    const sw = surface.getWidth();
+    const sh = surface.getHeight();
+    cr.setSourceSurface(surface, (width - sw) / 2, (height - sh) / 2);
+    cr.paint();
+};
+
 const PaintableSvgDemo = ({ window }: DemoProps) => {
     const [filePath, setFilePath] = useState(DEFAULT_SVG_PATH);
     const isSymbolic = filePath.includes("symbolic");
@@ -48,44 +84,12 @@ const PaintableSvgDemo = ({ window }: DemoProps) => {
     }, [window]);
 
     const handleOpen = useCallback(async () => {
-        const dialog = new Gtk.FileDialog();
-        dialog.setTitle("Open SVG image");
-
-        const filters = Gio.ListStore.new(GObject.typeFromName("GtkFileFilter"));
-        const filter = new Gtk.FileFilter();
-        filter.setName("SVG images");
-        filter.addMimeType("image/svg+xml");
-        filters.append(filter);
-        dialog.setFilters(filters);
-
-        try {
-            const file = await dialog.open(window.current, null);
-            const path = file.getPath();
-            if (path) {
-                setFilePath(path);
-            }
-        } catch {
-            // user cancelled
-        }
+        const path = await pickSvgFile(window.current);
+        if (path) setFilePath(path);
     }, [window]);
 
     const handleDraw = useCallback(
-        (cr: Context, width: number, height: number) => {
-            if (width <= 0 || height <= 0) return;
-
-            const surface = renderSvgToSurface(filePath, width, height);
-            if (!surface) {
-                cr.setSourceRgba(238 / 255, 106 / 255, 167 / 255, 1);
-                cr.rectangle(0, 0, width, height);
-                cr.fill();
-                return;
-            }
-
-            const sw = surface.getWidth();
-            const sh = surface.getHeight();
-            cr.setSourceSurface(surface, (width - sw) / 2, (height - sh) / 2);
-            cr.paint();
-        },
+        (cr: Context, width: number, height: number) => drawSvg(cr, filePath, width, height),
         [filePath],
     );
 

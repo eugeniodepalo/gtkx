@@ -8,6 +8,15 @@
             "cssModules": true
         }
     },
+    "linter": {
+        "rules": {
+            "complexity": {
+                "noExcessiveCognitiveComplexity": "error",
+                "noExcessiveLinesPerFunction": "error",
+                "useMaxParams": "error"
+            }
+        }
+    },
     "formatter": {
         "enabled": true,
         "indentWidth": 4,

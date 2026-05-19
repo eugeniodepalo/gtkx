@@ -31,20 +31,30 @@ function collectParentStaticFunctionNames(cls: GirClass): Set<string> {
 }
 
 /**
+ * Options for {@link StaticFunctionBuilder}.
+ */
+export type StaticFunctionBuilderOptions = {
+    cls: GirClass;
+    ffiMapper: FfiMapper;
+    imports: ImportCollector;
+    options: FfiGeneratorOptions;
+    selfNames?: ReadonlySet<string>;
+};
+
+/**
  * Builds static function code for a class.
  */
 export class StaticFunctionBuilder {
     private readonly className: string;
     private readonly methodBody: MethodBodyWriter;
     private readonly parentStaticFunctionNames: Set<string>;
+    private readonly cls: GirClass;
+    private readonly options: FfiGeneratorOptions;
 
-    constructor(
-        private readonly cls: GirClass,
-        ffiMapper: FfiMapper,
-        imports: ImportCollector,
-        private readonly options: FfiGeneratorOptions,
-        selfNames?: ReadonlySet<string>,
-    ) {
+    constructor(opts: StaticFunctionBuilderOptions) {
+        const { cls, ffiMapper, imports, options, selfNames } = opts;
+        this.cls = cls;
+        this.options = options;
         this.className = normalizeClassName(cls.name);
         this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
             sharedLibrary: options.sharedLibrary,

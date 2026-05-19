@@ -53,19 +53,35 @@ export type ConstructionMetaPlan = {
     constructionMetaWriter: ((writer: Writer) => void) | null;
 };
 
+/**
+ * Options for {@link ConstructorBuilder}.
+ */
+export type ConstructorBuilderOptions = {
+    cls: GirClass;
+    ffiMapper: FfiMapper;
+    imports: ImportCollector;
+    repository?: GirRepository;
+    options: FfiGeneratorOptions;
+    selfNames?: ReadonlySet<string>;
+};
+
 export class ConstructorBuilder {
     private readonly className: string;
     private readonly methodBody: MethodBodyWriter;
     private parentFactoryMethodNames: Set<string> = new Set();
+    private readonly cls: GirClass;
+    private readonly ffiMapper: FfiMapper;
+    private readonly imports: ImportCollector;
+    private readonly options: FfiGeneratorOptions;
+    private readonly selfNames: ReadonlySet<string>;
 
-    constructor(
-        private readonly cls: GirClass,
-        private readonly ffiMapper: FfiMapper,
-        private readonly imports: ImportCollector,
-        _repository: GirRepository,
-        private readonly options: FfiGeneratorOptions,
-        private readonly selfNames: ReadonlySet<string> = new Set(),
-    ) {
+    constructor(opts: ConstructorBuilderOptions) {
+        const { cls, ffiMapper, imports, options, selfNames = new Set() } = opts;
+        this.cls = cls;
+        this.ffiMapper = ffiMapper;
+        this.imports = imports;
+        this.options = options;
+        this.selfNames = selfNames;
         this.className = normalizeClassName(cls.name);
         this.methodBody = createMethodBodyWriter(ffiMapper, imports, {
             sharedLibrary: options.sharedLibrary,
@@ -101,14 +117,14 @@ export class ConstructorBuilder {
         for (const ctor of unsupported) {
             if (this.conflictsWithParentFactoryMethod(ctor)) continue;
             factoryMethods.push(
-                this.methodBody.buildStubStructure(
-                    toCamelCase(ctor.shadows ?? ctor.name),
-                    `${this.options.namespace}.${this.cls.name}.${ctor.name}`,
-                    ctor.doc,
-                    this.options.namespace,
-                    true,
-                    ctor.parameters,
-                ),
+                this.methodBody.buildStubStructure({
+                    memberName: toCamelCase(ctor.shadows ?? ctor.name),
+                    qualifiedName: `${this.options.namespace}.${this.cls.name}.${ctor.name}`,
+                    doc: ctor.doc,
+                    namespace: this.options.namespace,
+                    isStatic: true,
+                    parameters: ctor.parameters,
+                }),
             );
         }
 

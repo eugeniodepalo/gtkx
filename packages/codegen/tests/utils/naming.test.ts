@@ -136,13 +136,15 @@ describe("snakeToKebab", () => {
     });
 });
 
-describe("toValidIdentifier", () => {
+describe("toValidIdentifier (1)", () => {
     it("replaces invalid characters with underscores", () => {
         expect(toValidIdentifier("my-name")).toBe("my_name");
         expect(toValidIdentifier("my.property")).toBe("my_property");
         expect(toValidIdentifier("my@special#chars")).toBe("my_special_chars");
     });
+});
 
+describe("toValidIdentifier (2)", () => {
     it("suffixes reserved words with underscore", () => {
         expect(toValidIdentifier("class")).toBe("class_");
         expect(toValidIdentifier("function")).toBe("function_");
@@ -193,7 +195,9 @@ describe("toValidIdentifier", () => {
         expect(toValidIdentifier("eval")).toBe("eval_");
         expect(toValidIdentifier("arguments")).toBe("arguments_");
     });
+});
 
+describe("toValidIdentifier (3)", () => {
     it("prefixes identifiers starting with digit", () => {
         expect(toValidIdentifier("123abc")).toBe("_123abc");
         expect(toValidIdentifier("1")).toBe("_1");
@@ -236,7 +240,7 @@ describe("isMethodDuplicate", () => {
     });
 });
 
-describe("partitionSupportedMethods", () => {
+describe("partitionSupportedMethods (1)", () => {
     it("filters out duplicates", () => {
         const methods = [
             { name: "get_name", cIdentifier: "gtk_widget_get_name", parameters: [] },
@@ -280,7 +284,9 @@ describe("partitionSupportedMethods", () => {
         expect(supported).toHaveLength(1);
         expect(supported[0]?.name).toBe("safe");
     });
+});
 
+describe("partitionSupportedMethods (2)", () => {
     it("keeps first occurrence when duplicates exist", () => {
         const methods = [
             { name: "get_name", cIdentifier: "gtk_widget_get_name", parameters: [{ name: "first" }] },

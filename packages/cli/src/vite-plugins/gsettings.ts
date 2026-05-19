@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import type { Plugin } from "vite";
+import type { ModuleNode, Plugin, ViteDevServer } from "vite";
 
 const SCHEMA_SUFFIX = ".gschema.xml";
 const SCHEMA_ID_RE = /<schema\s+id="([^"]+)"/g;
@@ -34,25 +34,132 @@ const VIRTUAL_INIT = "\0gtkx-gsettings-init";
  * const [value, setValue] = useSetting(schemaId, "my-key", "string");
  * ```
  */
+type PluginState = {
+    schemaDir: string | null;
+    isBuild: boolean;
+    trackedSchemas: Map<string, string>;
+    buildSchemas: Map<string, string>;
+};
+
+type PluginContext = {
+    error: (msg: string) => never;
+    emitFile: (file: { type: "asset"; fileName: string; source: Buffer }) => void;
+};
+
+const ensureSchemaDir = (state: PluginState): string => {
+    if (!state.schemaDir) {
+        state.schemaDir = mkdtempSync(join(tmpdir(), "gtkx-schemas-"));
+    }
+    return state.schemaDir;
+};
+
+const compileSchemaDir = (state: PluginState): void => {
+    if (!state.schemaDir) return;
+    execFileSync("glib-compile-schemas", [state.schemaDir]);
+    const existing = process.env.GSETTINGS_SCHEMA_DIR;
+    process.env.GSETTINGS_SCHEMA_DIR = existing ? `${state.schemaDir}:${existing}` : state.schemaDir;
+};
+
+const renderInitModule = (): string =>
+    [
+        `import { dirname } from "node:path";`,
+        `import { fileURLToPath } from "node:url";`,
+        ``,
+        `const bundleDir = dirname(fileURLToPath(import.meta.url));`,
+        `const existing = process.env.GSETTINGS_SCHEMA_DIR;`,
+        `process.env.GSETTINGS_SCHEMA_DIR = existing ? bundleDir + ":" + existing : bundleDir;`,
+    ].join("\n");
+
+const extractSchemaIds = (xml: string): string[] => {
+    const ids: string[] = [];
+    for (const match of xml.matchAll(SCHEMA_ID_RE)) {
+        if (match[1]) ids.push(match[1]);
+    }
+    return ids;
+};
+
+const renderSchemaExports = (schemaIds: string[], isBuild: boolean): string => {
+    const exports = [`export default ${JSON.stringify(schemaIds[0])};`];
+    for (const schemaId of schemaIds) {
+        const exportName = schemaId.replaceAll(".", "_");
+        exports.push(`export const ${exportName} = ${JSON.stringify(schemaId)};`);
+    }
+    if (isBuild) {
+        return [`import ${JSON.stringify(VIRTUAL_INIT)};`, "", ...exports].join("\n");
+    }
+    return exports.join("\n");
+};
+
+const registerSchemaForMode = (state: PluginState, filePath: string, fileName: string, id: string): void => {
+    if (state.isBuild) {
+        state.buildSchemas.set(filePath, fileName);
+        console.log(`[gtkx] Queued GSettings schema: ${fileName}`);
+        return;
+    }
+    state.trackedSchemas.set(filePath, id);
+    const dir = ensureSchemaDir(state);
+    copyFileSync(filePath, join(dir, fileName));
+    compileSchemaDir(state);
+    console.log(`[gtkx] Compiled GSettings schema: ${fileName}`);
+};
+
+const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): string => {
+    const filePath = id.slice(VIRTUAL_PREFIX.length);
+    const xml = readFileSync(filePath, "utf-8");
+    const fileName = basename(filePath);
+
+    registerSchemaForMode(state, filePath, fileName, id);
+
+    const schemaIds = extractSchemaIds(xml);
+    if (schemaIds.length === 0) {
+        ctx.error(`No <schema id="..."> found in ${fileName}`);
+    }
+    return renderSchemaExports(schemaIds, state.isBuild);
+};
+
+const emitCompiledSchemas = (ctx: PluginContext, state: PluginState): void => {
+    if (!state.isBuild || state.buildSchemas.size === 0) return;
+
+    const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-build-"));
+    for (const [filePath, fileName] of state.buildSchemas) {
+        copyFileSync(filePath, join(dir, fileName));
+    }
+    execFileSync("glib-compile-schemas", [dir]);
+
+    const compiled = readFileSync(join(dir, "gschemas.compiled"));
+    ctx.emitFile({
+        type: "asset",
+        fileName: "gschemas.compiled",
+        source: compiled,
+    });
+
+    console.log(`[gtkx] Compiled ${state.buildSchemas.size} GSettings schema(s)`);
+};
+
+const handleSchemaHotUpdate = (state: PluginState, file: string, server: ViteDevServer): ModuleNode[] | undefined => {
+    const virtualId = state.trackedSchemas.get(file);
+    if (!virtualId) return;
+
+    const dir = ensureSchemaDir(state);
+    copyFileSync(file, join(dir, basename(file)));
+    compileSchemaDir(state);
+
+    console.log(`[gtkx] Recompiled GSettings schema: ${basename(file)}`);
+
+    const mod = server.moduleGraph.getModuleById(virtualId);
+    if (mod) {
+        server.moduleGraph.invalidateModule(mod);
+        return [mod];
+    }
+    return undefined;
+};
+
 export function gtkxGSettings(): Plugin {
-    let schemaDir: string | null = null;
-    let isBuild = false;
-    const trackedSchemas = new Map<string, string>();
-    const buildSchemas = new Map<string, string>();
-
-    const ensureSchemaDir = (): string => {
-        if (!schemaDir) {
-            schemaDir = mkdtempSync(join(tmpdir(), "gtkx-schemas-"));
-        }
-        return schemaDir;
-    };
-
-    const compile = (): void => {
-        if (!schemaDir) return;
-        execFileSync("glib-compile-schemas", [schemaDir]);
-
-        const existing = process.env.GSETTINGS_SCHEMA_DIR;
-        process.env.GSETTINGS_SCHEMA_DIR = existing ? `${schemaDir}:${existing}` : schemaDir;
+    const state: PluginState = {
+        schemaDir: null,
+        isBuild: false,
+        trackedSchemas: new Map(),
+        buildSchemas: new Map(),
     };
 
     return {
@@ -60,7 +167,7 @@ export function gtkxGSettings(): Plugin {
         enforce: "pre",
 
         configResolved(config) {
-            isBuild = config.command === "build";
+            state.isBuild = config.command === "build";
         },
 
         async resolveId(source, importer, options) {
@@ -77,92 +184,17 @@ export function gtkxGSettings(): Plugin {
         },
 
         load(id) {
-            if (id === VIRTUAL_INIT) {
-                return [
-                    `import { dirname } from "node:path";`,
-                    `import { fileURLToPath } from "node:url";`,
-                    ``,
-                    `const bundleDir = dirname(fileURLToPath(import.meta.url));`,
-                    `const existing = process.env.GSETTINGS_SCHEMA_DIR;`,
-                    `process.env.GSETTINGS_SCHEMA_DIR = existing ? bundleDir + ":" + existing : bundleDir;`,
-                ].join("\n");
-            }
-
+            if (id === VIRTUAL_INIT) return renderInitModule();
             if (!id.startsWith(VIRTUAL_PREFIX)) return;
-
-            const filePath = id.slice(VIRTUAL_PREFIX.length);
-            const xml = readFileSync(filePath, "utf-8");
-            const fileName = basename(filePath);
-
-            if (isBuild) {
-                buildSchemas.set(filePath, fileName);
-                console.log(`[gtkx] Queued GSettings schema: ${fileName}`);
-            } else {
-                trackedSchemas.set(filePath, id);
-
-                const dir = ensureSchemaDir();
-                copyFileSync(filePath, join(dir, fileName));
-                compile();
-
-                console.log(`[gtkx] Compiled GSettings schema: ${fileName}`);
-            }
-
-            const schemaIds: string[] = [];
-            for (const match of xml.matchAll(SCHEMA_ID_RE)) {
-                if (match[1]) schemaIds.push(match[1]);
-            }
-
-            if (schemaIds.length === 0) {
-                this.error(`No <schema id="..."> found in ${fileName}`);
-            }
-
-            const exports = [`export default ${JSON.stringify(schemaIds[0])};`];
-            for (const schemaId of schemaIds) {
-                const exportName = schemaId.replaceAll(".", "_");
-                exports.push(`export const ${exportName} = ${JSON.stringify(schemaId)};`);
-            }
-
-            if (isBuild) {
-                return [`import ${JSON.stringify(VIRTUAL_INIT)};`, "", ...exports].join("\n");
-            }
-
-            return exports.join("\n");
+            return loadSchemaModule(this, state, id);
         },
 
         buildEnd() {
-            if (!isBuild || buildSchemas.size === 0) return;
-
-            const dir = mkdtempSync(join(tmpdir(), "gtkx-schemas-build-"));
-            for (const [filePath, fileName] of buildSchemas) {
-                copyFileSync(filePath, join(dir, fileName));
-            }
-            execFileSync("glib-compile-schemas", [dir]);
-
-            const compiled = readFileSync(join(dir, "gschemas.compiled"));
-            this.emitFile({
-                type: "asset",
-                fileName: "gschemas.compiled",
-                source: compiled,
-            });
-
-            console.log(`[gtkx] Compiled ${buildSchemas.size} GSettings schema(s)`);
+            emitCompiledSchemas(this, state);
         },
 
         handleHotUpdate({ file, server }) {
-            const virtualId = trackedSchemas.get(file);
-            if (!virtualId) return;
-
-            const dir = ensureSchemaDir();
-            copyFileSync(file, join(dir, basename(file)));
-            compile();
-
-            console.log(`[gtkx] Recompiled GSettings schema: ${basename(file)}`);
-
-            const mod = server.moduleGraph.getModuleById(virtualId);
-            if (mod) {
-                server.moduleGraph.invalidateModule(mod);
-                return [mod];
-            }
+            return handleSchemaHotUpdate(state, file, server);
         },
     };
 }

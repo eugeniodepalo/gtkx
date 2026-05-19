@@ -38,7 +38,7 @@ import { buildJsDocStructure } from "../../../utils/doc-formatter.js";
 import { partitionSupportedFunctions, partitionSupportedMethods } from "../../../utils/filtering.js";
 import { normalizeClassName, toCamelCase, toValidMemberName } from "../../../utils/naming.js";
 import { canAllocateRecord } from "../../../utils/record-filter.js";
-import { FieldBuilder } from "./field-builder.js";
+import { FieldBuilder, type FieldLayout } from "./field-builder.js";
 
 type RecordTypeMeta = {
     glibTypeName?: string;
@@ -105,6 +105,17 @@ type ArrayAccessorContext = {
  * field, its resolved member name and byte offset, the access flags, the
  * target class builder, and the optional bit placement for bitfield members.
  */
+/**
+ * Common inputs for record field accessor emitters.
+ */
+type FieldAccessorContext = {
+    field: GirField;
+    fieldName: string;
+    offset: number;
+    cls: ClassDeclarationBuilder;
+    methodNames: Set<string>;
+};
+
 type PrimitiveFieldAccessorOptions = {
     field: GirField;
     fieldName: string;
@@ -225,6 +236,25 @@ export class RecordGenerator {
         this.file.addImport("../../construction-meta.js", ["registerConstructionMeta"]);
         const structSize = this.fieldBuilder.calculateStructSize(record.fields, record.isUnion);
         const layout = this.fieldBuilder.calculateLayout(record.fields, false, record.isUnion);
+        const layoutByName = this.buildLayoutByName(layout);
+        const fieldEntries = this.collectConstructionFieldEntries(initFields, layoutByName);
+
+        this.file.addImport("../../native.js", ["t"]);
+
+        const recordName = normalizeClassName(record.name);
+        this.file.addRawBlock(
+            this.buildConstructionMetaWriter({
+                recordName,
+                glibTypeName,
+                structSize,
+                fieldEntries,
+            }),
+        );
+    }
+
+    private buildLayoutByName(
+        layout: FieldLayout[],
+    ): Map<string, { offset: number; bitOffset?: number; bitWidth?: number }> {
         const layoutByName = new Map<string, { offset: number; bitOffset?: number; bitWidth?: number }>();
         for (const item of layout) {
             layoutByName.set(item.field.name, {
@@ -233,7 +263,13 @@ export class RecordGenerator {
                 bitWidth: item.bitWidth,
             });
         }
+        return layoutByName;
+    }
 
+    private collectConstructionFieldEntries(
+        initFields: readonly GirField[],
+        layoutByName: Map<string, { offset: number; bitOffset?: number; bitWidth?: number }>,
+    ): Array<{ jsName: string; offset: number; ffiType: FfiTypeDescriptor; bitOffset?: number; bitWidth?: number }> {
         const fieldEntries: Array<{
             jsName: string;
             offset: number;
@@ -256,11 +292,23 @@ export class RecordGenerator {
                 bitWidth: placement.bitWidth,
             });
         }
+        return fieldEntries;
+    }
 
-        this.file.addImport("../../native.js", ["t"]);
-
-        const recordName = normalizeClassName(record.name);
-        this.file.addRawBlock((writer: Writer) => {
+    private buildConstructionMetaWriter(opts: {
+        recordName: string;
+        glibTypeName: string | undefined;
+        structSize: number;
+        fieldEntries: Array<{
+            jsName: string;
+            offset: number;
+            ffiType: FfiTypeDescriptor;
+            bitOffset?: number;
+            bitWidth?: number;
+        }>;
+    }): (writer: Writer) => void {
+        const { recordName, glibTypeName, structSize, fieldEntries } = opts;
+        return (writer: Writer) => {
             writer.writeLine("");
             writer.writeLine(`registerConstructionMeta(${recordName}, {`);
             writer.withIndent(() => {
@@ -288,7 +336,7 @@ export class RecordGenerator {
                 }
             });
             writer.writeLine("});");
-        });
+        };
     }
 
     private buildGTypeCall(cIdentifier: string, glibTypeName: string | undefined, recordName: string): string {
@@ -359,14 +407,14 @@ export class RecordGenerator {
         return [
             ...supported.map((ctor) => this.buildStaticFactoryMethodStructure(ctor, recordName, meta)),
             ...unsupported.map((ctor) =>
-                this.methodBody.buildStubStructure(
-                    toCamelCase(ctor.shadows ?? ctor.name),
-                    `${this.options.namespace}.${record.name}.${ctor.name}`,
-                    ctor.doc,
-                    this.options.namespace,
-                    true,
-                    ctor.parameters,
-                ),
+                this.methodBody.buildStubStructure({
+                    memberName: toCamelCase(ctor.shadows ?? ctor.name),
+                    qualifiedName: `${this.options.namespace}.${record.name}.${ctor.name}`,
+                    doc: ctor.doc,
+                    namespace: this.options.namespace,
+                    isStatic: true,
+                    parameters: ctor.parameters,
+                }),
             ),
         ];
     }
@@ -442,14 +490,14 @@ export class RecordGenerator {
                 return this.buildStaticFunctionStructure(func, recordName, originalName);
             }),
             ...unsupportedFunctions.map((func) =>
-                this.methodBody.buildStubStructure(
-                    toValidMemberName(toCamelCase(func.name)),
-                    `${this.options.namespace}.${originalName}.${func.name}`,
-                    func.doc,
-                    this.options.namespace,
-                    true,
-                    func.parameters,
-                ),
+                this.methodBody.buildStubStructure({
+                    memberName: toValidMemberName(toCamelCase(func.name)),
+                    qualifiedName: `${this.options.namespace}.${originalName}.${func.name}`,
+                    doc: func.doc,
+                    namespace: this.options.namespace,
+                    isStatic: true,
+                    parameters: func.parameters,
+                }),
             ),
         ];
     }
@@ -480,14 +528,14 @@ export class RecordGenerator {
                 return pair ? this.buildAsyncMethodStructure(pair, meta) : this.buildMethodStructure(method, meta);
             }),
             ...unsupported.map((method) =>
-                this.methodBody.buildStubStructure(
-                    toValidMemberName(toCamelCase(method.name)),
-                    `${this.options.namespace}.${method.name}`,
-                    method.doc,
-                    this.options.namespace,
-                    false,
-                    method.parameters,
-                ),
+                this.methodBody.buildStubStructure({
+                    memberName: toValidMemberName(toCamelCase(method.name)),
+                    qualifiedName: `${this.options.namespace}.${method.name}`,
+                    doc: method.doc,
+                    namespace: this.options.namespace,
+                    isStatic: false,
+                    parameters: method.parameters,
+                }),
             ),
         ];
     }
@@ -516,13 +564,13 @@ export class RecordGenerator {
             return SELF_TYPE_GOBJECT;
         }
         return meta.copyFunction && meta.freeFunction
-            ? fundamentalSelfType(
-                  this.options.sharedLibrary,
-                  meta.copyFunction,
-                  meta.freeFunction,
-                  instanceOwnership,
-                  className,
-              )
+            ? fundamentalSelfType({
+                  library: this.options.sharedLibrary,
+                  refFn: meta.copyFunction,
+                  unrefFn: meta.freeFunction,
+                  ownership: instanceOwnership,
+                  typeName: className,
+              })
             : boxedSelfType(className, this.options.sharedLibrary, meta.glibGetType, instanceOwnership);
     }
 
@@ -541,53 +589,44 @@ export class RecordGenerator {
         return fieldName === "id" ? "id_" : fieldName;
     }
 
-    private tryGenerateArrayField(
-        field: GirField,
-        fieldName: string,
-        offset: number,
-        fields: readonly GirField[],
-        cls: ClassDeclarationBuilder,
-        methodNames: Set<string>,
-    ): boolean {
+    private tryGenerateArrayField(ctx: FieldAccessorContext, fields: readonly GirField[]): boolean {
+        const { field } = ctx;
         if (!field.type.isArray || !field.type.elementType) return false;
 
+        if (this.tryGenerateZeroTerminatedArrayField(ctx)) return true;
+
         const elementTypeName = String(field.type.elementType.name);
-
-        if (field.type.fixedSize === undefined && field.type.sizeParamIndex === undefined) {
-            const mapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-            if (
-                !mapping.unsafe &&
-                mapping.ffi.type === "array" &&
-                mapping.ffi.kind === "array" &&
-                this.generateZeroTerminatedArrayFieldAccessor(field, fieldName, offset, mapping, cls, methodNames)
-            ) {
-                return true;
-            }
-        }
-
         if (
             this.fieldBuilder.isNestedStructType(elementTypeName) ||
             this.fieldBuilder.hasReadableStructLayout(elementTypeName)
         ) {
-            this.generateArrayFieldAccessors(field, fieldName, offset, fields, cls, methodNames);
+            this.generateArrayFieldAccessors(ctx, fields);
             return true;
         }
         if (field.type.fixedSize !== undefined && isPrimitiveFieldType(elementTypeName)) {
-            this.generateFixedPrimitiveArrayAccessor(field, fieldName, offset, cls, methodNames);
+            this.generateFixedPrimitiveArrayAccessor(ctx);
             return true;
         }
         if (field.type.fixedSize === undefined && field.type.sizeParamIndex !== undefined) {
-            this.generateSizedArrayFieldAccessor(field, fieldName, offset, fields, cls, methodNames);
+            this.generateSizedArrayFieldAccessor(ctx, fields);
             return true;
         }
         if (field.type.fixedSize === undefined && STRING_ELEMENT_TYPE_NAMES.has(elementTypeName)) {
-            this.generateStringArrayFieldAccessor(field, fieldName, offset, cls, methodNames);
+            this.generateStringArrayFieldAccessor(ctx);
             return true;
         }
         if (this.isLinkedListField(field)) {
-            this.generateLinkedListFieldAccessor(field, fieldName, offset, cls, methodNames);
+            this.generateLinkedListFieldAccessor(ctx);
         }
         return true;
+    }
+
+    private tryGenerateZeroTerminatedArrayField(ctx: FieldAccessorContext): boolean {
+        const { field } = ctx;
+        if (field.type.fixedSize !== undefined || field.type.sizeParamIndex !== undefined) return false;
+        const mapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        if (mapping.unsafe || mapping.ffi.type !== "array" || mapping.ffi.kind !== "array") return false;
+        return this.generateZeroTerminatedArrayFieldAccessor(ctx, mapping);
     }
 
     /**
@@ -622,14 +661,8 @@ export class RecordGenerator {
      *
      * @returns `true` when an accessor was emitted.
      */
-    private generateZeroTerminatedArrayFieldAccessor(
-        field: GirField,
-        fieldName: string,
-        offset: number,
-        mapping: MappedType,
-        cls: ClassDeclarationBuilder,
-        methodNames: Set<string>,
-    ): boolean {
+    private generateZeroTerminatedArrayFieldAccessor(ctx: FieldAccessorContext, mapping: MappedType): boolean {
+        const { field, fieldName, offset, cls, methodNames } = ctx;
         if (field.readable === false || methodNames.has(fieldName)) return false;
         const isWritable = field.writable !== false && !methodNames.has(fieldName);
         addTypeImports(this.file, mapping.imports, this.selfNames);
@@ -652,13 +685,8 @@ export class RecordGenerator {
         return cType.startsWith("GList") || cType.startsWith("GSList");
     }
 
-    private generateLinkedListFieldAccessor(
-        field: GirField,
-        fieldName: string,
-        offset: number,
-        cls: ClassDeclarationBuilder,
-        methodNames: Set<string>,
-    ): void {
+    private generateLinkedListFieldAccessor(ctx: FieldAccessorContext): void {
+        const { field, fieldName, offset, cls, methodNames } = ctx;
         if (field.readable === false || methodNames.has(fieldName)) return;
         const mapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
         if (mapping.ffi.type !== "array") return;
@@ -689,13 +717,8 @@ export class RecordGenerator {
      * stored pointer and the setter writes one back. This mirrors node-gtk,
      * which surfaces callback struct fields as members.
      */
-    private generateCallbackFieldAccessor(
-        field: GirField,
-        fieldName: string,
-        offset: number,
-        cls: ClassDeclarationBuilder,
-        methodNames: Set<string>,
-    ): void {
+    private generateCallbackFieldAccessor(ctx: FieldAccessorContext): void {
+        const { field, fieldName, offset, cls, methodNames } = ctx;
         if (field.readable === false || methodNames.has(fieldName)) return;
         const isWritable = field.writable !== false && !methodNames.has(fieldName);
         this.file.addImport("../../native.js", isWritable ? ["read", "t", "write"] : ["read", "t"]);
@@ -720,13 +743,8 @@ export class RecordGenerator {
         );
     }
 
-    private generateStringArrayFieldAccessor(
-        field: GirField,
-        fieldName: string,
-        offset: number,
-        cls: ClassDeclarationBuilder,
-        methodNames: Set<string>,
-    ): void {
+    private generateStringArrayFieldAccessor(ctx: FieldAccessorContext): void {
+        const { field, fieldName, offset, cls, methodNames } = ctx;
         if (field.readable === false || methodNames.has(fieldName)) return;
         const isWritable = field.writable !== false && !methodNames.has(fieldName);
         this.file.addImport("../../native.js", isWritable ? ["read", "t", "write"] : ["read", "t"]);
@@ -762,14 +780,8 @@ export class RecordGenerator {
      * The pointer is dereferenced and `length` elements are read, mirroring
      * node-gtk, which surfaces such fields as arrays.
      */
-    private generateSizedArrayFieldAccessor(
-        field: GirField,
-        fieldName: string,
-        offset: number,
-        allFields: readonly GirField[],
-        cls: ClassDeclarationBuilder,
-        methodNames: Set<string>,
-    ): void {
+    private generateSizedArrayFieldAccessor(ctx: FieldAccessorContext, allFields: readonly GirField[]): void {
+        const { field, fieldName, offset, cls, methodNames } = ctx;
         if (field.readable === false || methodNames.has(fieldName)) return;
         const elementType = field.type.elementType;
         const sizeParamIndex = field.type.sizeParamIndex;
@@ -823,13 +835,8 @@ export class RecordGenerator {
         );
     }
 
-    private generateFixedPrimitiveArrayAccessor(
-        field: GirField,
-        fieldName: string,
-        offset: number,
-        cls: ClassDeclarationBuilder,
-        methodNames: Set<string>,
-    ): void {
+    private generateFixedPrimitiveArrayAccessor(ctx: FieldAccessorContext): void {
+        const { field, fieldName, offset, cls, methodNames } = ctx;
         const elementType = field.type.elementType;
         const fixedSize = field.type.fixedSize;
         if (!elementType || fixedSize === undefined) return;
@@ -934,27 +941,25 @@ export class RecordGenerator {
                 type: typeMapping.ts,
                 getBody: (writer: Writer): void => {
                     writer.write("return ");
-                    this.appendLeafRead(
-                        writer,
-                        "getHandle(this)",
-                        typeMapping.ffi,
-                        String(offset),
+                    this.appendLeafRead(writer, {
+                        handleExpr: "getHandle(this)",
+                        ffi: typeMapping.ffi,
+                        offsetExpr: String(offset),
                         bitOffset,
                         bitWidth,
-                    );
+                    });
                     writer.writeLine(";");
                 },
                 setBody: isWritable
                     ? (writer: Writer): void => {
-                          this.writeLeafWrite(
-                              writer,
-                              "getHandle(this)",
-                              typeMapping.ffi,
-                              String(offset),
-                              "value",
+                          this.writeLeafWrite(writer, {
+                              handleExpr: "getHandle(this)",
+                              ffi: typeMapping.ffi,
+                              offsetExpr: String(offset),
+                              valueExpr: "value",
                               bitOffset,
                               bitWidth,
-                          );
+                          });
                       }
                     : undefined,
                 doc: bitDoc?.[0]?.description,
@@ -1008,12 +1013,9 @@ export class RecordGenerator {
      */
     private appendLeafRead(
         writer: Writer,
-        handleExpr: string,
-        ffi: FfiTypeDescriptor,
-        offsetExpr: string,
-        bitOffset?: number,
-        bitWidth?: number,
+        opts: { handleExpr: string; ffi: FfiTypeDescriptor; offsetExpr: string; bitOffset?: number; bitWidth?: number },
     ): void {
+        const { handleExpr, ffi, offsetExpr, bitOffset, bitWidth } = opts;
         if (bitWidth === undefined) {
             writer.write(`read(${handleExpr}, `);
             writeFfiTypeExpression(writer, ffi);
@@ -1033,13 +1035,16 @@ export class RecordGenerator {
      */
     private writeLeafWrite(
         writer: Writer,
-        handleExpr: string,
-        ffi: FfiTypeDescriptor,
-        offsetExpr: string,
-        valueExpr: string,
-        bitOffset?: number,
-        bitWidth?: number,
+        opts: {
+            handleExpr: string;
+            ffi: FfiTypeDescriptor;
+            offsetExpr: string;
+            valueExpr: string;
+            bitOffset?: number;
+            bitWidth?: number;
+        },
     ): void {
+        const { handleExpr, ffi, offsetExpr, valueExpr, bitOffset, bitWidth } = opts;
         writer.write(`write(${handleExpr}, `);
         writeFfiTypeExpression(writer, ffi);
         if (bitWidth === undefined) {
@@ -1055,37 +1060,39 @@ export class RecordGenerator {
         );
     }
 
-    private generateField(
-        field: GirField,
-        offset: number,
-        fields: readonly GirField[],
-        cls: ClassDeclarationBuilder,
-        methodNames: Set<string>,
-        bitOffset?: number,
-        bitWidth?: number,
-    ): void {
+    private generateField(opts: {
+        field: GirField;
+        offset: number;
+        fields: readonly GirField[];
+        cls: ClassDeclarationBuilder;
+        methodNames: Set<string>;
+        bitOffset?: number;
+        bitWidth?: number;
+    }): void {
+        const { field, offset, fields, cls, methodNames, bitOffset, bitWidth } = opts;
         const fieldName = this.resolveFieldName(field);
+        const ctx: FieldAccessorContext = { field, fieldName, offset, cls, methodNames };
 
-        if (this.tryGenerateArrayField(field, fieldName, offset, fields, cls, methodNames)) return;
+        if (this.tryGenerateArrayField(ctx, fields)) return;
 
         const typeName = String(field.type.name);
 
         if (this.isCallbackFieldType(typeName)) {
-            this.generateCallbackFieldAccessor(field, fieldName, offset, cls, methodNames);
+            this.generateCallbackFieldAccessor(ctx);
             return;
         }
 
         if (this.fieldBuilder.isInlineNestedStruct(field)) {
-            this.generateNestedStructAccessors(field, fieldName, offset, cls, methodNames);
+            this.generateNestedStructAccessors(ctx);
             return;
         }
 
         if (this.fieldBuilder.isNestedStructType(typeName)) {
             const isPointerToStruct = field.type.cType?.includes("*") === true;
             if (isPointerToStruct) {
-                this.generatePointerToStructFieldAccessor(field, fieldName, typeName, offset, cls, methodNames);
+                this.generatePointerToStructFieldAccessor(ctx);
             } else {
-                this.generateInlineStructFieldAccessor(field, fieldName, typeName, offset, cls, methodNames);
+                this.generateInlineStructFieldAccessor(ctx, typeName);
             }
             return;
         }
@@ -1118,15 +1125,15 @@ export class RecordGenerator {
 
         for (const layoutItem of layout) {
             if (!layoutItem) continue;
-            this.generateField(
-                layoutItem.field,
-                layoutItem.offset,
+            this.generateField({
+                field: layoutItem.field,
+                offset: layoutItem.offset,
                 fields,
                 cls,
                 methodNames,
-                layoutItem.bitOffset,
-                layoutItem.bitWidth,
-            );
+                bitOffset: layoutItem.bitOffset,
+                bitWidth: layoutItem.bitWidth,
+            });
         }
     }
 
@@ -1136,14 +1143,8 @@ export class RecordGenerator {
      * exposes such fields as struct-typed members regardless of whether the
      * pointed-to type is self-referential.
      */
-    private generatePointerToStructFieldAccessor(
-        field: GirField,
-        fieldName: string,
-        _typeName: string,
-        offset: number,
-        cls: ClassDeclarationBuilder,
-        methodNames: Set<string>,
-    ): void {
+    private generatePointerToStructFieldAccessor(ctx: FieldAccessorContext): void {
+        const { field, fieldName, offset, cls, methodNames } = ctx;
         if (field.readable === false || methodNames.has(fieldName)) return;
         const mapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
         if (mapping.ffi.type !== "struct") return;
@@ -1168,14 +1169,8 @@ export class RecordGenerator {
      * The struct is read whole from its byte offset, mirroring node-gtk,
      * which exposes such fields as a single struct-typed member.
      */
-    private generateInlineStructFieldAccessor(
-        field: GirField,
-        fieldName: string,
-        typeName: string,
-        offset: number,
-        cls: ClassDeclarationBuilder,
-        methodNames: Set<string>,
-    ): void {
+    private generateInlineStructFieldAccessor(ctx: FieldAccessorContext, typeName: string): void {
+        const { field, fieldName, offset, cls, methodNames } = ctx;
         if (field.readable === false || methodNames.has(fieldName)) return;
         const mapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
         if (mapping.ffi.type !== "struct") return;
@@ -1200,20 +1195,15 @@ export class RecordGenerator {
         );
     }
 
-    private generateNestedStructAccessors(
-        field: GirField,
-        fieldName: string,
-        baseOffset: number,
-        cls: ClassDeclarationBuilder,
-        methodNames: Set<string>,
-    ): void {
+    private generateNestedStructAccessors(ctx: FieldAccessorContext): void {
+        const { field, fieldName, offset: baseOffset, cls, methodNames } = ctx;
         const typeName = String(field.type.name);
         const nestedLayout = this.fieldBuilder.getNestedStructLayout(typeName);
         if (!nestedLayout) return;
 
         const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
         if (typeMapping.unsafe) {
-            this.generateInlineStructFieldAccessor(field, fieldName, typeName, baseOffset, cls, methodNames);
+            this.generateInlineStructFieldAccessor(ctx, typeName);
             return;
         }
         addTypeImports(this.file, typeMapping.imports, this.selfNames);
@@ -1222,7 +1212,28 @@ export class RecordGenerator {
         const isReadable = field.readable !== false && !methodNames.has(fieldName);
         const isWritable = field.writable !== false && !methodNames.has(fieldName);
 
-        const writableFields = nestedLayout
+        const writableFields = this.collectNestedWritableFields(nestedLayout, baseOffset);
+        if (!isReadable) return;
+
+        const writable = isWritable && writableFields.length > 0;
+        this.file.addImport("../../native.js", writable ? ["read", "t", "write"] : ["read", "t"]);
+        const doc = buildJsDocStructure(field.doc, this.options.namespace);
+
+        cls.addAccessor(
+            accessor(fieldName, {
+                type: tsTypeName,
+                getBody: this.buildNestedStructGetBody(tsTypeName, writableFields),
+                setBody: writable ? this.buildNestedStructSetBody(writableFields) : undefined,
+                doc: doc?.[0]?.description,
+            }),
+        );
+    }
+
+    private collectNestedWritableFields(
+        nestedLayout: StructLayout,
+        baseOffset: number,
+    ): Array<{ fieldName: string; offset: number; bitOffset?: number; bitWidth?: number; mapping: MappedType }> {
+        return nestedLayout
             .filter(
                 (item) =>
                     this.fieldBuilder.isGeneratableFieldType(String(item.field.type.name)) &&
@@ -1236,66 +1247,50 @@ export class RecordGenerator {
                 mapping: this.ffiMapper.mapType(item.field.type, false, item.field.type.transferOwnership),
             }))
             .filter((entry) => !entry.mapping.unsafe);
+    }
 
-        if (!isReadable) return;
-
-        const writable = isWritable && writableFields.length > 0;
-        this.file.addImport("../../native.js", writable ? ["read", "t", "write"] : ["read", "t"]);
-        const doc = buildJsDocStructure(field.doc, this.options.namespace);
-
-        const getBody = (writer: Writer): void => {
+    private buildNestedStructGetBody(
+        tsTypeName: string,
+        writableFields: ReturnType<RecordGenerator["collectNestedWritableFields"]>,
+    ): (writer: Writer) => void {
+        return (writer: Writer): void => {
             writer.writeLine(`return new ${tsTypeName}({`);
             writer.withIndent(() => {
                 for (const nested of writableFields) {
                     writer.write(`${nested.fieldName}: `);
-                    this.appendLeafRead(
-                        writer,
-                        "getHandle(this)",
-                        nested.mapping.ffi,
-                        String(nested.offset),
-                        nested.bitOffset,
-                        nested.bitWidth,
-                    );
+                    this.appendLeafRead(writer, {
+                        handleExpr: "getHandle(this)",
+                        ffi: nested.mapping.ffi,
+                        offsetExpr: String(nested.offset),
+                        bitOffset: nested.bitOffset,
+                        bitWidth: nested.bitWidth,
+                    });
                     writer.writeLine(",");
                 }
             });
             writer.writeLine("});");
         };
-
-        const setBody = writable
-            ? (writer: Writer): void => {
-                  for (const nested of writableFields) {
-                      this.writeLeafWrite(
-                          writer,
-                          "getHandle(this)",
-                          nested.mapping.ffi,
-                          String(nested.offset),
-                          `value.${nested.fieldName}`,
-                          nested.bitOffset,
-                          nested.bitWidth,
-                      );
-                  }
-              }
-            : undefined;
-
-        cls.addAccessor(
-            accessor(fieldName, {
-                type: tsTypeName,
-                getBody,
-                setBody,
-                doc: doc?.[0]?.description,
-            }),
-        );
     }
 
-    private generateArrayFieldAccessors(
-        field: GirField,
-        fieldName: string,
-        ptrOffset: number,
-        allFields: readonly GirField[],
-        cls: ClassDeclarationBuilder,
-        methodNames: Set<string>,
-    ): void {
+    private buildNestedStructSetBody(
+        writableFields: ReturnType<RecordGenerator["collectNestedWritableFields"]>,
+    ): (writer: Writer) => void {
+        return (writer: Writer): void => {
+            for (const nested of writableFields) {
+                this.writeLeafWrite(writer, {
+                    handleExpr: "getHandle(this)",
+                    ffi: nested.mapping.ffi,
+                    offsetExpr: String(nested.offset),
+                    valueExpr: `value.${nested.fieldName}`,
+                    bitOffset: nested.bitOffset,
+                    bitWidth: nested.bitWidth,
+                });
+            }
+        };
+    }
+
+    private generateArrayFieldAccessors(ctx: FieldAccessorContext, allFields: readonly GirField[]): void {
+        const { field, fieldName, offset: ptrOffset, cls, methodNames } = ctx;
         const elementType = field.type.elementType;
         if (!elementType) return;
 
@@ -1312,15 +1307,7 @@ export class RecordGenerator {
         const isWritable = field.writable !== false && !methodNames.has(fieldName);
         if (!isReadable) return;
 
-        const [elementNamespace, elementName] = elementTypeName.includes(".")
-            ? elementTypeName.split(".")
-            : [this.options.namespace, elementTypeName];
-        const elementRecord =
-            elementNamespace && elementName
-                ? this.repo?.getNamespace(elementNamespace)?.records.get(elementName)
-                : undefined;
-        const wrapElement = elementRecord?.isBoxed() === true;
-
+        const wrapElement = this.resolveArrayElementWrap(elementTypeName);
         const lengthExpr = this.resolveArrayLengthExpression(field, allFields);
         if (lengthExpr === null) return;
 
@@ -1351,6 +1338,17 @@ export class RecordGenerator {
                 doc: doc?.[0]?.description,
             }),
         );
+    }
+
+    private resolveArrayElementWrap(elementTypeName: string): boolean {
+        const [elementNamespace, elementName] = elementTypeName.includes(".")
+            ? elementTypeName.split(".")
+            : [this.options.namespace, elementTypeName];
+        const elementRecord =
+            elementNamespace && elementName
+                ? this.repo?.getNamespace(elementNamespace)?.records.get(elementName)
+                : undefined;
+        return elementRecord?.isBoxed() === true;
     }
 
     /**
@@ -1427,14 +1425,13 @@ export class RecordGenerator {
     private writeArrayElementEntryRead(writer: Writer, entry: ArrayElementEntry): void {
         if (entry.kind === "primitive") {
             writer.write(`${entry.leaf.name}: `);
-            this.appendLeafRead(
-                writer,
-                "array",
-                entry.leaf.ffi,
-                `base + ${entry.leaf.offset}`,
-                entry.leaf.bitOffset,
-                entry.leaf.bitWidth,
-            );
+            this.appendLeafRead(writer, {
+                handleExpr: "array",
+                ffi: entry.leaf.ffi,
+                offsetExpr: `base + ${entry.leaf.offset}`,
+                bitOffset: entry.leaf.bitOffset,
+                bitWidth: entry.leaf.bitWidth,
+            });
             writer.writeLine(",");
             return;
         }
@@ -1442,7 +1439,13 @@ export class RecordGenerator {
         writer.withIndent(() => {
             for (const sub of entry.subFields) {
                 writer.write(`${sub.name}: `);
-                this.appendLeafRead(writer, "array", sub.ffi, `base + ${sub.offset}`, sub.bitOffset, sub.bitWidth);
+                this.appendLeafRead(writer, {
+                    handleExpr: "array",
+                    ffi: sub.ffi,
+                    offsetExpr: `base + ${sub.offset}`,
+                    bitOffset: sub.bitOffset,
+                    bitWidth: sub.bitWidth,
+                });
                 writer.writeLine(",");
             }
         });
@@ -1455,27 +1458,25 @@ export class RecordGenerator {
      */
     private writeArrayElementEntryWrite(writer: Writer, entry: ArrayElementEntry): void {
         if (entry.kind === "primitive") {
-            this.writeLeafWrite(
-                writer,
-                "array",
-                entry.leaf.ffi,
-                `base + ${entry.leaf.offset}`,
-                `element.${entry.leaf.name}`,
-                entry.leaf.bitOffset,
-                entry.leaf.bitWidth,
-            );
+            this.writeLeafWrite(writer, {
+                handleExpr: "array",
+                ffi: entry.leaf.ffi,
+                offsetExpr: `base + ${entry.leaf.offset}`,
+                valueExpr: `element.${entry.leaf.name}`,
+                bitOffset: entry.leaf.bitOffset,
+                bitWidth: entry.leaf.bitWidth,
+            });
             return;
         }
         for (const sub of entry.subFields) {
-            this.writeLeafWrite(
-                writer,
-                "array",
-                sub.ffi,
-                `base + ${sub.offset}`,
-                `element.${entry.name}.${sub.name}`,
-                sub.bitOffset,
-                sub.bitWidth,
-            );
+            this.writeLeafWrite(writer, {
+                handleExpr: "array",
+                ffi: sub.ffi,
+                offsetExpr: `base + ${sub.offset}`,
+                valueExpr: `element.${entry.name}.${sub.name}`,
+                bitOffset: sub.bitOffset,
+                bitWidth: sub.bitWidth,
+            });
         }
     }
 

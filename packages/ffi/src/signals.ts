@@ -97,6 +97,26 @@ const connectClosureFallback = (
 };
 
 /**
+ * Identifies the emitting object and the class whose signal table to consult.
+ *
+ * Passed as the first argument to {@link connectSignal} and {@link emitSignal}.
+ */
+export type SignalTarget = {
+    readonly instance: object;
+    readonly cls: NativeClass;
+};
+
+/**
+ * Optional configuration for {@link connectSignal}.
+ */
+export type ConnectSignalOptions = {
+    /** When true, run the handler after the default handler. */
+    readonly after?: boolean | undefined;
+    /** The inherited `connect`, used for non-own signals. */
+    readonly parentConnect?: (signal: string, handler: SignalHandler, after?: boolean) => number;
+};
+
+/**
  * Runtime implementation of a generated class's `connect` method.
  *
  * Resolves the signal's {@link SignalDescriptor}, wraps the handler in a
@@ -105,22 +125,20 @@ const connectClosureFallback = (
  * (the root `GObject.Object`), a generic closure connection is used so
  * arbitrary signal names still work.
  *
- * @param instance - The emitting object
- * @param cls - The class whose signal table to consult
+ * @param target - The emitting object and the class whose signal table to consult
  * @param signal - The signal name
  * @param handler - The user handler
- * @param after - When true, run after the default handler
- * @param parentConnect - The inherited `connect`, used for non-own signals
+ * @param options - Optional `after` flag and inherited `connect` fallback
  * @returns The handler connection id
  */
 export function connectSignal(
-    instance: object,
-    cls: NativeClass,
+    target: SignalTarget,
     signal: string,
     handler: SignalHandler,
-    after: boolean | undefined,
-    parentConnect?: (signal: string, handler: SignalHandler, after?: boolean) => number,
+    options: ConnectSignalOptions = {},
 ): number {
+    const { instance, cls } = target;
+    const { after, parentConnect } = options;
     const descriptor = signalMetaByClass.get(cls)?.signals.get(signal);
     if (!descriptor) {
         return parentConnect
@@ -150,19 +168,18 @@ export function connectSignal(
  * table fall through to `parentEmit`; when no parent is supplied (the root
  * `GObject.Object`) an unknown signal throws.
  *
- * @param instance - The emitting object
- * @param cls - The class whose signal table to consult
+ * @param target - The emitting object and the class whose signal table to consult
  * @param sigName - The signal name
  * @param args - The signal arguments
  * @param parentEmit - The inherited `emit`, used for non-own signals
  */
 export function emitSignal(
-    instance: object,
-    cls: NativeClass,
+    target: SignalTarget,
     sigName: string,
     args: readonly unknown[],
     parentEmit?: (sigName: string, ...args: unknown[]) => void,
 ): void {
+    const { instance, cls } = target;
     const meta = signalMetaByClass.get(cls);
     const descriptor = meta?.signals.get(sigName);
     if (!meta || !descriptor) {

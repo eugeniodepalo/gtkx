@@ -55,16 +55,54 @@ const { fn } = t;
 
 export type { FontExtents, TextExtents } from "./common.js";
 
+/**
+ * Three absolute control points of a cubic Bézier segment, used by
+ * {@link Context.curveTo}.
+ */
+export type BezierCurve = {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    x3: number;
+    y3: number;
+};
+
+/**
+ * Three relative control points of a cubic Bézier segment, used by
+ * {@link Context.relCurveTo}.
+ */
+export type RelativeBezierCurve = {
+    dx1: number;
+    dy1: number;
+    dx2: number;
+    dy2: number;
+    dx3: number;
+    dy3: number;
+};
+
+/**
+ * Centre, radius, and angular span shared by {@link Context.arc} and
+ * {@link Context.arcNegative}.
+ */
+export type ArcParams = {
+    xc: number;
+    yc: number;
+    radius: number;
+    angle1: number;
+    angle2: number;
+};
+
 declare module "../generated/cairo/cairo.js" {
     interface Context {
         moveTo(x: number, y: number): void;
         lineTo(x: number, y: number): void;
         relMoveTo(dx: number, dy: number): void;
         relLineTo(dx: number, dy: number): void;
-        relCurveTo(dx1: number, dy1: number, dx2: number, dy2: number, dx3: number, dy3: number): void;
-        curveTo(x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void;
-        arc(xc: number, yc: number, radius: number, angle1: number, angle2: number): void;
-        arcNegative(xc: number, yc: number, radius: number, angle1: number, angle2: number): void;
+        relCurveTo(curve: RelativeBezierCurve): void;
+        curveTo(curve: BezierCurve): void;
+        arc(params: ArcParams): void;
+        arcNegative(params: ArcParams): void;
         rectangle(x: number, y: number, width: number, height: number): void;
         closePath(): void;
         newPath(): void;
@@ -209,14 +247,7 @@ const cairo_rel_curve_to = fn(
     ],
     t.void,
 );
-Context.prototype.relCurveTo = function (
-    dx1: number,
-    dy1: number,
-    dx2: number,
-    dy2: number,
-    dx3: number,
-    dy3: number,
-): void {
+Context.prototype.relCurveTo = function ({ dx1, dy1, dx2, dy2, dx3, dy3 }: RelativeBezierCurve): void {
     cairo_rel_curve_to(getHandle(this), dx1, dy1, dx2, dy2, dx3, dy3);
 };
 
@@ -234,7 +265,7 @@ const cairo_curve_to = fn(
     ],
     t.void,
 );
-Context.prototype.curveTo = function (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void {
+Context.prototype.curveTo = function ({ x1, y1, x2, y2, x3, y3 }: BezierCurve): void {
     cairo_curve_to(getHandle(this), x1, y1, x2, y2, x3, y3);
 };
 
@@ -251,7 +282,7 @@ const cairo_arc = fn(
     ],
     t.void,
 );
-Context.prototype.arc = function (xc: number, yc: number, radius: number, angle1: number, angle2: number): void {
+Context.prototype.arc = function ({ xc, yc, radius, angle1, angle2 }: ArcParams): void {
     cairo_arc(getHandle(this), xc, yc, radius, angle1, angle2);
 };
 
@@ -268,13 +299,7 @@ const cairo_arc_negative = fn(
     ],
     t.void,
 );
-Context.prototype.arcNegative = function (
-    xc: number,
-    yc: number,
-    radius: number,
-    angle1: number,
-    angle2: number,
-): void {
+Context.prototype.arcNegative = function ({ xc, yc, radius, angle1, angle2 }: ArcParams): void {
     cairo_arc_negative(getHandle(this), xc, yc, radius, angle1, angle2);
 };
 
@@ -956,7 +981,7 @@ Context.prototype.appendPath = function (data: PathData[]): void {
                 this.lineTo(item.x, item.y);
                 break;
             case "curveTo":
-                this.curveTo(item.x1, item.y1, item.x2, item.y2, item.x3, item.y3);
+                this.curveTo({ x1: item.x1, y1: item.y1, x2: item.x2, y2: item.y2, x3: item.x3, y3: item.y3 });
                 break;
             case "closePath":
                 this.closePath();

@@ -13,6 +13,19 @@ export type MenuModelProps = {
 
 export type MenuType = "root" | "item" | "section" | "submenu";
 
+/**
+ * Options for constructing a {@link MenuModel}.
+ *
+ * @public
+ */
+export interface MenuModelOptions {
+    readonly type: MenuType;
+    readonly props: MenuModelProps;
+    readonly rootContainer: Container;
+    readonly actionMap?: Gio.ActionMap;
+    readonly application?: Gtk.Application;
+}
+
 export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel> {
     private actionMap: Gio.ActionMap | null = null;
     private actionPrefix: string;
@@ -21,13 +34,8 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
     private readonly application: Gtk.Application | null = null;
     private action: Gio.SimpleAction | null = null;
 
-    constructor(
-        type: MenuType,
-        props: MenuModelProps,
-        rootContainer: Container,
-        actionMap?: Gio.ActionMap,
-        application?: Gtk.Application,
-    ) {
+    constructor(options: MenuModelOptions) {
+        const { type, props, rootContainer, actionMap, application } = options;
         super("", props, undefined, rootContainer);
         this.type = type;
         this.actionMap = actionMap ?? null;
@@ -109,11 +117,11 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
     public createAction(): void {
         if (this.action) {
-            this.signalStore.set(this, this.action, "activate", null);
+            this.signalStore.set({ owner: this, obj: this.action, signal: "activate", handler: null });
         }
 
         this.action = Gio.SimpleAction.new(this.getId(), null);
-        this.signalStore.set(this, this.action, "activate", this.getOnActivate());
+        this.signalStore.set({ owner: this, obj: this.action, signal: "activate", handler: this.getOnActivate() });
         this.getActionMap().addAction(this.action);
 
         if (this.application && this.props.accels) {
@@ -128,7 +136,7 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
 
         if (this.action) {
             this.getActionMap().removeAction(this.getId());
-            this.signalStore.set(this, this.action, "activate", null);
+            this.signalStore.set({ owner: this, obj: this.action, signal: "activate", handler: null });
             this.action = null;
         }
     }
@@ -275,7 +283,12 @@ export class MenuModel extends VirtualNode<MenuModelProps, MenuModel, MenuModel>
         }
 
         if (oldProps.onActivate !== newProps.onActivate) {
-            this.signalStore.set(this, this.getAction(), "activate", newProps.onActivate);
+            this.signalStore.set({
+                owner: this,
+                obj: this.getAction(),
+                signal: "activate",
+                handler: newProps.onActivate,
+            });
         }
 
         if (oldProps.accels !== newProps.accels) {

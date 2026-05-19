@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { writeGeneratedDir } from "../../src/utils/output-writer.js";
 
-describe("writeGeneratedDir", () => {
+describe("writeGeneratedDir (1a)", () => {
     let outputDir: string;
 
     beforeEach(() => {
@@ -40,6 +40,18 @@ describe("writeGeneratedDir", () => {
         expect(readFileSync(join(outputDir, "gtk/box.ts"), "utf8")).toBe("// box");
         expect(readFileSync(join(outputDir, "adw/window.ts"), "utf8")).toBe("// window");
     });
+});
+
+describe("writeGeneratedDir (1b)", () => {
+    let outputDir: string;
+
+    beforeEach(() => {
+        outputDir = mkdtempSync(join(tmpdir(), "gtkx-writer-test-"));
+    });
+
+    afterEach(() => {
+        rmSync(outputDir, { recursive: true, force: true });
+    });
 
     it("wipes prior contents so removed namespaces do not persist", () => {
         const stalePath = join(outputDir, "stale", "old.ts");
@@ -60,6 +72,18 @@ describe("writeGeneratedDir", () => {
         writeGeneratedDir(target, files);
 
         expect(readFileSync(join(target, "index.ts"), "utf8")).toBe("// index");
+    });
+});
+
+describe("writeGeneratedDir (2)", () => {
+    let outputDir: string;
+
+    beforeEach(() => {
+        outputDir = mkdtempSync(join(tmpdir(), "gtkx-writer-test-"));
+    });
+
+    afterEach(() => {
+        rmSync(outputDir, { recursive: true, force: true });
     });
 
     it("accepts an empty file map and produces an empty directory", () => {
@@ -106,6 +130,18 @@ describe("writeGeneratedDir", () => {
 
         expect(existsSync(sentinel)).toBe(false);
         expect(readFileSync(join(target, "a.ts"), "utf8")).toBe("2");
+    });
+});
+
+describe("writeGeneratedDir (3)", () => {
+    let outputDir: string;
+
+    beforeEach(() => {
+        outputDir = mkdtempSync(join(tmpdir(), "gtkx-writer-test-"));
+    });
+
+    afterEach(() => {
+        rmSync(outputDir, { recursive: true, force: true });
     });
 
     it("rewrites when the output directory was removed externally", () => {

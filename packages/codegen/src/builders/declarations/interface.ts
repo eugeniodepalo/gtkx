@@ -57,6 +57,15 @@ export class InterfaceDeclarationBuilder implements Builder {
     /** @inheritdoc */
     write(writer: Writer): void {
         if (writer.getMode() === "js") return;
+        this.writeHeader(writer);
+        writer.writeBlock(() => {
+            for (const prop of this.properties) this.writeProperty(writer, prop);
+            for (const m of this.methods) this.writeMethod(writer, m);
+        });
+        writer.newLine();
+    }
+
+    private writeHeader(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
         if (this.opts.exported) writer.write("export ");
         writer.write(`interface ${this.name}`);
@@ -64,31 +73,30 @@ export class InterfaceDeclarationBuilder implements Builder {
             writer.write(` extends ${this.opts.extends.join(", ")}`);
         }
         writer.write(" ");
-        writer.writeBlock(() => {
-            for (const prop of this.properties) {
-                writeJsDoc(writer, prop.doc);
-                if (prop.readonly) writer.write("readonly ");
-                writer.write(prop.name);
-                if (prop.optional) writer.write("?");
-                writer.write(": ");
-                writeWritable(writer, prop.type);
-                writer.writeLine(";");
-            }
-            for (const m of this.methods) {
-                writeJsDoc(writer, m.doc);
-                writer.write(`${m.name}(`);
-                if (m.params && m.params.length > 0) {
-                    writer.writeJoined(", ", m.params);
-                }
-                writer.write(")");
-                if (m.returnType) {
-                    writer.write(": ");
-                    writeWritable(writer, m.returnType);
-                }
-                writer.writeLine(";");
-            }
-        });
-        writer.newLine();
+    }
+
+    private writeProperty(writer: Writer, prop: InterfacePropertySignature): void {
+        writeJsDoc(writer, prop.doc);
+        if (prop.readonly) writer.write("readonly ");
+        writer.write(prop.name);
+        if (prop.optional) writer.write("?");
+        writer.write(": ");
+        writeWritable(writer, prop.type);
+        writer.writeLine(";");
+    }
+
+    private writeMethod(writer: Writer, m: InterfaceMethodSignature): void {
+        writeJsDoc(writer, m.doc);
+        writer.write(`${m.name}(`);
+        if (m.params && m.params.length > 0) {
+            writer.writeJoined(", ", m.params);
+        }
+        writer.write(")");
+        if (m.returnType) {
+            writer.write(": ");
+            writeWritable(writer, m.returnType);
+        }
+        writer.writeLine(";");
     }
 }
 

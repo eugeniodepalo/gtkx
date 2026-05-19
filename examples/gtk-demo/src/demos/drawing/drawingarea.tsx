@@ -7,17 +7,17 @@ import sourceCode from "./drawingarea.tsx?raw";
 
 const CHECK_SIZE = 16;
 
-const ovalPath = (cr: Context, xc: number, yc: number, xr: number, yr: number) => {
+const ovalPath = (cr: Context, { xc, yc, xr, yr }: { xc: number; yc: number; xr: number; yr: number }) => {
     cr.save();
     cr.translate(xc, yc);
     cr.scale(1, yr / xr);
     cr.moveTo(xr, 0);
-    cr.arc(0, 0, xr, 0, 2 * Math.PI);
+    cr.arc({ xc: 0, yc: 0, radius: xr, angle1: 0, angle2: 2 * Math.PI });
     cr.closePath();
     cr.restore();
 };
 
-const fillChecks = (cr: Context, x: number, y: number, width: number, height: number) => {
+const fillChecks = (cr: Context, { x, y, width, height }: { x: number; y: number; width: number; height: number }) => {
     cr.rectangle(x, y, width, height);
     cr.setSourceRgb(0.4, 0.4, 0.4);
     cr.fill();
@@ -37,37 +37,37 @@ const fillChecks = (cr: Context, x: number, y: number, width: number, height: nu
     cr.fill();
 };
 
-const draw3Circles = (cr: Context, xc: number, yc: number, radius: number, alpha: number) => {
+const draw3Circles = (
+    cr: Context,
+    { xc, yc, radius, alpha }: { xc: number; yc: number; radius: number; alpha: number },
+) => {
     const subradius = radius * (2 / 3 - 0.1);
 
     cr.setSourceRgba(1, 0, 0, alpha);
-    ovalPath(
-        cr,
-        xc + (radius / 3) * Math.cos(Math.PI * 0.5),
-        yc - (radius / 3) * Math.sin(Math.PI * 0.5),
-        subradius,
-        subradius,
-    );
+    ovalPath(cr, {
+        xc: xc + (radius / 3) * Math.cos(Math.PI * 0.5),
+        yc: yc - (radius / 3) * Math.sin(Math.PI * 0.5),
+        xr: subradius,
+        yr: subradius,
+    });
     cr.fill();
 
     cr.setSourceRgba(0, 1, 0, alpha);
-    ovalPath(
-        cr,
-        xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 2 / 0.3)),
-        yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 2 / 0.3)),
-        subradius,
-        subradius,
-    );
+    ovalPath(cr, {
+        xc: xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 2 / 0.3)),
+        yc: yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 2 / 0.3)),
+        xr: subradius,
+        yr: subradius,
+    });
     cr.fill();
 
     cr.setSourceRgba(0, 0, 1, alpha);
-    ovalPath(
-        cr,
-        xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 4 / 0.3)),
-        yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 4 / 0.3)),
-        subradius,
-        subradius,
-    );
+    ovalPath(cr, {
+        xc: xc + (radius / 3) * Math.cos(Math.PI * (0.5 + 4 / 0.3)),
+        yc: yc - (radius / 3) * Math.sin(Math.PI * (0.5 + 4 / 0.3)),
+        xr: subradius,
+        yr: subradius,
+    });
     cr.fill();
 };
 
@@ -76,7 +76,7 @@ const drawKnockoutGroups = (cr: Context, width: number, height: number) => {
     const xc = width / 2;
     const yc = height / 2;
 
-    fillChecks(cr, 0, 0, width, height);
+    fillChecks(cr, { x: 0, y: 0, width, height });
 
     const overlay = Surface.createSimilar(cr.getTarget(), Content.COLOR_ALPHA, width, height);
     const punch = Surface.createSimilar(cr.getTarget(), Content.ALPHA, width, height);
@@ -84,11 +84,11 @@ const drawKnockoutGroups = (cr: Context, width: number, height: number) => {
 
     const overlayCr = Context.create(overlay);
     overlayCr.setSourceRgb(0, 0, 0);
-    ovalPath(overlayCr, xc, yc, radius, radius);
+    ovalPath(overlayCr, { xc, yc, xr: radius, yr: radius });
     overlayCr.fill();
 
     const punchCr = Context.create(punch);
-    draw3Circles(punchCr, xc, yc, radius, 1);
+    draw3Circles(punchCr, { xc, yc, radius, alpha: 1 });
 
     overlayCr.setOperator(Operator.DEST_OUT);
     overlayCr.setSourceSurface(punch, 0, 0);
@@ -96,7 +96,7 @@ const drawKnockoutGroups = (cr: Context, width: number, height: number) => {
 
     const circlesCr = Context.create(circles);
     circlesCr.setOperator(Operator.OVER);
-    draw3Circles(circlesCr, xc, yc, radius, 0.5);
+    draw3Circles(circlesCr, { xc, yc, radius, alpha: 0.5 });
 
     overlayCr.setOperator(Operator.ADD);
     overlayCr.setSourceSurface(circles, 0, 0);
@@ -121,6 +121,38 @@ const drawBrush = (surface: ImageSurface, widget: Gtk.DrawingArea, x: number, y:
     widget.queueDraw();
 };
 
+function useScribbleHandlers(
+    ref: React.RefObject<Gtk.DrawingArea | null>,
+    surfaceRef: React.RefObject<ImageSurface | null>,
+    startPointRef: React.RefObject<{ x: number; y: number }>,
+) {
+    const handleDragBegin = useCallback(
+        (startX: number, startY: number) => {
+            startPointRef.current = { x: startX, y: startY };
+            if (surfaceRef.current && ref.current) {
+                drawBrush(surfaceRef.current, ref.current, startX, startY);
+            }
+        },
+        [ref, surfaceRef, startPointRef],
+    );
+
+    const handleDragOffset = useCallback(
+        (offsetX: number, offsetY: number) => {
+            if (surfaceRef.current && ref.current) {
+                drawBrush(
+                    surfaceRef.current,
+                    ref.current,
+                    startPointRef.current.x + offsetX,
+                    startPointRef.current.y + offsetY,
+                );
+            }
+        },
+        [ref, surfaceRef, startPointRef],
+    );
+
+    return { handleDragBegin, handleDragUpdate: handleDragOffset, handleDragEnd: handleDragOffset };
+}
+
 const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Widget[] }) => {
     const ref = useRef<Gtk.DrawingArea | null>(null);
     const surfaceRef = useRef<ImageSurface | null>(null);
@@ -137,34 +169,7 @@ const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Wid
         }
     }, []);
 
-    const handleDragBegin = useCallback((startX: number, startY: number) => {
-        startPointRef.current = { x: startX, y: startY };
-        if (surfaceRef.current && ref.current) {
-            drawBrush(surfaceRef.current, ref.current, startX, startY);
-        }
-    }, []);
-
-    const handleDragUpdate = useCallback((offsetX: number, offsetY: number) => {
-        if (surfaceRef.current && ref.current) {
-            drawBrush(
-                surfaceRef.current,
-                ref.current,
-                startPointRef.current.x + offsetX,
-                startPointRef.current.y + offsetY,
-            );
-        }
-    }, []);
-
-    const handleDragEnd = useCallback((offsetX: number, offsetY: number) => {
-        if (surfaceRef.current && ref.current) {
-            drawBrush(
-                surfaceRef.current,
-                ref.current,
-                startPointRef.current.x + offsetX,
-                startPointRef.current.y + offsetY,
-            );
-        }
-    }, []);
+    const { handleDragBegin, handleDragUpdate, handleDragEnd } = useScribbleHandlers(ref, surfaceRef, startPointRef);
 
     return (
         <GtkDrawingArea

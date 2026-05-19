@@ -9,7 +9,7 @@ const accessible = (current: Gtk.Accessible | null): Gtk.Accessible => {
     return current;
 };
 
-describe("accessible props - GValue marshaling regression", () => {
+describe("accessible props - GValue marshaling regression (1)", () => {
     it("sets accessibleLabel (string) without crashing", async () => {
         const ref = createRef<Gtk.Button>();
 
@@ -41,7 +41,9 @@ describe("accessible props - GValue marshaling regression", () => {
 
         expect(Gtk.testAccessibleHasState(accessible(ref.current), Gtk.AccessibleState.INVALID)).toBe(true);
     });
+});
 
+describe("accessible props - GValue marshaling regression (2)", () => {
     it("sets accessibleLabelledBy (reference list) without crashing", async () => {
         const entryRef = createRef<Gtk.Entry>();
 
@@ -75,7 +77,9 @@ describe("accessible props - GValue marshaling regression", () => {
 
         expect(Gtk.testAccessibleHasProperty(accessible(ref.current), Gtk.AccessibleProperty.LABEL)).toBe(true);
     });
+});
 
+describe("accessible props - GValue marshaling regression (3)", () => {
     it("combines multiple accessible props on the same widget", async () => {
         const ref = createRef<Gtk.Button>();
 

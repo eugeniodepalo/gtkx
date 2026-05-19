@@ -9,7 +9,7 @@ import { findNativeClass } from "../src/registry.js";
 let suffix = 0;
 const uniqueName = (prefix: string): string => `${prefix}_${process.pid}_${++suffix}`;
 
-describe("registerClass", () => {
+describe("registerClass — registration", () => {
     it("registers a new GType derived from the parent class", () => {
         const name = uniqueName("GtkxTestSubclass");
         class CustomLabel extends Gtk.Label {}
@@ -59,7 +59,9 @@ describe("registerClass", () => {
         registerClass(FirstUse, { gtypeName: name });
         expect(() => registerClass(SecondUse, { gtypeName: name })).toThrow(/already registered/);
     });
+});
 
+describe("registerClass — vfunc dispatch", () => {
     it("auto-discovers a class vfunc override from a subclass method", () => {
         const name = uniqueName("GtkxVfuncSubclass");
         class CustomObject extends GObject {

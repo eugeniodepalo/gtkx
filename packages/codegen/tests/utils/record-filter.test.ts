@@ -45,7 +45,7 @@ describe("isClassVtable", () => {
     });
 });
 
-describe("isGeneratableFieldType", () => {
+describe("isGeneratableFieldType (1)", () => {
     it("returns true for primitive type names", () => {
         const repo = buildRepo([]);
         expect(isGeneratableFieldType("gint", repo, "Gtk")).toBe(true);
@@ -92,7 +92,9 @@ describe("isGeneratableFieldType", () => {
         const repo = buildRepo([inner, outer]);
         expect(isGeneratableFieldType("Outer", repo, "Gtk")).toBe(true);
     });
+});
 
+describe("isGeneratableFieldType (2)", () => {
     it("rejects when any nested field resolves to an unmarshalable type", () => {
         const inner = createNormalizedRecord({
             name: "Inner",
@@ -119,7 +121,7 @@ describe("isGeneratableFieldType", () => {
     });
 });
 
-describe("shouldGenerateRecord", () => {
+describe("shouldGenerateRecord (1)", () => {
     const repoFor = (record: ReturnType<typeof createNormalizedRecord>): GirRepository => buildRepo([record]);
 
     it("rejects gtype-struct records", () => {
@@ -167,6 +169,10 @@ describe("shouldGenerateRecord", () => {
         });
         expect(shouldGenerateRecord(record, repoFor(record), "Gtk")).toBe(true);
     });
+});
+
+describe("shouldGenerateRecord (2)", () => {
+    const repoFor = (record: ReturnType<typeof createNormalizedRecord>): GirRepository => buildRepo([record]);
 
     it("accepts plain structs even with unmarshalable public fields (field accessors omitted later)", () => {
         const record = createNormalizedRecord({

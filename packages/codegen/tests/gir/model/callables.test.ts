@@ -24,62 +24,60 @@ function makeParam(overrides: Partial<ConstructorParameters<typeof GirParameter>
     });
 }
 
-describe("GirCallable (via GirMethod)", () => {
-    describe("getRequiredParameters", () => {
-        it("returns only non-optional, non-nullable input params", () => {
-            const required = makeParam({ name: "width" });
-            const optional = makeParam({ name: "label", optional: true });
-            const nullable = makeParam({ name: "child", nullable: true });
-            const out = makeParam({ name: "result", direction: "out" });
-            const method = new GirMethod({
-                name: "configure",
-                cIdentifier: "gtk_widget_configure",
-                returnType: makeType("none"),
-                parameters: [required, optional, nullable, out],
-                throws: false,
-            });
-            expect(method.getRequiredParameters()).toEqual([required]);
+describe("GirCallable (via GirMethod) / getRequiredParameters", () => {
+    it("returns only non-optional, non-nullable input params", () => {
+        const required = makeParam({ name: "width" });
+        const optional = makeParam({ name: "label", optional: true });
+        const nullable = makeParam({ name: "child", nullable: true });
+        const out = makeParam({ name: "result", direction: "out" });
+        const method = new GirMethod({
+            name: "configure",
+            cIdentifier: "gtk_widget_configure",
+            returnType: makeType("none"),
+            parameters: [required, optional, nullable, out],
+            throws: false,
         });
-    });
-
-    describe("isAsync", () => {
-        it("returns true when the method name ends in _async", () => {
-            const method = new GirMethod({
-                name: "load_async",
-                cIdentifier: "gtk_loader_load_async",
-                returnType: makeType("none"),
-                parameters: [],
-                throws: false,
-            });
-            expect(method.isAsync()).toBe(true);
-        });
-
-        it("returns true when any parameter has scope=async", () => {
-            const callback = makeParam({ name: "cb", scope: "async" });
-            const method = new GirMethod({
-                name: "load_with_callback",
-                cIdentifier: "gtk_loader_load_with_callback",
-                returnType: makeType("none"),
-                parameters: [callback],
-                throws: false,
-            });
-            expect(method.isAsync()).toBe(true);
-        });
-
-        it("returns false for plain synchronous methods", () => {
-            const method = new GirMethod({
-                name: "get_size",
-                cIdentifier: "gtk_widget_get_size",
-                returnType: makeType("none"),
-                parameters: [],
-                throws: false,
-            });
-            expect(method.isAsync()).toBe(false);
-        });
+        expect(method.getRequiredParameters()).toEqual([required]);
     });
 });
 
-describe("GirMethod", () => {
+describe("GirCallable (via GirMethod) / isAsync", () => {
+    it("returns true when the method name ends in _async", () => {
+        const method = new GirMethod({
+            name: "load_async",
+            cIdentifier: "gtk_loader_load_async",
+            returnType: makeType("none"),
+            parameters: [],
+            throws: false,
+        });
+        expect(method.isAsync()).toBe(true);
+    });
+
+    it("returns true when any parameter has scope=async", () => {
+        const callback = makeParam({ name: "cb", scope: "async" });
+        const method = new GirMethod({
+            name: "load_with_callback",
+            cIdentifier: "gtk_loader_load_with_callback",
+            returnType: makeType("none"),
+            parameters: [callback],
+            throws: false,
+        });
+        expect(method.isAsync()).toBe(true);
+    });
+
+    it("returns false for plain synchronous methods", () => {
+        const method = new GirMethod({
+            name: "get_size",
+            cIdentifier: "gtk_widget_get_size",
+            returnType: makeType("none"),
+            parameters: [],
+            throws: false,
+        });
+        expect(method.isAsync()).toBe(false);
+    });
+});
+
+describe("GirMethod (1)", () => {
     it("retains optional instanceParameter and finishFunc fields", () => {
         const instance = makeParam({ name: "self", type: makeType("Gtk.Widget") });
         const method = new GirMethod({
@@ -118,7 +116,9 @@ describe("GirMethod", () => {
             expect(method.isAsyncFinish()).toBe(false);
         });
     });
+});
 
+describe("GirMethod (2)", () => {
     describe("getFinishMethodName", () => {
         it("returns the _finish counterpart for _async methods", () => {
             const method = new GirMethod({
@@ -158,7 +158,9 @@ describe("GirMethod", () => {
             expect(method.getOptionalParameters()).toEqual([optional, nullable]);
         });
     });
+});
 
+describe("GirMethod (3)", () => {
     describe("out parameter helpers", () => {
         it("hasOutParameters and getOutParameters cover both out and inout", () => {
             const inParam = makeParam({ name: "input" });

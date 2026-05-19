@@ -55,245 +55,251 @@ function createTestSetup(
     return { cls, builder, analyzers, repo };
 }
 
-describe("ClassMetaBuilder", () => {
-    describe("constructor", () => {
-        it("creates builder with class and dependencies", () => {
-            const { builder } = createTestSetup();
-            expect(builder).toBeInstanceOf(ClassMetaBuilder);
-        });
+describe("ClassMetaBuilder / constructor", () => {
+    it("creates builder with class and dependencies", () => {
+        const { builder } = createTestSetup();
+        expect(builder).toBeInstanceOf(ClassMetaBuilder);
+    });
+});
+
+describe("ClassMetaBuilder / isWidget", () => {
+    it("returns true for class that extends Widget", () => {
+        const { builder } = createTestSetup();
+        expect(builder.isWidget()).toBe(true);
     });
 
-    describe("isWidget", () => {
-        it("returns true for class that extends Widget", () => {
-            const { builder } = createTestSetup();
-            expect(builder.isWidget()).toBe(true);
+    it("returns false for class that does not extend Widget", () => {
+        const ns = createNormalizedNamespace({ name: "GObject" });
+        const cls = createNormalizedClass({
+            name: "Object",
+            qualifiedName: qualifiedName("GObject", "Object"),
+            parent: null,
+        });
+        ns.classes.set("Object", cls);
+        const namespaces = new Map([["GObject", ns]]);
+        const repo = createMockRepository(namespaces);
+        const analyzers = createMockAnalyzers();
+
+        const builder = new ClassMetaBuilder(cls, repo as unknown as GirRepository, "GObject", analyzers);
+
+        expect(builder.isWidget()).toBe(false);
+    });
+});
+
+describe("ClassMetaBuilder / buildCodegenWidgetMeta (1)", () => {
+    it("returns null for non-widget class", () => {
+        const cls = createNormalizedClass({
+            name: "Object",
+            qualifiedName: qualifiedName("GObject", "Object"),
+            parent: null,
         });
 
-        it("returns false for class that does not extend Widget", () => {
-            const ns = createNormalizedNamespace({ name: "GObject" });
-            const cls = createNormalizedClass({
-                name: "Object",
-                qualifiedName: qualifiedName("GObject", "Object"),
-                parent: null,
-            });
-            ns.classes.set("Object", cls);
-            const namespaces = new Map([["GObject", ns]]);
-            const repo = createMockRepository(namespaces);
-            const analyzers = createMockAnalyzers();
+        const repo = createMockRepository(new Map());
+        const analyzers = createMockAnalyzers();
 
-            const builder = new ClassMetaBuilder(cls, repo as unknown as GirRepository, "GObject", analyzers);
+        const builder = new ClassMetaBuilder(cls, repo as unknown as GirRepository, "GObject", analyzers);
 
-            expect(builder.isWidget()).toBe(false);
-        });
+        const result = builder.buildCodegenWidgetMeta();
+
+        expect(result).toBeNull();
     });
 
-    describe("buildCodegenWidgetMeta", () => {
-        it("returns null for non-widget class", () => {
-            const cls = createNormalizedClass({
-                name: "Object",
-                qualifiedName: qualifiedName("GObject", "Object"),
-                parent: null,
-            });
+    it("returns CodegenWidgetMeta for widget class", () => {
+        const { builder } = createTestSetup();
 
-            const repo = createMockRepository(new Map());
-            const analyzers = createMockAnalyzers();
+        const result = builder.buildCodegenWidgetMeta();
 
-            const builder = new ClassMetaBuilder(cls, repo as unknown as GirRepository, "GObject", analyzers);
-
-            const result = builder.buildCodegenWidgetMeta();
-
-            expect(result).toBeNull();
-        });
-
-        it("returns CodegenWidgetMeta for widget class", () => {
-            const { builder } = createTestSetup();
-
-            const result = builder.buildCodegenWidgetMeta();
-
-            expect(result).not.toBeNull();
-        });
-
-        it("includes className in CodegenWidgetMeta", () => {
-            const { builder } = createTestSetup({ name: "Button" });
-
-            const result = builder.buildCodegenWidgetMeta();
-
-            expect(result?.className).toBe("Button");
-        });
-
-        it("includes namespace in CodegenWidgetMeta", () => {
-            const { builder } = createTestSetup();
-
-            const result = builder.buildCodegenWidgetMeta();
-
-            expect(result?.namespace).toBe("Gtk");
-        });
-
-        it("includes jsxName in CodegenWidgetMeta", () => {
-            const { builder } = createTestSetup({ name: "Button" });
-
-            const result = builder.buildCodegenWidgetMeta();
-
-            expect(result?.jsxName).toBe("GtkButton");
-        });
-
-        it("includes modulePath in CodegenWidgetMeta", () => {
-            const { builder } = createTestSetup({ name: "Button" });
-
-            const result = builder.buildCodegenWidgetMeta();
-
-            expect(result?.modulePath).toBe("./button.js");
-        });
-
-        it("includes slots in CodegenWidgetMeta", () => {
-            const { builder } = createTestSetup();
-
-            const result = builder.buildCodegenWidgetMeta();
-
-            expect(result).toHaveProperty("slots");
-            expect(Array.isArray(result?.slots)).toBe(true);
-        });
+        expect(result).not.toBeNull();
     });
 
-    describe("slot detection", () => {
-        it("returns empty slots when no widget properties", () => {
-            const { builder } = createTestSetup({
-                properties: [],
-            });
+    it("includes className in CodegenWidgetMeta", () => {
+        const { builder } = createTestSetup({ name: "Button" });
 
-            const result = builder.buildCodegenWidgetMeta();
+        const result = builder.buildCodegenWidgetMeta();
 
-            expect(result?.slots).toHaveLength(0);
+        expect(result?.className).toBe("Button");
+    });
+
+    it("includes namespace in CodegenWidgetMeta", () => {
+        const { builder } = createTestSetup();
+
+        const result = builder.buildCodegenWidgetMeta();
+
+        expect(result?.namespace).toBe("Gtk");
+    });
+
+    it("includes jsxName in CodegenWidgetMeta", () => {
+        const { builder } = createTestSetup({ name: "Button" });
+
+        const result = builder.buildCodegenWidgetMeta();
+
+        expect(result?.jsxName).toBe("GtkButton");
+    });
+});
+
+describe("ClassMetaBuilder / buildCodegenWidgetMeta (2)", () => {
+    it("includes modulePath in CodegenWidgetMeta", () => {
+        const { builder } = createTestSetup({ name: "Button" });
+
+        const result = builder.buildCodegenWidgetMeta();
+
+        expect(result?.modulePath).toBe("./button.js");
+    });
+
+    it("includes slots in CodegenWidgetMeta", () => {
+        const { builder } = createTestSetup();
+
+        const result = builder.buildCodegenWidgetMeta();
+
+        expect(result).toHaveProperty("slots");
+        expect(Array.isArray(result?.slots)).toBe(true);
+    });
+});
+
+describe("ClassMetaBuilder / slot detection (1)", () => {
+    it("returns empty slots when no widget properties", () => {
+        const { builder } = createTestSetup({
+            properties: [],
         });
 
-        it("includes writable widget-type properties as slots", () => {
-            const gtkNs = createNormalizedNamespace({ name: "Gtk" });
-            const widgetClass = createNormalizedClass({
-                name: "Widget",
-                qualifiedName: qualifiedName("Gtk", "Widget"),
-                parent: null,
-            });
-            gtkNs.classes.set("Widget", widgetClass);
+        const result = builder.buildCodegenWidgetMeta();
 
-            const namespaces = new Map([["Gtk", gtkNs]]);
+        expect(result?.slots).toHaveLength(0);
+    });
 
-            const { builder } = createTestSetup(
-                {
-                    properties: [
-                        createNormalizedProperty({
-                            name: "content",
-                            type: createNormalizedType({ name: qualifiedName("Gtk", "Widget") }),
-                            writable: true,
-                        }),
-                    ],
-                },
-                namespaces,
-            );
-
-            const result = builder.buildCodegenWidgetMeta();
-
-            expect(result?.slots).toContain("content");
+    it("includes writable widget-type properties as slots", () => {
+        const gtkNs = createNormalizedNamespace({ name: "Gtk" });
+        const widgetClass = createNormalizedClass({
+            name: "Widget",
+            qualifiedName: qualifiedName("Gtk", "Widget"),
+            parent: null,
         });
+        gtkNs.classes.set("Widget", widgetClass);
 
-        it("excludes non-writable widget properties from slots", () => {
-            const { builder } = createTestSetup({
+        const namespaces = new Map([["Gtk", gtkNs]]);
+
+        const { builder } = createTestSetup(
+            {
                 properties: [
                     createNormalizedProperty({
-                        name: "child",
+                        name: "content",
                         type: createNormalizedType({ name: qualifiedName("Gtk", "Widget") }),
-                        writable: false,
+                        writable: true,
                     }),
                 ],
-            });
+            },
+            namespaces,
+        );
 
-            const result = builder.buildCodegenWidgetMeta();
+        const result = builder.buildCodegenWidgetMeta();
 
-            expect(result?.slots).not.toContain("child");
-        });
+        expect(result?.slots).toContain("content");
     });
+});
 
-    describe("parent info extraction", () => {
-        it("extracts parent info for same-namespace parent", () => {
-            const { builder } = createTestSetup({
-                name: "Button",
-                parent: qualifiedName("Gtk", "Widget"),
-            });
-
-            const result = builder.buildCodegenWidgetMeta();
-
-            expect(result?.parentNamespace).toBe("Gtk");
+describe("ClassMetaBuilder / slot detection (2)", () => {
+    it("excludes non-writable widget properties from slots", () => {
+        const { builder } = createTestSetup({
+            properties: [
+                createNormalizedProperty({
+                    name: "child",
+                    type: createNormalizedType({ name: qualifiedName("Gtk", "Widget") }),
+                    writable: false,
+                }),
+            ],
         });
 
-        it("extracts parent info for widget with intermediate parent", () => {
-            const gtkNs = createNormalizedNamespace({ name: "Gtk" });
+        const result = builder.buildCodegenWidgetMeta();
 
-            const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
-            const widgetClass = createNormalizedClass(
-                {
-                    name: "Widget",
-                    qualifiedName: qualifiedName("Gtk", "Widget"),
-                    parent: null,
-                },
-                nullRepo,
-            );
-            gtkNs.classes.set("Widget", widgetClass);
+        expect(result?.slots).not.toContain("child");
+    });
+});
 
-            const windowRepo = { resolveClass: () => widgetClass, resolveInterface: () => null, findClasses: () => [] };
-            const windowClass = createNormalizedClass(
-                {
-                    name: "Window",
-                    qualifiedName: qualifiedName("Gtk", "Window"),
-                    parent: qualifiedName("Gtk", "Widget"),
-                },
-                windowRepo,
-            );
-            gtkNs.classes.set("Window", windowClass);
-
-            const appWindowRepo = {
-                resolveClass: () => windowClass,
-                resolveInterface: () => null,
-                findClasses: () => [],
-            };
-            const appWindowClass = createNormalizedClass(
-                {
-                    name: "ApplicationWindow",
-                    qualifiedName: qualifiedName("Gtk", "ApplicationWindow"),
-                    parent: qualifiedName("Gtk", "Window"),
-                },
-                appWindowRepo,
-            );
-            gtkNs.classes.set("ApplicationWindow", appWindowClass);
-
-            const namespaces = new Map([["Gtk", gtkNs]]);
-            const repo = createMockRepository(namespaces);
-            const analyzers = createMockAnalyzers();
-
-            const builder = new ClassMetaBuilder(appWindowClass, repo as unknown as GirRepository, "Gtk", analyzers);
-
-            const result = builder.buildCodegenWidgetMeta();
-
-            expect(result?.parentNamespace).toBe("Gtk");
-            expect(result?.parentClassName).toBe("Window");
+describe("ClassMetaBuilder / parent info extraction (1)", () => {
+    it("extracts parent info for same-namespace parent", () => {
+        const { builder } = createTestSetup({
+            name: "Button",
+            parent: qualifiedName("Gtk", "Widget"),
         });
 
-        it("handles null parent for Widget class", () => {
-            const gtkNs = createNormalizedNamespace({ name: "Gtk" });
-            const widgetClass = createNormalizedClass({
+        const result = builder.buildCodegenWidgetMeta();
+
+        expect(result?.parentNamespace).toBe("Gtk");
+    });
+});
+
+describe("ClassMetaBuilder / parent info extraction (2)", () => {
+    it("extracts parent info for widget with intermediate parent", () => {
+        const gtkNs = createNormalizedNamespace({ name: "Gtk" });
+
+        const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
+        const widgetClass = createNormalizedClass(
+            {
                 name: "Widget",
                 qualifiedName: qualifiedName("Gtk", "Widget"),
                 parent: null,
-            });
-            gtkNs.classes.set("Widget", widgetClass);
-            const namespaces = new Map([["Gtk", gtkNs]]);
-            const repo = createMockRepository(namespaces);
-            const analyzers = createMockAnalyzers();
+            },
+            nullRepo,
+        );
+        gtkNs.classes.set("Widget", widgetClass);
 
-            const builder = new ClassMetaBuilder(widgetClass, repo as unknown as GirRepository, "Gtk", analyzers);
+        const windowRepo = { resolveClass: () => widgetClass, resolveInterface: () => null, findClasses: () => [] };
+        const windowClass = createNormalizedClass(
+            {
+                name: "Window",
+                qualifiedName: qualifiedName("Gtk", "Window"),
+                parent: qualifiedName("Gtk", "Widget"),
+            },
+            windowRepo,
+        );
+        gtkNs.classes.set("Window", windowClass);
 
-            const result = builder.buildCodegenWidgetMeta();
+        const appWindowRepo = {
+            resolveClass: () => windowClass,
+            resolveInterface: () => null,
+            findClasses: () => [],
+        };
+        const appWindowClass = createNormalizedClass(
+            {
+                name: "ApplicationWindow",
+                qualifiedName: qualifiedName("Gtk", "ApplicationWindow"),
+                parent: qualifiedName("Gtk", "Window"),
+            },
+            appWindowRepo,
+        );
+        gtkNs.classes.set("ApplicationWindow", appWindowClass);
 
-            expect(result?.parentClassName).toBeNull();
-            expect(result?.parentNamespace).toBeNull();
+        const namespaces = new Map([["Gtk", gtkNs]]);
+        const repo = createMockRepository(namespaces);
+        const analyzers = createMockAnalyzers();
+
+        const builder = new ClassMetaBuilder(appWindowClass, repo as unknown as GirRepository, "Gtk", analyzers);
+
+        const result = builder.buildCodegenWidgetMeta();
+
+        expect(result?.parentNamespace).toBe("Gtk");
+        expect(result?.parentClassName).toBe("Window");
+    });
+});
+
+describe("ClassMetaBuilder / parent info extraction (3)", () => {
+    it("handles null parent for Widget class", () => {
+        const gtkNs = createNormalizedNamespace({ name: "Gtk" });
+        const widgetClass = createNormalizedClass({
+            name: "Widget",
+            qualifiedName: qualifiedName("Gtk", "Widget"),
+            parent: null,
         });
+        gtkNs.classes.set("Widget", widgetClass);
+        const namespaces = new Map([["Gtk", gtkNs]]);
+        const repo = createMockRepository(namespaces);
+        const analyzers = createMockAnalyzers();
+
+        const builder = new ClassMetaBuilder(widgetClass, repo as unknown as GirRepository, "Gtk", analyzers);
+
+        const result = builder.buildCodegenWidgetMeta();
+
+        expect(result?.parentClassName).toBeNull();
+        expect(result?.parentNamespace).toBeNull();
     });
 });

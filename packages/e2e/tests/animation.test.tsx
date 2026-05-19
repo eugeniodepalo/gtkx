@@ -11,8 +11,8 @@ const expectCompletes = async (animation: ReactElement, label: string, onComplet
     await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout });
 };
 
-describe("AdwTimedAnimation / AdwSpringAnimation", () => {
-    describe("mount animation", () => {
+describe("AdwTimedAnimation / AdwSpringAnimation (1)", () => {
+    describe("mount animation (1)", () => {
         it("applies initial values when animateOnMount is false", async () => {
             const buttonRef = createRef<Gtk.Button>();
 
@@ -38,7 +38,11 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
             await screen.findByText("Test");
             expect(buttonRef.current).toBeDefined();
         });
+    });
+});
 
+describe("AdwTimedAnimation / AdwSpringAnimation (2)", () => {
+    describe("mount animation (2)", () => {
         it("animates from initial to animate when animateOnMount is true", async () => {
             const onStart = vi.fn();
             const onComplete = vi.fn();
@@ -64,7 +68,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
             await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
     });
+});
 
+describe("AdwTimedAnimation / AdwSpringAnimation (3)", () => {
     describe("animate prop changes", () => {
         it("animates when animate prop changes", async () => {
             const onComplete = vi.fn();
@@ -90,7 +96,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
             await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 500 });
         });
     });
+});
 
+describe("AdwTimedAnimation / AdwSpringAnimation (4)", () => {
     describe("exit animation", () => {
         it("plays exit animation before unmount", async () => {
             const onComplete = vi.fn();
@@ -123,7 +131,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
             await waitFor(() => expect(screen.queryByText("Fading")).toBeNull(), { timeout: 500 });
         });
     });
+});
 
+describe("AdwTimedAnimation / AdwSpringAnimation (5)", () => {
     describe("spring animation", () => {
         it("creates spring animation with default parameters", async () => {
             const onComplete = vi.fn();
@@ -165,7 +175,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
             );
         });
     });
+});
 
+describe("AdwTimedAnimation / AdwSpringAnimation (6)", () => {
     describe("timed animation", () => {
         it("respects easing function", async () => {
             const onComplete = vi.fn();
@@ -206,7 +218,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
             );
         });
     });
+});
 
+describe("AdwTimedAnimation / AdwSpringAnimation (7)", () => {
     describe("skew transforms", () => {
         it("animates skewX and skewY properties", async () => {
             const onComplete = vi.fn();
@@ -226,7 +240,9 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
             );
         });
     });
+});
 
+describe("AdwTimedAnimation / AdwSpringAnimation (8)", () => {
     describe("repeating animation", () => {
         it("runs animation with repeat count", async () => {
             const onComplete = vi.fn();
@@ -267,8 +283,10 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
             );
         });
     });
+});
 
-    describe("transform animations", () => {
+describe("AdwTimedAnimation / AdwSpringAnimation (9)", () => {
+    describe("transform animations (1)", () => {
         it("animates translateX property", async () => {
             const onComplete = vi.fn();
 
@@ -304,7 +322,11 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 onComplete,
             );
         });
+    });
+});
 
+describe("AdwTimedAnimation / AdwSpringAnimation (10)", () => {
+    describe("transform animations (2)", () => {
         it("animates scale property", async () => {
             const onComplete = vi.fn();
 
@@ -341,8 +363,10 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
             );
         });
     });
+});
 
-    describe("state-driven spring animation", () => {
+describe("AdwTimedAnimation / AdwSpringAnimation (11)", () => {
+    describe("state-driven spring animation (1)", () => {
         it("animates when state triggers animate prop change", async () => {
             const onComplete = vi.fn();
 
@@ -374,7 +398,11 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
 
             await waitFor(() => expect(onComplete).toHaveBeenCalled(), { timeout: 2000 });
         });
+    });
+});
 
+describe("AdwTimedAnimation / AdwSpringAnimation (12)", () => {
+    describe("state-driven spring animation (2)", () => {
         it("animates spring with low damping for bouncy effect", async () => {
             const onComplete = vi.fn();
 
@@ -417,8 +445,10 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
             );
         });
     });
+});
 
-    describe("easing functions", () => {
+describe("AdwTimedAnimation / AdwSpringAnimation (13)", () => {
+    describe("easing functions (1)", () => {
         it("animates with EASE_OUT_BOUNCE easing", async () => {
             const onComplete = vi.fn();
 
@@ -456,7 +486,11 @@ describe("AdwTimedAnimation / AdwSpringAnimation", () => {
                 onComplete,
             );
         });
+    });
+});
 
+describe("AdwTimedAnimation / AdwSpringAnimation (14)", () => {
+    describe("easing functions (2)", () => {
         it("animates with LINEAR easing", async () => {
             const onComplete = vi.fn();
 

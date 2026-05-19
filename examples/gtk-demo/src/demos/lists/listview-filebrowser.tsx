@@ -95,10 +95,8 @@ const ListItem = ({ item, mode }: { item: FileItem; mode: ViewMode }) => {
     );
 };
 
-const ListViewFilebrowserDemo = () => {
-    const [currentPath, setCurrentPath] = useState(() => process.cwd() ?? homedir() ?? "/");
+function useDirectoryFiles(currentPath: string) {
     const [files, setFiles] = useState<FileItem[]>([]);
-    const [viewMode, setViewMode] = useState<ViewMode>("list");
 
     useEffect(() => {
         const file = Gio.fileNewForPath(currentPath);
@@ -109,89 +107,101 @@ const ListViewFilebrowserDemo = () => {
                 setTimeout(checkLoading, 50);
                 return;
             }
-
-            const items: FileItem[] = [];
-            const count = dirList.getNItems();
-
-            for (let i = 0; i < count; i++) {
-                const obj = dirList.getItem(i);
-                if (obj instanceof Gio.FileInfo) {
-                    items.push({
-                        name: obj.getName(),
-                        displayName: obj.getDisplayName(),
-                        isDirectory: obj.getFileType() === Gio.FileType.DIRECTORY,
-                        size: obj.getSize(),
-                        icon: obj.getIcon(),
-                        contentType: obj.getContentType(),
-                    });
-                }
-            }
-
-            setFiles(items);
+            setFiles(collectDirectoryItems(dirList));
         };
 
         checkLoading();
     }, [currentPath]);
 
+    return files;
+}
+
+const collectDirectoryItems = (dirList: Gtk.DirectoryList): FileItem[] => {
+    const items: FileItem[] = [];
+    const count = dirList.getNItems();
+
+    for (let i = 0; i < count; i++) {
+        const obj = dirList.getItem(i);
+        if (obj instanceof Gio.FileInfo) {
+            items.push({
+                name: obj.getName(),
+                displayName: obj.getDisplayName(),
+                isDirectory: obj.getFileType() === Gio.FileType.DIRECTORY,
+                size: obj.getSize(),
+                icon: obj.getIcon(),
+                contentType: obj.getContentType(),
+            });
+        }
+    }
+
+    return items;
+};
+
+const navigateInto = (item: FileItem | undefined, currentPath: string, setCurrentPath: (path: string) => void) => {
+    if (!item?.isDirectory) return;
+    const parent = Gio.fileNewForPath(currentPath);
+    const child = parent.getChild(item.name);
+    const childPath = child.getPath();
+    if (childPath) setCurrentPath(childPath);
+};
+
+interface FilebrowserHeaderProps {
+    viewMode: ViewMode;
+    setViewMode: (mode: ViewMode) => void;
+    onNavigateUp: () => void;
+}
+
+const FilebrowserHeader = ({ viewMode, setViewMode, onNavigateUp }: FilebrowserHeaderProps) => (
+    <Slot id="titlebar">
+        <GtkHeaderBar>
+            <GtkHeaderBar.PackStart>
+                <GtkButton iconName="go-up-symbolic" onClicked={onNavigateUp} />
+            </GtkHeaderBar.PackStart>
+            <GtkHeaderBar.PackEnd>
+                <GtkListView
+                    orientation={Gtk.Orientation.HORIZONTAL}
+                    cssClasses={[
+                        css`
+                        border: 1px solid gray;
+                        & > row { padding: 5px; }
+                        & row:selected { background: gray; }
+                    `,
+                        "linked",
+                        "viewswitcher",
+                    ]}
+                    valign={Gtk.Align.CENTER}
+                    selected={[viewMode]}
+                    onSelectionChanged={(ids) => {
+                        const id = ids[0] as ViewMode | undefined;
+                        if (id) setViewMode(id);
+                    }}
+                    renderItem={(item: ViewModeItem) => <GtkImage iconName={item.icon} tooltipText={item.label} />}
+                    items={VIEW_MODES.map((mode) => ({ id: mode.id, value: mode }))}
+                />
+            </GtkHeaderBar.PackEnd>
+        </GtkHeaderBar>
+    </Slot>
+);
+
+const ListViewFilebrowserDemo = () => {
+    const [currentPath, setCurrentPath] = useState(() => process.cwd() ?? homedir() ?? "/");
+    const [viewMode, setViewMode] = useState<ViewMode>("list");
+    const files = useDirectoryFiles(currentPath);
+
     const navigateUp = useCallback(() => {
         const file = Gio.fileNewForPath(currentPath);
         const parent = file.getParent();
-        if (parent) {
-            setCurrentPath(parent.getPath() ?? "/");
-        }
+        if (parent) setCurrentPath(parent.getPath() ?? "/");
     }, [currentPath]);
 
     const handleActivate = useCallback(
-        (position: number) => {
-            const item = files[position];
-            if (!item) return;
-
-            if (item.isDirectory) {
-                const parent = Gio.fileNewForPath(currentPath);
-                const child = parent.getChild(item.name);
-                const childPath = child.getPath();
-                if (childPath) {
-                    setCurrentPath(childPath);
-                }
-            }
-        },
+        (position: number) => navigateInto(files[position], currentPath, setCurrentPath),
         [files, currentPath],
     );
 
     return (
         <>
-            <Slot id="titlebar">
-                <GtkHeaderBar>
-                    <GtkHeaderBar.PackStart>
-                        <GtkButton iconName="go-up-symbolic" onClicked={navigateUp} />
-                    </GtkHeaderBar.PackStart>
-                    <GtkHeaderBar.PackEnd>
-                        <GtkListView
-                            orientation={Gtk.Orientation.HORIZONTAL}
-                            cssClasses={[
-                                css`
-                                border: 1px solid gray;
-                                & > row { padding: 5px; }
-                                & row:selected { background: gray; }
-                            `,
-                                "linked",
-                                "viewswitcher",
-                            ]}
-                            valign={Gtk.Align.CENTER}
-                            selected={[viewMode]}
-                            onSelectionChanged={(ids) => {
-                                const id = ids[0] as ViewMode | undefined;
-                                if (id) setViewMode(id);
-                            }}
-                            renderItem={(item: ViewModeItem) => (
-                                <GtkImage iconName={item.icon} tooltipText={item.label} />
-                            )}
-                            items={VIEW_MODES.map((mode) => ({ id: mode.id, value: mode }))}
-                        />
-                    </GtkHeaderBar.PackEnd>
-                </GtkHeaderBar>
-            </Slot>
-
+            <FilebrowserHeader viewMode={viewMode} setViewMode={setViewMode} onNavigateUp={navigateUp} />
             <GtkScrolledWindow vexpand hexpand>
                 <GtkGridView
                     estimatedItemHeight={viewMode === "grid" ? 80 : 48}

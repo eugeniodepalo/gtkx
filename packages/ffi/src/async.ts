@@ -43,6 +43,17 @@ type AsyncStartFn = (...args: unknown[]) => void;
 type AsyncFinishFn<R> = (result: NativeObject) => R;
 
 /**
+ * Positional native arguments threaded through {@link promisify} into the
+ * `*_async` start callable.
+ */
+export type PromisifyArgs = {
+    /** Native arguments preceding the `GCancellable*` slot. */
+    readonly leading: readonly unknown[];
+    /** Native arguments between the `GCancellable*` slot and the callback (e.g. a `GFileProgressCallback`). */
+    readonly trailing?: readonly unknown[];
+};
+
+/**
  * Drives a GIO-style asynchronous operation as a `Promise`.
  *
  * Starts `asyncFn` with the supplied arguments — splicing the resolved
@@ -55,22 +66,20 @@ type AsyncFinishFn<R> = (result: NativeObject) => R;
  * @param asyncFn - The native `*_async` start callable.
  * @param finish - The companion `*_finish` callable; bound to its owner for instance methods.
  * @param cancellable - The optional `GCancellable`, or `null`/`undefined` when the operation takes none.
- * @param leadingArgs - The native arguments preceding the `GCancellable*` slot.
- * @param trailingArgs - The native arguments between the `GCancellable*` slot and the callback (e.g. a `GFileProgressCallback`).
+ * @param args - The leading and (optional) trailing native arguments to splice around the `GCancellable*` slot.
  * @returns A promise resolving with the `*_finish` result.
  */
 export const promisify = <R>(
     asyncFn: AsyncStartFn,
     finish: AsyncFinishFn<R>,
     cancellable: object | null | undefined,
-    leadingArgs: readonly unknown[],
-    trailingArgs: readonly unknown[] = [],
+    args: PromisifyArgs,
 ): Promise<R> =>
     new Promise<R>((resolve, reject) => {
         asyncFn(
-            ...leadingArgs,
+            ...args.leading,
             tryGetHandle(cancellable),
-            ...trailingArgs,
+            ...(args.trailing ?? []),
             (_source: NativeHandle, rawResult: NativeHandle) => {
                 try {
                     resolve(finish(wrapAsyncResult(rawResult)));

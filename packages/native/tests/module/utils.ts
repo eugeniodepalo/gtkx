@@ -140,3 +140,27 @@ export function disconnectSignal(obj: unknown, handlerId: number): void {
         VOID,
     );
 }
+
+export function boxAppend(box: unknown, child: unknown): void {
+    call(
+        GTK_LIB,
+        "gtk_box_append",
+        [
+            { type: GOBJECT_BORROWED, value: box },
+            { type: GOBJECT_BORROWED, value: child },
+        ],
+        VOID,
+    );
+}
+
+export function getFirstChild(widget: unknown): unknown {
+    return call(GTK_LIB, "gtk_widget_get_first_child", [{ type: GOBJECT_BORROWED, value: widget }], GOBJECT_BORROWED);
+}
+
+export function getNextSibling(widget: unknown): unknown {
+    return call(GTK_LIB, "gtk_widget_get_next_sibling", [{ type: GOBJECT_BORROWED, value: widget }], GOBJECT_BORROWED);
+}
+
+export function getParent(widget: unknown): unknown {
+    return call(GTK_LIB, "gtk_widget_get_parent", [{ type: GOBJECT_BORROWED, value: widget }], GOBJECT_BORROWED);
+}

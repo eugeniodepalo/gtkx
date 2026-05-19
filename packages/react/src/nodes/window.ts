@@ -65,7 +65,9 @@ export class WindowNode extends WidgetNode<Gtk.Window, WindowProps, WindowChild>
         super(typeName, props, container, rootContainer);
         const application = rootContainer instanceof Gtk.Application ? rootContainer : undefined;
         const actionMap = container instanceof Gtk.ApplicationWindow ? container : undefined;
-        this.menuController = new MenuChildController(new MenuModel("root", {}, rootContainer, actionMap, application));
+        this.menuController = new MenuChildController(
+            new MenuModel({ type: "root", props: {}, rootContainer, actionMap, application }),
+        );
 
         if (container instanceof Gtk.AboutDialog && props.creditSections) {
             for (const section of props.creditSections) {

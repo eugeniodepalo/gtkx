@@ -9,7 +9,7 @@ import {
 } from "../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../fixtures/mock-repository.js";
 
-describe("isWidgetType", () => {
+describe("isWidgetType (1)", () => {
     const widgetQN = qualifiedName("Gtk", "Widget");
 
     it("returns true for Gtk.Widget string", () => {
@@ -55,6 +55,10 @@ describe("isWidgetType", () => {
         const repo = createMockRepository();
         expect(isWidgetType("Button", repo, widgetQN)).toBe(false);
     });
+});
+
+describe("isWidgetType (2)", () => {
+    const widgetQN = qualifiedName("Gtk", "Widget");
 
     it("returns false for non-widget class", () => {
         const applicationClass = createNormalizedClass({

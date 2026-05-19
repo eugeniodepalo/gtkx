@@ -39,7 +39,7 @@ const renderPopoverMenu = async (children: ReactNode): Promise<Gio.MenuModel> =>
     return requireModel(ref.current);
 };
 
-describe("render - Menu", () => {
+describe("render - Menu (1)", () => {
     describe("GtkPopoverMenu", () => {
         it("creates PopoverMenu widget", async () => {
             const model = await renderPopoverMenu(<MenuItem id="item1" label="Item 1" onActivate={() => {}} />);
@@ -71,7 +71,9 @@ describe("render - Menu", () => {
             expect(itemLabel(model, 2)).toBe("Item 3");
         });
     });
+});
 
+describe("render - Menu (2)", () => {
     describe("PopoverMenuBar", () => {
         it("creates PopoverMenuBar widget", async () => {
             const ref = createRef<Gtk.PopoverMenuBar>();
@@ -93,8 +95,10 @@ describe("render - Menu", () => {
             expect(itemLabel(fileSubmenu, 0)).toBe("New");
         });
     });
+});
 
-    describe("Menu.Item", () => {
+describe("render - Menu (3)", () => {
+    describe("Menu.Item (1)", () => {
         it("adds menu item with label", async () => {
             const model = await renderPopoverMenu(<MenuItem id="test" label="Test Item" onActivate={() => {}} />);
 
@@ -128,7 +132,11 @@ describe("render - Menu", () => {
             await render(<App label="Updated" />);
             expect(itemLabel(requireModel(ref.current), 0)).toBe("Updated");
         });
+    });
+});
 
+describe("render - Menu (4)", () => {
+    describe("Menu.Item (2)", () => {
         it("cleans up action on unmount", async () => {
             const ref = createRef<Gtk.PopoverMenu>();
 
@@ -147,7 +155,9 @@ describe("render - Menu", () => {
             expect(requireModel(ref.current).getNItems()).toBe(0);
         });
     });
+});
 
+describe("render - Menu (5)", () => {
     describe("Menu.Section", () => {
         it("creates menu section", async () => {
             const model = await renderPopoverMenu(
@@ -196,8 +206,10 @@ describe("render - Menu", () => {
             expect(requireLink(sectionAt(model, 0)).getNItems()).toBe(1);
         });
     });
+});
 
-    describe("Menu.Submenu", () => {
+describe("render - Menu (6)", () => {
+    describe("Menu.Submenu (1)", () => {
         it("creates submenu", async () => {
             const model = await renderPopoverMenu(
                 <MenuSubmenu label="File">
@@ -238,7 +250,11 @@ describe("render - Menu", () => {
             expect(itemLabel(model, 0)).toBe("Help");
             expect(requireLink(submenuAt(model, 0)).getNItems()).toBe(1);
         });
+    });
+});
 
+describe("render - Menu (7)", () => {
+    describe("Menu.Submenu (2)", () => {
         it("supports nested submenus", async () => {
             const model = await renderPopoverMenu(
                 <MenuSubmenu label="File">

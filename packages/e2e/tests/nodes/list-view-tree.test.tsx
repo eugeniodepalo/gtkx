@@ -36,7 +36,195 @@ const expandableExpanders = (): Gtk.TreeExpander[] =>
         .filter((w): w is Gtk.TreeExpander => w instanceof Gtk.TreeExpander)
         .filter((w) => w.getListRow()?.isExpandable() ?? false);
 
-describe("render - ListView (tree)", () => {
+type DemoItem = { name: string };
+const demoLeaf = (id: string, name: string) => ({ id, value: { name } });
+const demoChild = (id: string, name: string) => ({ id, value: { name }, hideExpander: true as const });
+const demoCat = (id: string, name: string, children: ReturnType<typeof demoChild>[]) => ({
+    id,
+    value: { name },
+    children,
+});
+
+const demoFullTree: ListItem<DemoItem>[] = [
+    demoLeaf("demo-intro", "GTK Demo"),
+    demoCat("cat-Benchmark", "Benchmark", [demoChild("demo-frames", "Frames"), demoChild("demo-themes", "Themes")]),
+    demoLeaf("demo-clipboard", "Clipboard"),
+    demoCat("cat-Constraints", "Constraints", [
+        demoChild("demo-interactive", "Interactive Constraints"),
+        demoChild("demo-simple", "Simple Constraints"),
+        demoChild("demo-vfl", "VFL"),
+    ]),
+    demoLeaf("demo-cursors", "Cursors"),
+    demoLeaf("demo-dialog", "Dialogs"),
+    demoLeaf("demo-dnd", "Drag-and-Drop"),
+    demoLeaf("demo-drawingarea", "Drawing Area"),
+    demoCat("cat-Entry", "Entry", [
+        demoChild("demo-password", "Password Entry"),
+        demoChild("demo-search-entry", "Search Entry"),
+        demoChild("demo-undo-entry", "Undo and Redo"),
+    ]),
+    demoLeaf("demo-errorstates", "Error States"),
+    demoLeaf("demo-expander", "Expander"),
+    demoCat("cat-Fixed-Layout", "Fixed Layout", [
+        demoChild("demo-cube", "Cube"),
+        demoChild("demo-transforms", "Transformations"),
+    ]),
+    demoLeaf("demo-flowbox", "Flow Box"),
+    demoLeaf("demo-gestures", "Gestures"),
+    demoLeaf("demo-headerbar", "Header Bar"),
+    demoLeaf("demo-images", "Images"),
+    demoLeaf("demo-links", "Links"),
+    demoCat("cat-List-Box", "List Box", [
+        demoChild("demo-listbox-complex", "Complex"),
+        demoChild("demo-listbox-controls", "Controls"),
+    ]),
+    demoCat("cat-Lists", "Lists", [
+        demoChild("demo-alt-settings", "Alternative Settings"),
+        demoChild("demo-app-launcher", "Application launcher"),
+        demoChild("demo-characters", "Characters"),
+        demoChild("demo-colors", "Colors"),
+        demoChild("demo-file-browser", "File browser"),
+        demoChild("demo-minesweeper", "Minesweeper"),
+        demoChild("demo-selections", "Selections"),
+        demoChild("demo-settings", "Settings"),
+        demoChild("demo-weather", "Weather"),
+        demoChild("demo-words", "Words"),
+    ]),
+    demoCat("cat-OpenGL", "OpenGL", [
+        demoChild("demo-gears", "Gears"),
+        demoChild("demo-glarea", "OpenGL Area"),
+        demoChild("demo-shadertoy", "Shadertoy"),
+    ]),
+    demoCat("cat-Overlay", "Overlay", [
+        demoChild("demo-decorative", "Decorative Overlay"),
+        demoChild("demo-interactive-overlay", "Interactive Overlay"),
+    ]),
+    demoCat("cat-Paintable", "Paintable", [demoChild("demo-svg", "SVG")]),
+    demoLeaf("demo-panes", "Paned Widgets"),
+    demoCat("cat-Pango", "Pango", [
+        demoChild("demo-font-explorer", "Font Explorer"),
+        demoChild("demo-font-rendering", "Font Rendering"),
+        demoChild("demo-rotated-text", "Rotated Text"),
+        demoChild("demo-text-mask", "Text Mask"),
+    ]),
+    demoLeaf("demo-pickers", "Pickers and Launchers"),
+    demoCat("cat-Printing", "Printing", [
+        demoChild("demo-page-setup", "Page Setup"),
+        demoChild("demo-printing", "Printing"),
+    ]),
+    demoLeaf("demo-revealer", "Revealer"),
+    demoLeaf("demo-scale", "Scales"),
+    demoLeaf("demo-shortcut-triggers", "Shortcut Triggers"),
+    demoLeaf("demo-shortcuts", "Shortcuts"),
+    demoLeaf("demo-sizegroup", "Size Groups"),
+    demoLeaf("demo-spinbutton", "Spin Buttons"),
+    demoLeaf("demo-spinner", "Spinner"),
+    demoLeaf("demo-stack", "Stack"),
+    demoLeaf("demo-sidebar", "Stack Sidebar"),
+    demoCat("cat-Text-View", "Text View", [
+        demoChild("demo-auto-scroll", "Automatic Scrolling"),
+        demoChild("demo-hypertext", "Hypertext"),
+        demoChild("demo-markup", "Markup"),
+        demoChild("demo-multi-views", "Multiple Views"),
+        demoChild("demo-tabs", "Tabs"),
+        demoChild("demo-undo-text", "Undo and Redo"),
+    ]),
+    demoCat("cat-Theming", "Theming", [
+        demoChild("demo-accordion", "CSS Accordion"),
+        demoChild("demo-css-basics", "CSS Basics"),
+        demoChild("demo-blend-modes", "CSS Blend Modes"),
+        demoChild("demo-multi-bg", "Multiple Backgrounds"),
+        demoChild("demo-animated-bg", "Animated Backgrounds"),
+        demoChild("demo-shadows", "Shadows"),
+        demoChild("demo-style-classes", "Style Classes"),
+    ]),
+    demoLeaf("demo-video-player", "Video Player"),
+];
+
+const allSettingCategories: Array<Category & { children: Setting[] }> = [
+    {
+        type: "category",
+        id: "appearance",
+        name: "Appearance",
+        children: [
+            { type: "setting", id: "dark-mode", name: "Dark Mode" },
+            { type: "setting", id: "large-text", name: "Large Text" },
+            { type: "setting", id: "animations", name: "Enable Animations" },
+            { type: "setting", id: "transparency", name: "Transparency Effects" },
+        ],
+    },
+    {
+        type: "category",
+        id: "notifications",
+        name: "Notifications",
+        children: [
+            { type: "setting", id: "notifications-enabled", name: "Alerts" },
+            { type: "setting", id: "sounds", name: "Notification Sounds" },
+            { type: "setting", id: "do-not-disturb", name: "Do Not Disturb" },
+            { type: "setting", id: "badge-count", name: "Show Badge Count" },
+        ],
+    },
+    {
+        type: "category",
+        id: "privacy",
+        name: "Privacy",
+        children: [
+            { type: "setting", id: "location", name: "Location Services" },
+            { type: "setting", id: "camera", name: "Camera Access" },
+            { type: "setting", id: "microphone", name: "Microphone Access" },
+            { type: "setting", id: "analytics", name: "Usage Analytics" },
+        ],
+    },
+    {
+        type: "category",
+        id: "power",
+        name: "Power",
+        children: [
+            { type: "setting", id: "auto-brightness", name: "Auto Brightness" },
+            { type: "setting", id: "power-saver", name: "Power Saver Mode" },
+            { type: "setting", id: "screen-timeout", name: "Screen Timeout" },
+            { type: "setting", id: "auto-suspend", name: "Automatic Suspend" },
+        ],
+    },
+    {
+        type: "category",
+        id: "network",
+        name: "Network",
+        children: [
+            { type: "setting", id: "wifi", name: "Wi-Fi" },
+            { type: "setting", id: "bluetooth", name: "Bluetooth" },
+            { type: "setting", id: "airplane", name: "Airplane Mode" },
+            { type: "setting", id: "vpn", name: "VPN" },
+        ],
+    },
+];
+
+type FilterItem = { type: "category"; name: string } | { type: "leaf"; name: string };
+
+const fullItems: FixtureInput<FilterItem> = [
+    { id: "leaf-a", value: { type: "leaf", name: "Alpha" } },
+    {
+        id: "cat-b",
+        value: { type: "category", name: "Bravo" },
+        children: [
+            { id: "leaf-b1", value: { type: "leaf", name: "B-One" }, hideExpander: true },
+            { id: "leaf-b2", value: { type: "leaf", name: "B-Two" }, hideExpander: true },
+        ],
+    },
+    { id: "leaf-c", value: { type: "leaf", name: "Charlie" } },
+    {
+        id: "cat-d",
+        value: { type: "category", name: "Delta" },
+        children: [
+            { id: "leaf-d1", value: { type: "leaf", name: "D-One" }, hideExpander: true },
+            { id: "leaf-d2", value: { type: "leaf", name: "D-Two" }, hideExpander: true },
+            { id: "leaf-d3", value: { type: "leaf", name: "D-Three" }, hideExpander: true },
+        ],
+    },
+    { id: "leaf-e", value: { type: "leaf", name: "Echo" } },
+];
+
+describe("render - ListView (tree) (1)", () => {
     describe("GtkListView (tree)", () => {
         it("creates ListView widget with tree items", async () => {
             const { ref } = await renderListView([{ id: "1", value: { name: "First" } }]);
@@ -44,8 +232,10 @@ describe("render - ListView (tree)", () => {
             expect(ref.current).not.toBeNull();
         });
     });
+});
 
-    describe("ListItem (tree)", () => {
+describe("render - ListView (tree) (2)", () => {
+    describe("ListItem (tree) (1)", () => {
         it("adds item to tree model", async () => {
             await renderListView([
                 { id: "1", value: { name: "First" } },
@@ -93,7 +283,11 @@ describe("render - ListView (tree)", () => {
             expect(screen.queryAllByText("Second")).toHaveLength(1);
             expect(screen.queryAllByText("Third")).toHaveLength(1);
         });
+    });
+});
 
+describe("render - ListView (tree) (3)", () => {
+    describe("ListItem (tree) (2)", () => {
         it("removes item from tree model", async () => {
             const { rerender } = await renderListView([
                 { id: "1", value: { name: "A" } },
@@ -123,7 +317,9 @@ describe("render - ListView (tree)", () => {
             expect(screen.queryAllByText("Updated")).toHaveLength(1);
         });
     });
+});
 
+describe("render - ListView (tree) (4)", () => {
     describe("renderItem (tree)", () => {
         it("receives item data in renderItem", async () => {
             const renderItem = vi.fn((item: { name: string }) => <GtkLabel label={item.name} />);
@@ -164,8 +360,10 @@ describe("render - ListView (tree)", () => {
             expect(screen.queryAllByText("Second: Test")).toHaveLength(1);
         });
     });
+});
 
-    describe("autoexpand", () => {
+describe("render - ListView (tree) (5)", () => {
+    describe("autoexpand (1)", () => {
         it("sets autoexpand property", async () => {
             const { ref } = await renderListView(
                 [
@@ -198,7 +396,11 @@ describe("render - ListView (tree)", () => {
 
             expect(getChildTexts(ref.current)).toEqual(["Parent", "Child 1", "Child 2"]);
         });
+    });
+});
 
+describe("render - ListView (tree) (6)", () => {
+    describe("autoexpand (2)", () => {
         it("parent row is expandable when it has children", async () => {
             await renderListView([
                 {
@@ -237,7 +439,11 @@ describe("render - ListView (tree)", () => {
 
             expect(getChildTexts(ref.current)).toEqual(["Parent", "Child 1", "Child 2"]);
         });
+    });
+});
 
+describe("render - ListView (tree) (7)", () => {
+    describe("autoexpand (3)", () => {
         it("updates autoexpand property", async () => {
             const items: FixtureInput<{ name: string }> = [
                 {
@@ -254,7 +460,9 @@ describe("render - ListView (tree)", () => {
             expect(ref.current).not.toBeNull();
         });
     });
+});
 
+describe("render - ListView (tree) (8)", () => {
     describe("item reordering (tree)", () => {
         it("respects React declaration order on initial render", async () => {
             const { ref } = await renderListView(["C", "A", "B"]);
@@ -295,8 +503,10 @@ describe("render - ListView (tree)", () => {
             expect(getChildTexts(ref.current)).toEqual(["A", "B", "C"]);
         });
     });
+});
 
-    describe("nested children rendering", () => {
+describe("render - ListView (tree) (9)", () => {
+    describe("nested children rendering (1)", () => {
         it("renders all nested children with correct data after expansion", async () => {
             const categories: Array<Category & { children: Setting[] }> = [
                 {
@@ -357,7 +567,11 @@ describe("render - ListView (tree)", () => {
                 "Privacy",
             ]);
         });
+    });
+});
 
+describe("render - ListView (tree) (10)", () => {
+    describe("nested children rendering (2)", () => {
         it("renders all children with correct data when using autoexpand", async () => {
             const categories: Array<Category & { children: Setting[] }> = [
                 {
@@ -389,7 +603,9 @@ describe("render - ListView (tree)", () => {
             ]);
         });
     });
+});
 
+describe("render - ListView (tree) (11)", () => {
     describe("tree item properties", () => {
         it("supports indentForDepth property", async () => {
             const { ref } = await renderListView(
@@ -439,8 +655,10 @@ describe("render - ListView (tree)", () => {
             expect(ref.current).not.toBeNull();
         });
     });
+});
 
-    describe("settings tree regression", () => {
+describe("render - ListView (tree) (12)", () => {
+    describe("settings tree regression (1)", () => {
         it("renders all children with non-null values on first expansion", async () => {
             const categories: Array<Category & { children: Setting[] }> = [
                 {
@@ -475,7 +693,11 @@ describe("render - ListView (tree)", () => {
                 "Transparency Effects",
             ]);
         });
+    });
+});
 
+describe("render - ListView (tree) (13)", () => {
+    describe("settings tree regression (2)", () => {
         it("renders all children with non-null values when clicking TreeExpander", async () => {
             const categories: Array<Category & { children: Setting[] }> = [
                 {
@@ -510,206 +732,102 @@ describe("render - ListView (tree)", () => {
                 "Transparency Effects",
             ]);
         });
+    });
+});
 
-        it("renders all children correctly after multiple expand/collapse cycles", async () => {
-            const categories: Array<Category & { children: Setting[] }> = [
-                {
-                    type: "category",
-                    id: "appearance",
-                    name: "Appearance",
-                    children: [
-                        { type: "setting", id: "dark-mode", name: "Dark Mode" },
-                        { type: "setting", id: "large-text", name: "Large Text" },
-                        { type: "setting", id: "animations", name: "Enable Animations" },
-                        { type: "setting", id: "transparency", name: "Transparency Effects" },
-                    ],
-                },
-                {
-                    type: "category",
-                    id: "notifications",
-                    name: "Notifications",
-                    children: [
-                        { type: "setting", id: "notifications-enabled", name: "Alerts" },
-                        { type: "setting", id: "sounds", name: "Notification Sounds" },
-                        { type: "setting", id: "do-not-disturb", name: "Do Not Disturb" },
-                        { type: "setting", id: "badge-count", name: "Show Badge Count" },
-                    ],
-                },
-                {
-                    type: "category",
-                    id: "privacy",
-                    name: "Privacy",
-                    children: [
-                        { type: "setting", id: "location", name: "Location Services" },
-                        { type: "setting", id: "camera", name: "Camera Access" },
-                        { type: "setting", id: "microphone", name: "Microphone Access" },
-                        { type: "setting", id: "analytics", name: "Usage Analytics" },
-                    ],
-                },
-                {
-                    type: "category",
-                    id: "power",
-                    name: "Power",
-                    children: [
-                        { type: "setting", id: "auto-brightness", name: "Auto Brightness" },
-                        { type: "setting", id: "power-saver", name: "Power Saver Mode" },
-                        { type: "setting", id: "screen-timeout", name: "Screen Timeout" },
-                        { type: "setting", id: "auto-suspend", name: "Automatic Suspend" },
-                    ],
-                },
-                {
-                    type: "category",
-                    id: "network",
-                    name: "Network",
-                    children: [
-                        { type: "setting", id: "wifi", name: "Wi-Fi" },
-                        { type: "setting", id: "bluetooth", name: "Bluetooth" },
-                        { type: "setting", id: "airplane", name: "Airplane Mode" },
-                        { type: "setting", id: "vpn", name: "VPN" },
-                    ],
-                },
-            ];
+describe("render - ListView (tree) (14) > settings tree regression (3)", () => {
+    it("renders all children correctly after multiple expand/collapse cycles", async () => {
+        const { ref } = await renderListView(toTreeItems(allSettingCategories));
 
-            const { ref } = await renderListView(toTreeItems(categories));
+        expect(getChildTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy", "Power", "Network"]);
 
-            expect(getChildTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy", "Power", "Network"]);
-
-            const expandAndVerify = async (categoryIndex: number, expectedChildren: string[]) => {
-                const row = expandableExpanders()[categoryIndex]?.getListRow();
-                if (!row) throw new Error("Expected row to exist");
-                row.setExpanded(true);
-                await tick();
-                await tick();
-                await tick();
-
-                expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-
-                for (const childName of expectedChildren) {
-                    expect(screen.queryAllByText(childName)).toHaveLength(1);
-                }
-            };
-
-            const collapseRow = async (categoryIndex: number) => {
-                const row = expandableExpanders()[categoryIndex]?.getListRow();
-                if (!row) throw new Error("Expected row to exist");
-                row.setExpanded(false);
-                await tick();
-            };
-
-            await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
-
-            await collapseRow(0);
-            expect(getChildTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy", "Power", "Network"]);
-
-            await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
-
-            await collapseRow(0);
-
-            await expandAndVerify(1, ["Alerts", "Notification Sounds", "Do Not Disturb", "Show Badge Count"]);
-
-            await collapseRow(1);
-
-            await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
-
-            expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-        });
-
-        it("third child does not remain stuck on Loading after expansion", async () => {
-            const categories: Array<Category & { children: Setting[] }> = [
-                {
-                    type: "category",
-                    id: "appearance",
-                    name: "Appearance",
-                    children: [
-                        { type: "setting", id: "dark-mode", name: "Dark Mode" },
-                        { type: "setting", id: "large-text", name: "Large Text" },
-                        { type: "setting", id: "animations", name: "Enable Animations" },
-                        { type: "setting", id: "transparency", name: "Transparency Effects" },
-                    ],
-                },
-                {
-                    type: "category",
-                    id: "notifications",
-                    name: "Notifications",
-                    children: [
-                        { type: "setting", id: "notifications-enabled", name: "Alerts" },
-                        { type: "setting", id: "sounds", name: "Notification Sounds" },
-                        { type: "setting", id: "do-not-disturb", name: "Do Not Disturb" },
-                        { type: "setting", id: "badge-count", name: "Show Badge Count" },
-                    ],
-                },
-            ];
-
-            const { ref } = await renderListView(toTreeItems(categories), { estimatedItemHeight: 48 });
-
-            const row = expandableExpanders()[0]?.getListRow();
+        const expandAndVerify = async (categoryIndex: number, expectedChildren: string[]) => {
+            const row = expandableExpanders()[categoryIndex]?.getListRow();
             if (!row) throw new Error("Expected row to exist");
-
-            const assertChildrenVisible = () => {
-                expect(screen.queryAllByText("Loading...")).toHaveLength(0);
-                expect(screen.queryAllByText("Dark Mode")).toHaveLength(1);
-                expect(screen.queryAllByText("Large Text")).toHaveLength(1);
-                expect(screen.queryAllByText("Enable Animations")).toHaveLength(1);
-                expect(screen.queryAllByText("Transparency Effects")).toHaveLength(1);
-            };
-
-            const assertChildrenHidden = () => {
-                expect(screen.queryAllByText("Dark Mode")).toHaveLength(0);
-                expect(screen.queryAllByText("Large Text")).toHaveLength(0);
-                expect(screen.queryAllByText("Enable Animations")).toHaveLength(0);
-                expect(screen.queryAllByText("Transparency Effects")).toHaveLength(0);
-            };
-
-            for (let i = 0; i < 3; i++) {
-                row.setExpanded(true);
-                await tick();
-                await tick();
-                await tick();
-                assertChildrenVisible();
-
-                row.setExpanded(false);
-                await tick();
-                await tick();
-                await tick();
-                assertChildrenHidden();
-            }
-
             row.setExpanded(true);
             await tick();
             await tick();
             await tick();
-            assertChildrenVisible();
 
-            expect(ref.current).not.toBeNull();
-        });
+            expect(screen.queryAllByText("Loading...")).toHaveLength(0);
+
+            for (const childName of expectedChildren) {
+                expect(screen.queryAllByText(childName)).toHaveLength(1);
+            }
+        };
+
+        const collapseRow = async (categoryIndex: number) => {
+            const row = expandableExpanders()[categoryIndex]?.getListRow();
+            if (!row) throw new Error("Expected row to exist");
+            row.setExpanded(false);
+            await tick();
+        };
+
+        await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
+
+        await collapseRow(0);
+        expect(getChildTexts(ref.current)).toEqual(["Appearance", "Notifications", "Privacy", "Power", "Network"]);
+
+        await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
+
+        await collapseRow(0);
+
+        await expandAndVerify(1, ["Alerts", "Notification Sounds", "Do Not Disturb", "Show Badge Count"]);
+
+        await collapseRow(1);
+
+        await expandAndVerify(0, ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"]);
+
+        expect(screen.queryAllByText("Loading...")).toHaveLength(0);
     });
+});
 
-    describe("tree filtering", () => {
-        type FilterItem = { type: "category"; name: string } | { type: "leaf"; name: string };
+describe("render - ListView (tree) (15) > settings tree regression (4)", () => {
+    const twoCategories: Array<Category & { children: Setting[] }> = allSettingCategories.slice(0, 2);
+    const appearanceChildNames = ["Dark Mode", "Large Text", "Enable Animations", "Transparency Effects"];
 
-        const fullItems: FixtureInput<FilterItem> = [
-            { id: "leaf-a", value: { type: "leaf", name: "Alpha" } },
-            {
-                id: "cat-b",
-                value: { type: "category", name: "Bravo" },
-                children: [
-                    { id: "leaf-b1", value: { type: "leaf", name: "B-One" }, hideExpander: true },
-                    { id: "leaf-b2", value: { type: "leaf", name: "B-Two" }, hideExpander: true },
-                ],
-            },
-            { id: "leaf-c", value: { type: "leaf", name: "Charlie" } },
-            {
-                id: "cat-d",
-                value: { type: "category", name: "Delta" },
-                children: [
-                    { id: "leaf-d1", value: { type: "leaf", name: "D-One" }, hideExpander: true },
-                    { id: "leaf-d2", value: { type: "leaf", name: "D-Two" }, hideExpander: true },
-                    { id: "leaf-d3", value: { type: "leaf", name: "D-Three" }, hideExpander: true },
-                ],
-            },
-            { id: "leaf-e", value: { type: "leaf", name: "Echo" } },
-        ];
+    const assertChildrenVisible = () => {
+        expect(screen.queryAllByText("Loading...")).toHaveLength(0);
+        for (const name of appearanceChildNames) {
+            expect(screen.queryAllByText(name)).toHaveLength(1);
+        }
+    };
 
+    const assertChildrenHidden = () => {
+        for (const name of appearanceChildNames) {
+            expect(screen.queryAllByText(name)).toHaveLength(0);
+        }
+    };
+
+    const toggleRow = async (row: Gtk.TreeListRow, expanded: boolean) => {
+        row.setExpanded(expanded);
+        await tick();
+        await tick();
+        await tick();
+    };
+
+    it("third child does not remain stuck on Loading after expansion", async () => {
+        const { ref } = await renderListView(toTreeItems(twoCategories), { estimatedItemHeight: 48 });
+
+        const row = expandableExpanders()[0]?.getListRow();
+        if (!row) throw new Error("Expected row to exist");
+
+        for (let i = 0; i < 3; i++) {
+            await toggleRow(row, true);
+            assertChildrenVisible();
+            await toggleRow(row, false);
+            assertChildrenHidden();
+        }
+
+        await toggleRow(row, true);
+        assertChildrenVisible();
+
+        expect(ref.current).not.toBeNull();
+    });
+});
+
+describe("render - ListView (tree) (16)", () => {
+    describe("tree filtering (1)", () => {
         it("shows children after filtering from many root items to few", async () => {
             const { ref, rerender } = await renderListView(fullItems, { autoexpand: true });
             await tick();
@@ -745,7 +863,11 @@ describe("render - ListView (tree)", () => {
 
             expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]);
         });
+    });
+});
 
+describe("render - ListView (tree) (17)", () => {
+    describe("tree filtering (2)", () => {
         it("shows children after multiple filter transitions", async () => {
             const { ref, rerender } = await renderListView(fullItems, { autoexpand: true });
             await tick();
@@ -790,7 +912,11 @@ describe("render - ListView (tree)", () => {
 
             expect(getChildTexts(ref.current)).toEqual(["Delta", "D-Two"]);
         });
+    });
+});
 
+describe("render - ListView (tree) (18)", () => {
+    describe("tree filtering (3)", () => {
         it("shows children after filtering a large tree with many root items", async () => {
             type Item = { name: string };
             const fullTree: ListItem<Item>[] = [];
@@ -831,129 +957,33 @@ describe("render - ListView (tree)", () => {
 
             expect(getChildTexts(ref.current)).toEqual(["Category 21", "Child 21-1"]);
         });
+    });
+});
 
-        it("shows children after filtering demo-like tree from 38 items to single category", async () => {
-            type Item = { name: string };
-            const leaf = (id: string, name: string) => ({ id, value: { name } });
-            const child = (id: string, name: string) => ({ id, value: { name }, hideExpander: true as const });
-            const cat = (id: string, name: string, children: ReturnType<typeof child>[]) => ({
-                id,
-                value: { name },
-                children,
-            });
-
-            const fullTree: ListItem<Item>[] = [
-                leaf("demo-intro", "GTK Demo"),
-                cat("cat-Benchmark", "Benchmark", [child("demo-frames", "Frames"), child("demo-themes", "Themes")]),
-                leaf("demo-clipboard", "Clipboard"),
-                cat("cat-Constraints", "Constraints", [
-                    child("demo-interactive", "Interactive Constraints"),
-                    child("demo-simple", "Simple Constraints"),
-                    child("demo-vfl", "VFL"),
-                ]),
-                leaf("demo-cursors", "Cursors"),
-                leaf("demo-dialog", "Dialogs"),
-                leaf("demo-dnd", "Drag-and-Drop"),
-                leaf("demo-drawingarea", "Drawing Area"),
-                cat("cat-Entry", "Entry", [
-                    child("demo-password", "Password Entry"),
-                    child("demo-search-entry", "Search Entry"),
-                    child("demo-undo-entry", "Undo and Redo"),
-                ]),
-                leaf("demo-errorstates", "Error States"),
-                leaf("demo-expander", "Expander"),
-                cat("cat-Fixed-Layout", "Fixed Layout", [
-                    child("demo-cube", "Cube"),
-                    child("demo-transforms", "Transformations"),
-                ]),
-                leaf("demo-flowbox", "Flow Box"),
-                leaf("demo-gestures", "Gestures"),
-                leaf("demo-headerbar", "Header Bar"),
-                leaf("demo-images", "Images"),
-                leaf("demo-links", "Links"),
-                cat("cat-List-Box", "List Box", [
-                    child("demo-listbox-complex", "Complex"),
-                    child("demo-listbox-controls", "Controls"),
-                ]),
-                cat("cat-Lists", "Lists", [
-                    child("demo-alt-settings", "Alternative Settings"),
-                    child("demo-app-launcher", "Application launcher"),
-                    child("demo-characters", "Characters"),
-                    child("demo-colors", "Colors"),
-                    child("demo-file-browser", "File browser"),
-                    child("demo-minesweeper", "Minesweeper"),
-                    child("demo-selections", "Selections"),
-                    child("demo-settings", "Settings"),
-                    child("demo-weather", "Weather"),
-                    child("demo-words", "Words"),
-                ]),
-                cat("cat-OpenGL", "OpenGL", [
-                    child("demo-gears", "Gears"),
-                    child("demo-glarea", "OpenGL Area"),
-                    child("demo-shadertoy", "Shadertoy"),
-                ]),
-                cat("cat-Overlay", "Overlay", [
-                    child("demo-decorative", "Decorative Overlay"),
-                    child("demo-interactive-overlay", "Interactive Overlay"),
-                ]),
-                cat("cat-Paintable", "Paintable", [child("demo-svg", "SVG")]),
-                leaf("demo-panes", "Paned Widgets"),
-                cat("cat-Pango", "Pango", [
-                    child("demo-font-explorer", "Font Explorer"),
-                    child("demo-font-rendering", "Font Rendering"),
-                    child("demo-rotated-text", "Rotated Text"),
-                    child("demo-text-mask", "Text Mask"),
-                ]),
-                leaf("demo-pickers", "Pickers and Launchers"),
-                cat("cat-Printing", "Printing", [
-                    child("demo-page-setup", "Page Setup"),
-                    child("demo-printing", "Printing"),
-                ]),
-                leaf("demo-revealer", "Revealer"),
-                leaf("demo-scale", "Scales"),
-                leaf("demo-shortcut-triggers", "Shortcut Triggers"),
-                leaf("demo-shortcuts", "Shortcuts"),
-                leaf("demo-sizegroup", "Size Groups"),
-                leaf("demo-spinbutton", "Spin Buttons"),
-                leaf("demo-spinner", "Spinner"),
-                leaf("demo-stack", "Stack"),
-                leaf("demo-sidebar", "Stack Sidebar"),
-                cat("cat-Text-View", "Text View", [
-                    child("demo-auto-scroll", "Automatic Scrolling"),
-                    child("demo-hypertext", "Hypertext"),
-                    child("demo-markup", "Markup"),
-                    child("demo-multi-views", "Multiple Views"),
-                    child("demo-tabs", "Tabs"),
-                    child("demo-undo-text", "Undo and Redo"),
-                ]),
-                cat("cat-Theming", "Theming", [
-                    child("demo-accordion", "CSS Accordion"),
-                    child("demo-css-basics", "CSS Basics"),
-                    child("demo-blend-modes", "CSS Blend Modes"),
-                    child("demo-multi-bg", "Multiple Backgrounds"),
-                    child("demo-animated-bg", "Animated Backgrounds"),
-                    child("demo-shadows", "Shadows"),
-                    child("demo-style-classes", "Style Classes"),
-                ]),
-                leaf("demo-video-player", "Video Player"),
-            ];
-
-            const { ref, rerender } = await renderListView(fullTree, { autoexpand: true, minContentHeight: 600 });
-            await tick();
-            await tick();
-            await tick();
-
-            await rerender([cat("cat-Lists", "Lists", [child("demo-weather", "Weather")])], {
-                autoexpand: true,
-                minContentHeight: 600,
-            });
-            await tick();
-            await tick();
-            await tick();
-
-            expect(getChildTexts(ref.current)).toEqual(["Lists", "Weather"]);
+describe("render - ListView (tree) (19) > tree filtering (4)", () => {
+    it("shows children after filtering demo-like tree from 38 items to single category", async () => {
+        const { ref, rerender } = await renderListView(demoFullTree, {
+            autoexpand: true,
+            minContentHeight: 600,
         });
+        await tick();
+        await tick();
+        await tick();
 
+        await rerender([demoCat("cat-Lists", "Lists", [demoChild("demo-weather", "Weather")])], {
+            autoexpand: true,
+            minContentHeight: 600,
+        });
+        await tick();
+        await tick();
+        await tick();
+
+        expect(getChildTexts(ref.current)).toEqual(["Lists", "Weather"]);
+    });
+});
+
+describe("render - ListView (tree) (20)", () => {
+    describe("tree filtering (5)", () => {
         it("shows children after filtering demo-like tree with small viewport", async () => {
             type Item = { name: string };
             const leaf = (id: string, name: string) => ({ id, value: { name } });
@@ -991,7 +1021,11 @@ describe("render - ListView (tree)", () => {
 
             expect(getChildTexts(ref.current)).toEqual(["Category 36", "Child 36-0"]);
         });
+    });
+});
 
+describe("render - ListView (tree) (21)", () => {
+    describe("tree filtering (6)", () => {
         it("shows children when transitioning from one filter to another without restoring full list", async () => {
             const { ref, rerender } = await renderListView(fullItems, { autoexpand: true });
             await tick();

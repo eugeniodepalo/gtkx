@@ -4,7 +4,7 @@ import { render } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 
-describe("render - Shortcut", () => {
+describe("render - Shortcut (1)", () => {
     it("attaches shortcuts to the parent ShortcutController", async () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
 
@@ -48,7 +48,9 @@ describe("render - Shortcut", () => {
 
         expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
     });
+});
 
+describe("render - Shortcut (2)", () => {
     it("uses NeverTrigger for an empty trigger array", async () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
 
@@ -97,7 +99,9 @@ describe("render - Shortcut", () => {
 
         expect(controllerRef.current?.getNItems() ?? 0).toBe(0);
     });
+});
 
+describe("render - Shortcut (3)", () => {
     it("re-applies the trigger when the disabled prop changes", async () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
         let updateDisabled: (next: boolean) => void = () => {};

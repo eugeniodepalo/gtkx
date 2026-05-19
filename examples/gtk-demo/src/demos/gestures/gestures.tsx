@@ -12,132 +12,151 @@ interface GestureState {
     longPressed: boolean;
 }
 
-const GesturesDemo = () => {
-    const gestureStateRef = useRef<GestureState>({
-        swipeX: 0,
-        swipeY: 0,
-        longPressed: false,
-    });
-    const rotateRef = useRef<Gtk.GestureRotate | null>(null);
-    const zoomRef = useRef<Gtk.GestureZoom | null>(null);
-    const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
-
-    const queueDraw = useCallback(() => {
-        drawingAreaRef.current?.queueDraw();
-    }, []);
-
+function useGesturesHandlers(gestureStateRef: React.RefObject<GestureState>, queueDraw: () => void) {
     const handleSwipe = useCallback(
         (velocityX: number, velocityY: number) => {
             gestureStateRef.current.swipeX = velocityX / 10;
             gestureStateRef.current.swipeY = velocityY / 10;
             queueDraw();
         },
-        [queueDraw],
+        [queueDraw, gestureStateRef],
     );
 
     const handleLongPressPressed = useCallback(() => {
         gestureStateRef.current.longPressed = true;
         queueDraw();
-    }, [queueDraw]);
+    }, [queueDraw, gestureStateRef]);
 
     const handleLongPressEnd = useCallback(() => {
         gestureStateRef.current.longPressed = false;
         queueDraw();
-    }, [queueDraw]);
+    }, [queueDraw, gestureStateRef]);
 
-    const handleRotateChanged = useCallback(() => {
-        queueDraw();
-    }, [queueDraw]);
+    return { handleSwipe, handleLongPressPressed, handleLongPressEnd };
+}
 
-    const handleZoomChanged = useCallback(() => {
-        queueDraw();
-    }, [queueDraw]);
+interface DrawGesturesArgs {
+    width: number;
+    height: number;
+    state: GestureState;
+    rotate: Gtk.GestureRotate | null;
+    zoom: Gtk.GestureZoom | null;
+}
+
+const drawGestures = (cr: Context, args: DrawGesturesArgs) => {
+    const { width, height, state, rotate, zoom } = args;
+    drawSwipe(cr, width, height, state);
+    if (rotate?.isRecognized() || zoom?.isRecognized()) {
+        drawRotateZoom(cr, { width, height, rotate, zoom });
+    }
+    if (state.longPressed) drawLongPress(cr, width, height);
+};
+
+const drawSwipe = (cr: Context, width: number, height: number, state: GestureState) => {
+    if (state.swipeX === 0 && state.swipeY === 0) return;
+    cr.save();
+    cr.setLineWidth(6);
+    cr.moveTo(width / 2, height / 2);
+    cr.relLineTo(state.swipeX, state.swipeY);
+    cr.setSourceRgba(1, 0, 0, 0.5);
+    cr.stroke();
+    cr.restore();
+};
+
+const drawRotateZoom = (
+    cr: Context,
+    {
+        width,
+        height,
+        rotate,
+        zoom,
+    }: { width: number; height: number; rotate: Gtk.GestureRotate | null; zoom: Gtk.GestureZoom | null },
+) => {
+    const rectSize = 200;
+    let centerX = width / 2;
+    let centerY = height / 2;
+
+    const center = zoom?.getBoundingBoxCenter();
+    if (center?.[0]) {
+        centerX = center[1];
+        centerY = center[2];
+    }
+
+    const angle = rotate?.getAngleDelta() ?? 0;
+    const scale = zoom?.getScaleDelta() ?? 1;
+
+    cr.save();
+    cr.translate(centerX, centerY);
+    cr.rotate(angle);
+    cr.scale(scale, scale);
+
+    const pattern = Pattern.createLinear(-rectSize / 2, 0, rectSize, 0);
+    pattern.addColorStopRgb(0, 0, 0, 1);
+    pattern.addColorStopRgb(1, 1, 0, 0);
+    cr.setSource(pattern);
+
+    cr.rectangle(-rectSize / 2, -rectSize / 2, rectSize, rectSize);
+    cr.fill();
+    cr.restore();
+};
+
+const drawLongPress = (cr: Context, width: number, height: number) => {
+    cr.save();
+    cr.arc({ xc: width / 2, yc: height / 2, radius: 50, angle1: 0, angle2: 2 * Math.PI });
+    cr.setSourceRgba(0, 1, 0, 0.5);
+    cr.stroke();
+    cr.restore();
+};
+
+const GesturesDemo = () => {
+    const gestureStateRef = useRef<GestureState>({ swipeX: 0, swipeY: 0, longPressed: false });
+    const rotateRef = useRef<Gtk.GestureRotate | null>(null);
+    const zoomRef = useRef<Gtk.GestureZoom | null>(null);
+    const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
+
+    const queueDraw = useCallback(() => drawingAreaRef.current?.queueDraw(), []);
+
+    const handlers = useGesturesHandlers(gestureStateRef, queueDraw);
 
     const drawFunc = useCallback((cr: Context, width: number, height: number) => {
-        const { swipeX, swipeY, longPressed } = gestureStateRef.current;
-
-        if (swipeX !== 0 || swipeY !== 0) {
-            cr.save();
-            cr.setLineWidth(6);
-            cr.moveTo(width / 2, height / 2);
-            cr.relLineTo(swipeX, swipeY);
-            cr.setSourceRgba(1, 0, 0, 0.5);
-            cr.stroke();
-            cr.restore();
-        }
-
-        const rotate = rotateRef.current;
-        const zoom = zoomRef.current;
-
-        if (rotate?.isRecognized() || zoom?.isRecognized()) {
-            const rectSize = 200;
-
-            let centerX = width / 2;
-            let centerY = height / 2;
-
-            const center = zoom?.getBoundingBoxCenter();
-            if (center?.[0]) {
-                centerX = center[1];
-                centerY = center[2];
-            }
-
-            const angle = rotate?.getAngleDelta() ?? 0;
-            const scale = zoom?.getScaleDelta() ?? 1;
-
-            cr.save();
-            cr.translate(centerX, centerY);
-            cr.rotate(angle);
-            cr.scale(scale, scale);
-
-            const pattern = Pattern.createLinear(-rectSize / 2, 0, rectSize, 0);
-            pattern.addColorStopRgb(0, 0, 0, 1);
-            pattern.addColorStopRgb(1, 1, 0, 0);
-            cr.setSource(pattern);
-
-            cr.rectangle(-rectSize / 2, -rectSize / 2, rectSize, rectSize);
-            cr.fill();
-
-            cr.restore();
-        }
-
-        if (longPressed) {
-            cr.save();
-            cr.arc(width / 2, height / 2, 50, 0, 2 * Math.PI);
-            cr.setSourceRgba(0, 1, 0, 0.5);
-            cr.stroke();
-            cr.restore();
-        }
+        drawGestures(cr, {
+            width,
+            height,
+            state: gestureStateRef.current,
+            rotate: rotateRef.current,
+            zoom: zoomRef.current,
+        });
     }, []);
 
     return (
         <GtkDrawingArea ref={drawingAreaRef} contentWidth={400} contentHeight={400} render={drawFunc}>
-            <GtkGestureSwipe propagationPhase={Gtk.PropagationPhase.BUBBLE} onSwipe={handleSwipe} />
+            <GtkGestureSwipe propagationPhase={Gtk.PropagationPhase.BUBBLE} onSwipe={handlers.handleSwipe} />
             <GtkGestureSwipe
                 propagationPhase={Gtk.PropagationPhase.BUBBLE}
                 nPoints={3}
                 onBegin={(_sequence, self) => {
                     if (_sequence !== null) self.setState(Gtk.EventSequenceState.DENIED);
                 }}
-                onSwipe={handleSwipe}
+                onSwipe={handlers.handleSwipe}
             />
             <GtkGestureLongPress
                 propagationPhase={Gtk.PropagationPhase.BUBBLE}
-                onPressed={handleLongPressPressed}
-                onEnd={handleLongPressEnd}
+                onPressed={handlers.handleLongPressPressed}
+                onEnd={handlers.handleLongPressEnd}
             />
             <GtkGestureRotate
                 propagationPhase={Gtk.PropagationPhase.BUBBLE}
                 ref={(g: Gtk.GestureRotate | null) => {
                     rotateRef.current = g;
                 }}
-                onAngleChanged={handleRotateChanged}
+                onAngleChanged={queueDraw}
             />
             <GtkGestureZoom
                 propagationPhase={Gtk.PropagationPhase.BUBBLE}
                 ref={(g: Gtk.GestureZoom | null) => {
                     zoomRef.current = g;
                 }}
-                onScaleChanged={handleZoomChanged}
+                onScaleChanged={queueDraw}
             />
         </GtkDrawingArea>
     );

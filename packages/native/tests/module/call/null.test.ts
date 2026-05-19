@@ -13,7 +13,7 @@ import {
     VOID,
 } from "../utils.js";
 
-describe("call - null pointer arguments", () => {
+describe("call - null pointer arguments - basic", () => {
     it("passes null pointer as optional argument", () => {
         const label = call(GTK_LIB, "gtk_label_new", [{ type: POINTER, value: 0 }], GOBJECT);
 
@@ -55,7 +55,9 @@ describe("call - null pointer arguments", () => {
 
         expect(parent).toBeNull();
     });
+});
 
+describe("call - null pointer arguments - return values", () => {
     it("returns null for missing sibling", () => {
         const box = createBox();
         const label = createLabel("Only Child");
@@ -92,7 +94,9 @@ describe("call - null pointer arguments", () => {
 
         expect(firstChild).toBeNull();
     });
+});
 
+describe("call - null pointer arguments - callback positions", () => {
     it("handles null pointers in callback user_data position", () => {
         const label = createLabel("Test");
 
@@ -113,94 +117,91 @@ describe("call - null pointer arguments", () => {
 
         expect(result).toBeUndefined();
     });
+});
 
-    describe("edge cases", () => {
-        it("returns null for absent optional GObject return", () => {
-            const label = createLabel("Test");
+describe("call - null pointer arguments - edge cases", () => {
+    it("returns null for absent optional GObject return", () => {
+        const label = createLabel("Test");
 
-            const parent = call(
-                GTK_LIB,
-                "gtk_widget_get_parent",
-                [{ type: GOBJECT_BORROWED, value: label }],
-                GOBJECT_BORROWED,
-            );
+        const parent = call(
+            GTK_LIB,
+            "gtk_widget_get_parent",
+            [{ type: GOBJECT_BORROWED, value: label }],
+            GOBJECT_BORROWED,
+        );
 
-            expect(parent).toBeNull();
-            expect(parent).not.toBeUndefined();
-        });
+        expect(parent).toBeNull();
+        expect(parent).not.toBeUndefined();
+    });
 
-        it("handles null GObject vs actual GObject", () => {
-            const box = createBox();
-            const label = createLabel("Test");
+    it("handles null GObject vs actual GObject", () => {
+        const box = createBox();
+        const label = createLabel("Test");
 
-            let child = call(
-                GTK_LIB,
-                "gtk_widget_get_first_child",
-                [{ type: GOBJECT_BORROWED, value: box }],
-                GOBJECT_BORROWED,
-            );
-            expect(child).toBeNull();
+        let child = call(
+            GTK_LIB,
+            "gtk_widget_get_first_child",
+            [{ type: GOBJECT_BORROWED, value: box }],
+            GOBJECT_BORROWED,
+        );
+        expect(child).toBeNull();
 
-            call(
-                GTK_LIB,
-                "gtk_box_append",
-                [
-                    { type: GOBJECT_BORROWED, value: box },
-                    { type: GOBJECT_BORROWED, value: label },
-                ],
-                VOID,
-            );
+        call(
+            GTK_LIB,
+            "gtk_box_append",
+            [
+                { type: GOBJECT_BORROWED, value: box },
+                { type: GOBJECT_BORROWED, value: label },
+            ],
+            VOID,
+        );
 
-            child = call(
-                GTK_LIB,
-                "gtk_widget_get_first_child",
-                [{ type: GOBJECT_BORROWED, value: box }],
-                GOBJECT_BORROWED,
-            );
-            expect(child).not.toBeNull();
-        });
+        child = call(GTK_LIB, "gtk_widget_get_first_child", [{ type: GOBJECT_BORROWED, value: box }], GOBJECT_BORROWED);
+        expect(child).not.toBeNull();
+    });
+});
 
-        it("handles null in mixed position arguments", () => {
-            const label = createLabel("Test");
-            const minRef = createRef(0);
+describe("call - null pointer arguments - edge cases mixed", () => {
+    it("handles null in mixed position arguments", () => {
+        const label = createLabel("Test");
+        const minRef = createRef(0);
 
-            call(
-                GTK_LIB,
-                "gtk_widget_measure",
-                [
-                    { type: GOBJECT_BORROWED, value: label },
-                    { type: INT32, value: 0 },
-                    { type: INT32, value: -1 },
-                    { type: { type: "ref", innerType: INT32 }, value: minRef },
-                    { type: POINTER, value: 0 },
-                    { type: POINTER, value: 0 },
-                    { type: POINTER, value: 0 },
-                ],
-                VOID,
-            );
+        call(
+            GTK_LIB,
+            "gtk_widget_measure",
+            [
+                { type: GOBJECT_BORROWED, value: label },
+                { type: INT32, value: 0 },
+                { type: INT32, value: -1 },
+                { type: { type: "ref", innerType: INT32 }, value: minRef },
+                { type: POINTER, value: 0 },
+                { type: POINTER, value: 0 },
+                { type: POINTER, value: 0 },
+            ],
+            VOID,
+        );
 
-            expect(typeof minRef.value).toBe("number");
-        });
+        expect(typeof minRef.value).toBe("number");
+    });
 
-        it("handles consecutive null pointer arguments", () => {
-            const label = createLabel("Test");
+    it("handles consecutive null pointer arguments", () => {
+        const label = createLabel("Test");
 
-            const result = call(
-                GTK_LIB,
-                "gtk_widget_measure",
-                [
-                    { type: GOBJECT_BORROWED, value: label },
-                    { type: INT32, value: 0 },
-                    { type: INT32, value: -1 },
-                    { type: POINTER, value: 0 },
-                    { type: POINTER, value: 0 },
-                    { type: POINTER, value: 0 },
-                    { type: POINTER, value: 0 },
-                ],
-                VOID,
-            );
+        const result = call(
+            GTK_LIB,
+            "gtk_widget_measure",
+            [
+                { type: GOBJECT_BORROWED, value: label },
+                { type: INT32, value: 0 },
+                { type: INT32, value: -1 },
+                { type: POINTER, value: 0 },
+                { type: POINTER, value: 0 },
+                { type: POINTER, value: 0 },
+                { type: POINTER, value: 0 },
+            ],
+            VOID,
+        );
 
-            expect(result).toBeUndefined();
-        });
+        expect(result).toBeUndefined();
     });
 });

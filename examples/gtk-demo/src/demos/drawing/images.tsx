@@ -22,14 +22,8 @@ function getSymbolicIcon() {
 const PROGRESSIVE_ROWS_PER_TICK = 3;
 const PROGRESSIVE_INTERVAL_MS = 150;
 
-const ImagesDemo = ({ window }: DemoProps) => {
-    const [widgetPaintable, setWidgetPaintable] = useState<Gtk.WidgetPaintable | null>(null);
+function useGifPaintable() {
     const [gifPaintable, setGifPaintable] = useState<Gtk.MediaFile | null>(null);
-    const [progressiveTexture, setProgressiveTexture] = useState<Gdk.Texture | null>(null);
-    const [insensitive, setInsensitive] = useState(false);
-    const progressiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const videoFile = useMemo(() => Gio.fileNewForPath(gtkLogoWebmPath), []);
-
     useLayoutEffect(() => {
         try {
             const mediaFile = Gtk.MediaFile.newForFilename(floppybuddyGifPath);
@@ -38,14 +32,12 @@ const ImagesDemo = ({ window }: DemoProps) => {
             setGifPaintable(mediaFile);
         } catch {}
     }, []);
+    return gifPaintable;
+}
 
-    useEffect(() => {
-        const win = window.current;
-        if (win) {
-            const paintable = Gtk.WidgetPaintable.new(win);
-            setWidgetPaintable(paintable);
-        }
-    }, [window]);
+function useProgressiveTexture() {
+    const [progressiveTexture, setProgressiveTexture] = useState<Gdk.Texture | null>(null);
+    const progressiveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         let source: GdkPixbuf.Pixbuf;
@@ -90,6 +82,33 @@ const ImagesDemo = ({ window }: DemoProps) => {
         };
     }, []);
 
+    return progressiveTexture;
+}
+
+const ImagesPanel = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+        <GtkLabel label={title} cssClasses={["heading"]} />
+        <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+            {children}
+        </GtkFrame>
+    </GtkBox>
+);
+
+const ImagesDemo = ({ window }: DemoProps) => {
+    const [widgetPaintable, setWidgetPaintable] = useState<Gtk.WidgetPaintable | null>(null);
+    const gifPaintable = useGifPaintable();
+    const progressiveTexture = useProgressiveTexture();
+    const [insensitive, setInsensitive] = useState(false);
+    const videoFile = useMemo(() => Gio.fileNewForPath(gtkLogoWebmPath), []);
+
+    useEffect(() => {
+        const win = window.current;
+        if (win) {
+            const paintable = Gtk.WidgetPaintable.new(win);
+            setWidgetPaintable(paintable);
+        }
+    }, [window]);
+
     return (
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
@@ -100,47 +119,27 @@ const ImagesDemo = ({ window }: DemoProps) => {
             marginBottom={16}
         >
             <GtkBox spacing={16} sensitive={!insensitive}>
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Image" cssClasses={["heading"]} />
-                    <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-                        <GtkImage file={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
-                    </GtkFrame>
-                </GtkBox>
-
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Animation" cssClasses={["heading"]} />
-                    <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-                        <GtkPicture paintable={gifPaintable} canShrink widthRequest={150} heightRequest={150} />
-                    </GtkFrame>
-                </GtkBox>
-
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Symbolic icon" cssClasses={["heading"]} />
-                    <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-                        <GtkImage gicon={getSymbolicIcon()} iconSize={Gtk.IconSize.LARGE} />
-                    </GtkFrame>
-                </GtkBox>
-
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Progressive" cssClasses={["heading"]} />
-                    <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-                        <GtkPicture
-                            paintable={progressiveTexture}
-                            canShrink
-                            widthRequest={150}
-                            heightRequest={150}
-                            alternativeText="A slowly loading image"
-                        />
-                    </GtkFrame>
-                </GtkBox>
-
-                <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                    <GtkLabel label="Video" cssClasses={["heading"]} />
-                    <GtkFrame halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
-                        <GtkVideo autoplay loop widthRequest={200} heightRequest={150} file={videoFile} />
-                    </GtkFrame>
-                </GtkBox>
-
+                <ImagesPanel title="Image">
+                    <GtkImage file={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
+                </ImagesPanel>
+                <ImagesPanel title="Animation">
+                    <GtkPicture paintable={gifPaintable} canShrink widthRequest={150} heightRequest={150} />
+                </ImagesPanel>
+                <ImagesPanel title="Symbolic icon">
+                    <GtkImage gicon={getSymbolicIcon()} iconSize={Gtk.IconSize.LARGE} />
+                </ImagesPanel>
+                <ImagesPanel title="Progressive">
+                    <GtkPicture
+                        paintable={progressiveTexture}
+                        canShrink
+                        widthRequest={150}
+                        heightRequest={150}
+                        alternativeText="A slowly loading image"
+                    />
+                </ImagesPanel>
+                <ImagesPanel title="Video">
+                    <GtkVideo autoplay loop widthRequest={200} heightRequest={150} file={videoFile} />
+                </ImagesPanel>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                     <GtkLabel label="Paintable" cssClasses={["heading"]} />
                     <GtkPicture

@@ -76,7 +76,9 @@ describe("findByRole", () => {
         const activeSwitch = await findByRole(container, Gtk.AccessibleRole.SWITCH, { checked: true });
         expect(activeSwitch).toBeDefined();
     });
+});
 
+describe("findByRole matchers", () => {
     it("finds expander by label", async () => {
         const { container } = await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -104,26 +106,26 @@ describe("findByRole", () => {
         });
         expect(button).toBeDefined();
     });
+});
 
-    describe("error handling", () => {
-        it("throws when element not found with role suggestions", async () => {
-            const { container } = await render(<GtkLabel label="Test" />);
-            await expect(
-                findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "NonexistentButton", timeout: 100 }),
-            ).rejects.toThrow(/Unable to find an element with role 'BUTTON'/);
-        });
+describe("findByRole error handling", () => {
+    it("throws when element not found with role suggestions", async () => {
+        const { container } = await render(<GtkLabel label="Test" />);
+        await expect(
+            findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "NonexistentButton", timeout: 100 }),
+        ).rejects.toThrow(/Unable to find an element with role 'BUTTON'/);
+    });
 
-        it("throws when multiple elements found", async () => {
-            const { container } = await render(
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkButton label="Same" />
-                    <GtkButton label="Same" />
-                </GtkBox>,
-            );
-            await expect(findByText(container, "Same", { timeout: 100 })).rejects.toThrow(
-                /Found 2 elements with text 'Same'/,
-            );
-        });
+    it("throws when multiple elements found", async () => {
+        const { container } = await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkButton label="Same" />
+                <GtkButton label="Same" />
+            </GtkBox>,
+        );
+        await expect(findByText(container, "Same", { timeout: 100 })).rejects.toThrow(
+            /Found 2 elements with text 'Same'/,
+        );
     });
 });
 

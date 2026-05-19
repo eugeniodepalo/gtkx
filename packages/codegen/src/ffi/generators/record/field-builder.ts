@@ -21,7 +21,7 @@ import { isGeneratableFieldType as isGeneratableFieldTypeUtil } from "../../../u
  * unit, `bitOffset` is the field's bit position within that unit, and
  * `bitWidth` is its width in bits. Non-bitfield members leave both undefined.
  */
-type FieldLayout = {
+export type FieldLayout = {
     field: GirField;
     offset: number;
     size: number;
@@ -74,7 +74,7 @@ export class FieldBuilder {
             const alignment = this.getMemberAlignment(field);
 
             if (field.bits !== undefined && field.bits > 0) {
-                ({ currentOffset, bitUnit } = this.appendBitfieldLayout(
+                ({ currentOffset, bitUnit } = this.appendBitfieldLayout({
                     field,
                     size,
                     alignment,
@@ -82,7 +82,7 @@ export class FieldBuilder {
                     layout,
                     currentOffset,
                     bitUnit,
-                ));
+                }));
                 continue;
             }
 
@@ -114,15 +114,16 @@ export class FieldBuilder {
      *
      * @returns The running offset and open bit-storage unit after placement.
      */
-    private appendBitfieldLayout(
-        field: GirField,
-        size: number,
-        alignment: number,
-        isUnion: boolean,
-        layout: FieldLayout[],
-        currentOffset: number,
-        bitUnit: BitUnit | null,
-    ): { currentOffset: number; bitUnit: BitUnit | null } {
+    private appendBitfieldLayout(opts: {
+        field: GirField;
+        size: number;
+        alignment: number;
+        isUnion: boolean;
+        layout: FieldLayout[];
+        currentOffset: number;
+        bitUnit: BitUnit | null;
+    }): { currentOffset: number; bitUnit: BitUnit | null } {
+        const { field, size, alignment, isUnion, layout, currentOffset, bitUnit } = opts;
         const bits = field.bits ?? 0;
 
         if (isUnion) {
@@ -183,8 +184,7 @@ export class FieldBuilder {
      * Writes field initialization statements.
      */
     writeFieldWrites(fields: readonly GirField[]): (writer: Writer) => void {
-        const layout = this.calculateLayout(fields);
-        const initializableFields = layout.filter(
+        const initializableFields = this.calculateLayout(fields).filter(
             ({ field }) =>
                 !field.private &&
                 field.writable !== false &&
@@ -194,48 +194,68 @@ export class FieldBuilder {
 
         return (writer) => {
             for (const { field, offset } of initializableFields) {
-                let fieldName = toValidMemberName(toCamelCase(field.name));
-                if (fieldName === "id") fieldName = "id_";
-
+                const fieldName = this.resolveFieldVarName(field);
                 if (this.isInlineNestedStruct(field)) {
-                    const typeName = String(field.type.name);
-                    const nestedLayout = this.getNestedStructLayout(typeName);
-                    if (!nestedLayout) continue;
-
-                    const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-                    if (typeMapping.unsafe) continue;
-                    this.addFieldTypeImports(typeMapping.imports);
-
-                    writer.writeLine(`if (init.${fieldName} !== undefined) {`);
-                    writer.withIndent(() => {
-                        for (const nestedItem of nestedLayout) {
-                            if (!this.isWritableType(nestedItem.field.type)) continue;
-                            const nestedFieldName = toValidMemberName(toCamelCase(nestedItem.field.name));
-                            const nestedOffset = offset + nestedItem.offset;
-                            const nestedTypeMapping = this.ffiMapper.mapType(
-                                nestedItem.field.type,
-                                false,
-                                nestedItem.field.type.transferOwnership,
-                            );
-                            if (nestedTypeMapping.unsafe) continue;
-
-                            writer.write(`write(getHandle(this),`);
-                            writeFfiTypeExpression(writer, nestedTypeMapping.ffi);
-                            writer.writeLine(`, ${nestedOffset}, init.${fieldName}.${nestedFieldName});`);
-                        }
-                    });
-                    writer.writeLine("}");
+                    this.writeNestedStructInit(writer, field, fieldName, offset);
                 } else {
-                    const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
-                    if (typeMapping.unsafe) continue;
-                    this.addFieldTypeImports(typeMapping.imports);
-
-                    writer.write(`if (init.${fieldName} !== undefined) write(getHandle(this),`);
-                    writeFfiTypeExpression(writer, typeMapping.ffi);
-                    writer.writeLine(`, ${offset}, init.${fieldName});`);
+                    this.writeScalarFieldInit(writer, field, fieldName, offset);
                 }
             }
         };
+    }
+
+    private resolveFieldVarName(field: GirField): string {
+        const name = toValidMemberName(toCamelCase(field.name));
+        return name === "id" ? "id_" : name;
+    }
+
+    private writeNestedStructInit(writer: Writer, field: GirField, fieldName: string, offset: number): void {
+        const typeName = String(field.type.name);
+        const nestedLayout = this.getNestedStructLayout(typeName);
+        if (!nestedLayout) return;
+
+        const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        if (typeMapping.unsafe) return;
+        this.addFieldTypeImports(typeMapping.imports);
+
+        writer.writeLine(`if (init.${fieldName} !== undefined) {`);
+        writer.withIndent(() => {
+            for (const nestedItem of nestedLayout) {
+                this.writeNestedFieldAssignment(writer, nestedItem, fieldName, offset);
+            }
+        });
+        writer.writeLine("}");
+    }
+
+    private writeNestedFieldAssignment(
+        writer: Writer,
+        nestedItem: FieldLayout,
+        fieldName: string,
+        baseOffset: number,
+    ): void {
+        if (!this.isWritableType(nestedItem.field.type)) return;
+        const nestedFieldName = toValidMemberName(toCamelCase(nestedItem.field.name));
+        const nestedOffset = baseOffset + nestedItem.offset;
+        const nestedTypeMapping = this.ffiMapper.mapType(
+            nestedItem.field.type,
+            false,
+            nestedItem.field.type.transferOwnership,
+        );
+        if (nestedTypeMapping.unsafe) return;
+
+        writer.write(`write(getHandle(this),`);
+        writeFfiTypeExpression(writer, nestedTypeMapping.ffi);
+        writer.writeLine(`, ${nestedOffset}, init.${fieldName}.${nestedFieldName});`);
+    }
+
+    private writeScalarFieldInit(writer: Writer, field: GirField, fieldName: string, offset: number): void {
+        const typeMapping = this.ffiMapper.mapType(field.type, false, field.type.transferOwnership);
+        if (typeMapping.unsafe) return;
+        this.addFieldTypeImports(typeMapping.imports);
+
+        writer.write(`if (init.${fieldName} !== undefined) write(getHandle(this),`);
+        writeFfiTypeExpression(writer, typeMapping.ffi);
+        writer.writeLine(`, ${offset}, init.${fieldName});`);
     }
 
     getWritableFields(fields: readonly GirField[]): GirField[] {
