@@ -13,7 +13,7 @@ import {
 import { collectParentMethodNames } from "../../core/utils/class-traversal.js";
 import { generateConflictingMethodName, toCamelCase, toPascalCase } from "../../core/utils/naming.js";
 import { isClassVtable } from "../../core/utils/record-filter.js";
-import type { GirRepository, LoadedGir } from "../../gir/index.js";
+import type { GirNamespace, GirRepository, LoadedGir } from "../../gir/index.js";
 import type { GirMethod } from "../../gir/model/callables.js";
 import type { GirType } from "../../gir/model/type.js";
 import {
@@ -45,11 +45,8 @@ import {
  * @param repository - The loaded GIR repository.
  * @returns Enum member values keyed namespace → enum name → member name.
  */
-export const collectEnumValues = (repository: GirRepository): EnumValueMap => {
-    const namespaces = new Map<string, Map<string, Map<string, number>>>();
-    for (const namespaceName of repository.getNamespaceNames()) {
-        const namespace = repository.getNamespace(namespaceName);
-        if (!namespace) continue;
+export const collectEnumValues = (repository: GirRepository): EnumValueMap =>
+    collectByNamespace(repository, (namespace) => {
         const enumerations = new Map<string, Map<string, number>>();
         for (const enumeration of [...namespace.enumerations.values(), ...namespace.bitfields.values()]) {
             const members = new Map<string, number>();
@@ -61,10 +58,8 @@ export const collectEnumValues = (repository: GirRepository): EnumValueMap => {
             }
             enumerations.set(enumeration.name, members);
         }
-        namespaces.set(namespaceName.toLowerCase(), enumerations);
-    }
-    return namespaces;
-};
+        return enumerations;
+    });
 
 /**
  * Collects every `GError` error-domain enum name per namespace from the loaded
@@ -76,19 +71,14 @@ export const collectEnumValues = (repository: GirRepository): EnumValueMap => {
  * @param repository - The loaded GIR repository.
  * @returns Error-domain enum names keyed lowercase namespace identifier.
  */
-export const collectErrorDomainNames = (repository: GirRepository): ErrorDomainMap => {
-    const namespaces = new Map<string, Set<string>>();
-    for (const namespaceName of repository.getNamespaceNames()) {
-        const namespace = repository.getNamespace(namespaceName);
-        if (!namespace) continue;
+export const collectErrorDomainNames = (repository: GirRepository): ErrorDomainMap =>
+    collectByNamespace(repository, (namespace) => {
         const names = new Set<string>();
         for (const enumeration of namespace.enumerations.values()) {
             if (enumeration.glibErrorDomain) names.add(enumeration.name);
         }
-        namespaces.set(namespaceName.toLowerCase(), names);
-    }
-    return namespaces;
-};
+        return names;
+    });
 
 /**
  * Collects every `<bitfield>` enum name per namespace from the loaded GIR
@@ -100,19 +90,14 @@ export const collectErrorDomainNames = (repository: GirRepository): ErrorDomainM
  * @param repository - The loaded GIR repository.
  * @returns Bitfield enum names keyed lowercase namespace identifier.
  */
-export const collectBitfieldNames = (repository: GirRepository): BitfieldMap => {
-    const namespaces = new Map<string, Set<string>>();
-    for (const namespaceName of repository.getNamespaceNames()) {
-        const namespace = repository.getNamespace(namespaceName);
-        if (!namespace) continue;
+export const collectBitfieldNames = (repository: GirRepository): BitfieldMap =>
+    collectByNamespace(repository, (namespace) => {
         const names = new Set<string>();
         for (const bitfield of namespace.bitfields.values()) {
             names.add(bitfield.name);
         }
-        namespaces.set(namespaceName.toLowerCase(), names);
-    }
-    return namespaces;
-};
+        return names;
+    });
 
 /**
  * Collects every gtype-struct (class/interface vtable) record name per
@@ -122,21 +107,16 @@ export const collectBitfieldNames = (repository: GirRepository): BitfieldMap => 
  * @param repository - The loaded GIR repository.
  * @returns Gtype-struct record names keyed lowercase namespace identifier.
  */
-export const collectGtypeStructNames = (repository: GirRepository): GtypeStructMap => {
-    const namespaces = new Map<string, Set<string>>();
-    for (const namespaceName of repository.getNamespaceNames()) {
-        const namespace = repository.getNamespace(namespaceName);
-        if (!namespace) continue;
+export const collectGtypeStructNames = (repository: GirRepository): GtypeStructMap =>
+    collectByNamespace(repository, (namespace) => {
         const names = new Set<string>();
         for (const record of namespace.records.values()) {
             if (isClassVtable(record)) {
                 names.add(record.name);
             }
         }
-        namespaces.set(namespaceName.toLowerCase(), names);
-    }
-    return namespaces;
-};
+        return names;
+    });
 
 /**
  * One class or interface declaration, type-erased to the members the type
@@ -151,6 +131,30 @@ type OwnerDeclaration = {
 };
 
 /**
+ * Applies `build` to every namespace in the repository, keying the result by
+ * the lowercase namespace identifier.
+ *
+ * Centralizes the per-namespace iteration scaffold the type pipeline's
+ * collectors share.
+ *
+ * @param repository - The loaded GIR repository.
+ * @param build - Maps one namespace to the value to record for it.
+ * @returns Values keyed lowercase namespace identifier.
+ */
+export const collectByNamespace = <V>(
+    repository: GirRepository,
+    build: (namespace: GirNamespace) => V,
+): Map<string, V> => {
+    const namespaces = new Map<string, V>();
+    for (const namespaceName of repository.getNamespaceNames()) {
+        const namespace = repository.getNamespace(namespaceName);
+        if (!namespace) continue;
+        namespaces.set(namespaceName.toLowerCase(), build(namespace));
+    }
+    return namespaces;
+};
+
+/**
  * Builds a {@link FieldNameMap} by applying `selectNames` to every class and
  * interface of every namespace in the repository.
  *
@@ -161,19 +165,14 @@ type OwnerDeclaration = {
 export const collectByOwner = (
     repository: GirRepository,
     selectNames: (owner: OwnerDeclaration) => Iterable<string>,
-): FieldNameMap => {
-    const namespaces = new Map<string, Map<string, Set<string>>>();
-    for (const namespaceName of repository.getNamespaceNames()) {
-        const namespace = repository.getNamespace(namespaceName);
-        if (!namespace) continue;
+): FieldNameMap =>
+    collectByNamespace(repository, (namespace) => {
         const owners = new Map<string, Set<string>>();
         for (const owner of [...namespace.classes.values(), ...namespace.interfaces.values()]) {
             owners.set(toPascalCase(owner.name), new Set(selectNames(owner)));
         }
-        namespaces.set(namespaceName.toLowerCase(), owners);
-    }
-    return namespaces;
-};
+        return owners;
+    });
 
 /**
  * Collects the camelCased instance-struct field names that ts-for-gir emits
@@ -282,21 +281,16 @@ export const collectSignalActionMethodNames = (repository: GirRepository): Field
  * @param repository - The loaded GIR repository.
  * @returns Numeric constant names keyed lowercase namespace identifier.
  */
-export const collectNumericConstantNames = (repository: GirRepository): FieldNameMap => {
-    const namespaces = new Map<string, Map<string, Set<string>>>();
-    for (const namespaceName of repository.getNamespaceNames()) {
-        const namespace = repository.getNamespace(namespaceName);
-        if (!namespace) continue;
+export const collectNumericConstantNames = (repository: GirRepository): FieldNameMap =>
+    collectByNamespace(repository, (namespace) => {
         const names = new Set<string>();
         for (const constant of namespace.constants.values()) {
             const typeName = String(constant.type.name);
             if (typeName === "utf8" || typeName === "filename") continue;
             if (!Number.isNaN(Number(constant.value))) names.add(constant.name);
         }
-        namespaces.set(namespaceName.toLowerCase(), new Map([["", names]]));
-    }
-    return namespaces;
-};
+        return new Map([["", names]]);
+    });
 
 export const connectRenameFor = (ownerName: string): string => {
     const prefix = toCamelCase(ownerName);
