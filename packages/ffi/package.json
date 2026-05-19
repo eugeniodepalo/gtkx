@@ -69,7 +69,7 @@
         "!**/*.tsbuildinfo"
     ],
     "scripts": {
-        "build": "tsc -b && cp ../../README.md . && pnpm run copy-generated-dts",
+        "build": "tsc -b && pnpm run copy-generated-dts",
         "copy-generated-dts": "node scripts/copy-generated-dts.ts",
         "conformance": "node scripts/conformance.ts",
         "postinstall": "node scripts/postinstall.ts",

@@ -51,7 +51,6 @@
         "build": {
             "dependsOn": ["^build", "native-build"],
             "inputs": [
-                "$TURBO_ROOT$/README.md",
                 "package.json",
                 "*.ts",
                 "bin/**",
@@ -62,7 +61,7 @@
                 "tsconfig.lib.json",
                 "tsconfig.test.json"
             ],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
             "outputLogs": "new-only"
         },
         "native-build": {
@@ -139,13 +138,13 @@
         "@gtkx/ffi#build": {
             "dependsOn": ["^build"],
             "inputs": ["package.json", "src/**/*.ts", "tsconfig.json", "tsconfig.lib.json", "tsconfig.test.json"],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
             "outputLogs": "new-only"
         },
         "@gtkx/react#build": {
             "dependsOn": ["^build"],
             "inputs": ["package.json", "src/**/*.ts", "src/**/*.tsx", "tsconfig.json", "tsconfig.lib.json"],
-            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo", "README.md"],
+            "outputs": ["dist/**", "out-tsc/**", "*.tsbuildinfo"],
             "outputLogs": "new-only"
         },
         "@gtkx/ffi#typecheck": {
