@@ -13,6 +13,7 @@ import { SELF_TYPE_GOBJECT } from "../../core/type-system/ffi-types.js";
 import { type AsyncCallablePair, collectAsyncCallablePairs } from "../../core/utils/async-callable.js";
 import {
     collectGObjectMethodNames,
+    collectInterfaceMembers,
     collectInterfaceReachableVirtualMethodNames,
 } from "../../core/utils/class-traversal.js";
 import { buildJsDocStructure } from "../../core/utils/doc-formatter.js";
@@ -269,57 +270,12 @@ export class InterfaceGenerator {
     }
 
     private collectPrerequisiteMethods(iface: GirInterface, existingMethodNames: Set<string>): GirMethod[] {
-        const methods: GirMethod[] = [];
-        const seenMethodNames = new Set(existingMethodNames);
-        const visitedInterfaces = new Set<string>();
-
-        const collectMethods = (ownerMethods: readonly GirMethod[]) => {
-            for (const m of ownerMethods) {
-                if (seenMethodNames.has(m.name)) continue;
-                seenMethodNames.add(m.name);
-                methods.push(m);
-            }
-        };
-
-        const collectFromClass = (className: string) => {
-            if (visitedInterfaces.has(className)) return;
-            visitedInterfaces.add(className);
-
-            const cls = this.repository.resolveClass(className);
-            if (!cls) return;
-
-            for (const ancestorName of cls.getInheritanceChain()) {
-                const ancestor = this.repository.resolveClass(ancestorName);
-                if (!ancestor) continue;
-                collectMethods(ancestor.methods);
-                for (const implemented of ancestor.getAllImplementedInterfaces()) {
-                    collectFromPrerequisite(implemented);
-                }
-            }
-        };
-
-        const collectFromPrerequisite = (prereqName: string) => {
-            if (visitedInterfaces.has(prereqName)) return;
-
-            const prereq = this.repository.resolveInterface(prereqName);
-            if (!prereq) {
-                collectFromClass(prereqName);
-                return;
-            }
-            visitedInterfaces.add(prereqName);
-
-            for (const prereqPrereq of prereq.prerequisites) {
-                collectFromPrerequisite(prereqPrereq);
-            }
-
-            collectMethods(prereq.methods);
-        };
-
-        for (const prereqName of iface.prerequisites) {
-            collectFromPrerequisite(prereqName);
-        }
-
-        return methods;
+        return collectInterfaceMembers(iface, this.repository, {
+            getClassMembers: (cls) => cls.methods,
+            getInterfaceMembers: (prereq) => prereq.methods,
+            keyOf: (method) => method.name,
+            seenKeys: existingMethodNames,
+        });
     }
 
     private buildPropertyAccessors(
@@ -353,56 +309,11 @@ export class InterfaceGenerator {
     }
 
     private collectInterfaceProperties(iface: GirInterface): GirProperty[] {
-        const properties: GirProperty[] = [];
-        const seenNames = new Set<string>();
-        const visited = new Set<string>();
-
-        const addProperties = (ownerProperties: readonly GirProperty[]) => {
-            for (const prop of ownerProperties) {
-                if (seenNames.has(prop.name)) continue;
-                seenNames.add(prop.name);
-                properties.push(prop);
-            }
-        };
-
-        const collectFromClass = (className: string) => {
-            if (visited.has(className)) return;
-            visited.add(className);
-
-            const cls = this.repository.resolveClass(className);
-            if (!cls) return;
-
-            for (const ancestorName of cls.getInheritanceChain()) {
-                const ancestor = this.repository.resolveClass(ancestorName);
-                if (!ancestor) continue;
-                addProperties(ancestor.properties);
-                for (const implemented of ancestor.getAllImplementedInterfaces()) {
-                    collectFromPrerequisite(implemented);
-                }
-            }
-        };
-
-        const collectFromPrerequisite = (prereqName: string) => {
-            if (visited.has(prereqName)) return;
-
-            const prereq = this.repository.resolveInterface(prereqName);
-            if (!prereq) {
-                collectFromClass(prereqName);
-                return;
-            }
-            visited.add(prereqName);
-
-            for (const prereqPrereq of prereq.prerequisites) {
-                collectFromPrerequisite(prereqPrereq);
-            }
-            addProperties(prereq.properties);
-        };
-
-        addProperties(iface.properties);
-        for (const prereqName of iface.prerequisites) {
-            collectFromPrerequisite(prereqName);
-        }
-
-        return properties;
+        return collectInterfaceMembers(iface, this.repository, {
+            getClassMembers: (cls) => cls.properties,
+            getInterfaceMembers: (prereq) => prereq.properties,
+            keyOf: (property) => property.name,
+            includeOwn: true,
+        });
     }
 }

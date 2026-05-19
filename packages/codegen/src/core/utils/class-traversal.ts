@@ -127,6 +127,92 @@ export function collectReachableVirtualMethodNames(cls: GirClass, repo: GirRepos
 }
 
 /**
+ * Selectors and options that adapt {@link collectInterfaceMembers} to a
+ * specific member kind.
+ */
+export type InterfaceMemberCollector<T> = {
+    /** Members contributed by a prerequisite class (collected per ancestor). */
+    getClassMembers: (cls: GirClass) => readonly T[];
+    /** Members contributed by a prerequisite interface. */
+    getInterfaceMembers: (iface: GirInterface) => readonly T[];
+    /** Deduplication key for a member; the first member seen per key is kept. */
+    keyOf: (member: T) => string;
+    /** Keys to treat as already collected, suppressing them from the result. */
+    seenKeys?: Iterable<string>;
+    /** When true, the interface's own members precede its prerequisites'. */
+    includeOwn?: boolean;
+};
+
+/**
+ * Collects members reachable through an interface's prerequisite closure: the
+ * transitive prerequisite interfaces, and — for any prerequisite that resolves
+ * to a class — that class's ancestors and the interfaces they implement.
+ *
+ * This is the interface-prerequisite analogue of {@link collectParentMemberNames}:
+ * every reachable class and interface is visited once, and members are
+ * deduplicated by {@link InterfaceMemberCollector.keyOf}.
+ *
+ * @param iface - The interface whose prerequisite closure to walk.
+ * @param repo - GIR repository for class and interface resolution.
+ * @param collector - Adapts the walk to a specific member kind.
+ * @returns The collected members in visitation order.
+ */
+export function collectInterfaceMembers<T>(
+    iface: GirInterface,
+    repo: GirRepository,
+    collector: InterfaceMemberCollector<T>,
+): T[] {
+    const { getClassMembers, getInterfaceMembers, keyOf, seenKeys, includeOwn } = collector;
+    const members: T[] = [];
+    const seen = new Set<string>(seenKeys);
+    const visited = new Set<string>();
+
+    const collect = (candidates: readonly T[]): void => {
+        for (const member of candidates) {
+            const key = keyOf(member);
+            if (seen.has(key)) continue;
+            seen.add(key);
+            members.push(member);
+        }
+    };
+
+    const visitClass = (qualifiedName: string): void => {
+        if (visited.has(qualifiedName)) return;
+        visited.add(qualifiedName);
+        const cls = repo.resolveClass(qualifiedName);
+        if (!cls) return;
+        for (const ancestorName of cls.getInheritanceChain()) {
+            const ancestor = repo.resolveClass(ancestorName);
+            if (!ancestor) continue;
+            collect(getClassMembers(ancestor));
+            for (const implemented of ancestor.getAllImplementedInterfaces()) {
+                visitPrerequisite(implemented);
+            }
+        }
+    };
+
+    const visitPrerequisite = (qualifiedName: string): void => {
+        if (visited.has(qualifiedName)) return;
+        const prereq = repo.resolveInterface(qualifiedName);
+        if (!prereq) {
+            visitClass(qualifiedName);
+            return;
+        }
+        visited.add(qualifiedName);
+        for (const prerequisite of prereq.prerequisites) {
+            visitPrerequisite(prerequisite);
+        }
+        collect(getInterfaceMembers(prereq));
+    };
+
+    if (includeOwn) collect(getInterfaceMembers(iface));
+    for (const prerequisite of iface.prerequisites) {
+        visitPrerequisite(prerequisite);
+    }
+    return members;
+}
+
+/**
  * Collects the camelCased `<virtual-method>` names reachable on an interface:
  * its own virtual methods plus those of every transitive prerequisite class
  * and interface.
@@ -136,36 +222,13 @@ export function collectReachableVirtualMethodNames(cls: GirClass, repo: GirRepos
  * @returns The camelCased reachable virtual-method names.
  */
 export function collectInterfaceReachableVirtualMethodNames(iface: GirInterface, repo: GirRepository): Set<string> {
-    const names = new Set<string>();
-    const visited = new Set<string>();
-
-    const visitClass = (qualifiedName: string): void => {
-        const cls = repo.resolveClass(qualifiedName);
-        if (!cls) return;
-        for (const ancestorName of cls.getInheritanceChain()) {
-            const ancestor = repo.resolveClass(ancestorName);
-            if (!ancestor) continue;
-            for (const name of ancestor.virtualMethodNames) names.add(toCamelCase(name));
-            for (const implemented of ancestor.getAllImplementedInterfaces()) visitInterface(implemented);
-        }
-    };
-
-    const visitInterface = (qualifiedName: string): void => {
-        if (visited.has(qualifiedName)) return;
-        visited.add(qualifiedName);
-        const prereqInterface = repo.resolveInterface(qualifiedName);
-        if (!prereqInterface) {
-            visitClass(qualifiedName);
-            return;
-        }
-        for (const name of prereqInterface.virtualMethodNames) names.add(toCamelCase(name));
-        for (const prereq of prereqInterface.prerequisites) visitInterface(prereq);
-    };
-
-    for (const name of iface.virtualMethodNames) names.add(toCamelCase(name));
-    for (const prereq of iface.prerequisites) visitInterface(prereq);
-
-    return names;
+    const names = collectInterfaceMembers(iface, repo, {
+        getClassMembers: (cls) => cls.virtualMethodNames,
+        getInterfaceMembers: (prereq) => prereq.virtualMethodNames,
+        keyOf: toCamelCase,
+        includeOwn: true,
+    });
+    return new Set(names.map(toCamelCase));
 }
 
 /**
