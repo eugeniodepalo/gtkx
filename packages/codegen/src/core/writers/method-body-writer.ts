@@ -1,151 +1,30 @@
 /**
- * Method Body Builder
+ * Method Body Writer
  *
- * Shared utilities for building method/function bodies.
- * Extracts common patterns from RecordGenerator, InterfaceGenerator, ClassGenerator.
+ * Builds the `MethodStructure`s the FFI generators emit: capability detection,
+ * signature and return-type computation, and structure assembly. Executable
+ * body emission is delegated to {@link CallableBodyEmitter}.
  */
 
 import type { Writer } from "../../builders/writer.js";
 import type { GirConstructor, GirFunction, GirMethod, GirParameter, GirType } from "../../gir/index.js";
 import type { FfiMapper } from "../type-system/ffi-mapper.js";
-import {
-    FFI_VOID,
-    type FfiTypeDescriptor,
-    type MappedType,
-    SELF_TYPE_GOBJECT,
-    type SelfTypeDescriptor,
-    type TypeImport,
-} from "../type-system/ffi-types.js";
-import { type AsyncCapableCallable, findCancellableParameter } from "../utils/async-callable.js";
+import { FFI_VOID, type MappedType, SELF_TYPE_GOBJECT, type SelfTypeDescriptor } from "../type-system/ffi-types.js";
 import { buildJsDocStructure } from "../utils/doc-formatter.js";
 import { hasVarargs, isVararg } from "../utils/filtering.js";
-import { createWrappedName, toCamelCase, toKebabCase, toValidIdentifier, toValidMemberName } from "../utils/naming.js";
+import { toCamelCase, toValidIdentifier, toValidMemberName } from "../utils/naming.js";
 import { formatNullableReturn } from "../utils/type-qualification.js";
-import { type CallArgument, type CallbackWrapperInfo, CallExpressionBuilder } from "./call-expression-builder.js";
-import {
-    buildCallableShape,
-    type CallableShape,
-    type HiddenOut,
-    type ParamMapping,
-    type ShapeCallArg,
-} from "./callable-shape.js";
+import type { CallArgument } from "./call-expression-builder.js";
+import { type AsyncCallableStructureOptions, CallableBodyEmitter } from "./callable-body-emitter.js";
+import { buildCallableShape, type CallableShape, type HiddenOut } from "./callable-shape.js";
 import type { FfiDescriptorRegistry } from "./descriptor-registry.js";
 import { FfiTypeWriter } from "./ffi-type-writer.js";
-import { buildCallbackWrapperExpression, needsParamWrap, needsReturnUnwrap } from "./param-wrap-writer.js";
+import { addTypeImports, type ImportCollector } from "./import-collector.js";
 
-/**
- * Collects imports during method body generation.
- * The FileBuilder naturally satisfies this interface.
- */
-export type ImportCollector = {
-    addImport(specifier: string, names: string[]): void;
-    addTypeImport(specifier: string, names: string[]): void;
-    addNamespaceImport(specifier: string, alias: string): void;
-    /**
-     * FFI descriptor registry threaded alongside the import collector so
-     * builders can register shared `t.fn(...)` descriptors. Present on the
-     * collector instance the FFI generator constructs; absent for collectors
-     * used in contexts that emit no descriptor bindings.
-     */
-    descriptors?: FfiDescriptorRegistry;
-};
-
-/**
- * Adds the necessary imports for a list of TypeImport entries.
- *
- * Handles namespace casing, enum vs class/record/interface file paths,
- * and external namespace references.
- */
-export const addTypeImports = (
-    imports: ImportCollector,
-    typeImports: readonly TypeImport[],
-    skipNames?: ReadonlySet<string>,
-): void => {
-    for (const imp of typeImports) {
-        if (!imp.isExternal && skipNames?.has(imp.transformedName)) continue;
-        if (imp.isExternal) {
-            const ns = imp.namespace.toLowerCase();
-            imports.addNamespaceImport(`../${ns}/${ns}.js`, imp.namespace);
-        } else {
-            switch (imp.kind) {
-                case "enum":
-                case "flags":
-                    imports.addImport("./enums.js", [imp.transformedName]);
-                    break;
-                case "record":
-                case "class":
-                case "interface":
-                    imports.addImport(`./${toKebabCase(imp.name)}.js`, [imp.transformedName]);
-                    break;
-                case "alias":
-                    imports.addImport("./aliases.js", [imp.transformedName]);
-                    break;
-                case "callback":
-                    break;
-            }
-        }
-    }
-};
+export type { ImportCollector };
+export { addTypeImports };
 
 const VOID_RETURN_MAPPING: MappedType = { ts: "void", ffi: FFI_VOID, imports: [] };
-
-const computeResultSuffix = (
-    needsResultPtr: boolean,
-    needsArrayWrapVar: unknown,
-    needsHashTableVar: boolean,
-): string => {
-    if (needsResultPtr) return "Ptr";
-    if (needsArrayWrapVar) return "Arr";
-    if (needsHashTableVar) return "Tuples";
-    return "";
-};
-
-/**
- * Options for building instance method body statements.
- */
-type MethodBodyStatementsOptions = {
-    /** The shared library (e.g., "libgtk-4.so.1") */
-    sharedLibrary: string;
-    /** Self type descriptor for FFI marshalling */
-    selfTypeDescriptor: SelfTypeDescriptor;
-    /** Class name for object wrapping (e.g., "GtkButton") */
-    className?: string;
-};
-
-/**
- * Options for building function body statements.
- */
-type FunctionBodyStatementsOptions = {
-    /** The shared library (e.g., "libgtk-4.so.1") */
-    sharedLibrary: string;
-    /** Class name for own-class returns */
-    className?: string;
-    /** Whether the function returns its own class type */
-    returnsOwnClass?: boolean;
-};
-
-/**
- * Unified options for callable body generation.
- * Used internally by writeCallableBody to handle both methods and functions.
- */
-type CallableBodyOptions = {
-    /** The shared library (e.g., "libgtk-4.so.1") */
-    sharedLibrary: string;
-    /** C identifier for the FFI call */
-    cIdentifier: string;
-    /** Pre-computed callable shape covering signature/hidden/tuple decisions. */
-    shape: CallableShape;
-    /** Original GIR parameters — required for resolving callback wrappers. */
-    parameters: readonly GirParameter[];
-    /** Whether the callable can throw */
-    throws?: boolean;
-    /** Self options for instance methods */
-    self?: { type: SelfTypeDescriptor; value: string };
-    /** Class name for own-class returns (static functions on records) */
-    ownClassName?: string;
-    /** Whether this callable has varargs */
-    hasVarargs?: boolean;
-};
 
 /**
  * Options for building a complete method structure.
@@ -172,33 +51,6 @@ type StaticFunctionStructureOptions = {
     sharedLibrary: string;
     /** Current namespace for documentation links */
     namespace: string;
-};
-
-/**
- * Options for building a Promise-returning wrapper for a GIO-style async
- * callable.
- */
-type AsyncCallableStructureOptions = {
-    /** The `*_async` callable to wrap. */
-    asyncCallable: AsyncCapableCallable;
-    /** The companion `*_finish` callable whose return type is the Promise value. */
-    finishCallable: AsyncCapableCallable;
-    /** The `GAsyncReadyCallback` parameter dropped from the wrapper signature. */
-    callbackParameter: GirParameter;
-    /** The TypeScript member name to emit for the wrapper. */
-    memberName: string;
-    /** The TypeScript member name of the companion `*_finish` member. */
-    finishMemberName: string;
-    /** Whether the wrapper is a static member. */
-    isStatic: boolean;
-    /** The shared library (e.g., "libgtk-4.so.1"). */
-    sharedLibrary: string;
-    /** Current namespace for documentation links. */
-    namespace: string;
-    /** Self options for instance-method wrappers; omitted for functions. */
-    self?: { type: SelfTypeDescriptor; value: string };
-    /** Class name when `*_finish` returns the wrapper's own class type. */
-    finishOwnClassName?: string;
 };
 
 /**
@@ -241,27 +93,13 @@ export type ConstructorSelection = {
     main: GirConstructor | undefined;
 };
 
-type ObjectWrapInfo = {
-    needsWrap: boolean;
-    needsGObjectWrap: boolean;
-    needsBoxedWrap: boolean;
-    needsFundamentalWrap: boolean;
-    needsInterfaceWrap: boolean;
-    needsStructWrap: boolean;
-    needsArrayItemWrap: boolean;
-    arrayItemType: string | undefined;
-    arrayItemIsInterface: boolean;
-    needsHashTableWrap: boolean;
-};
-
 /**
- * Shared utilities for writing method/function bodies.
+ * Builds the method/function/constructor structures emitted by the FFI
+ * generators.
  *
- * Centralizes common patterns used across generators:
- * - Parameter filtering and validation
- * - Call argument generation via {@link buildShapeCallArguments}
- * - Out/inout parameter handling via {@link CallableShape}
- * - Return value wrapping decisions
+ * Centralizes capability detection, signature and return-type computation, and
+ * structure assembly; delegates executable body emission to a
+ * {@link CallableBodyEmitter} collaborator.
  *
  * @example
  * ```typescript
@@ -273,8 +111,7 @@ type ObjectWrapInfo = {
  * ```
  */
 export class MethodBodyWriter {
-    private readonly ffiTypeWriter: FfiTypeWriter;
-    private readonly callExpression: CallExpressionBuilder;
+    private readonly bodyEmitter: CallableBodyEmitter;
     private selfNames: ReadonlySet<string> = new Set();
 
     constructor(
@@ -283,8 +120,12 @@ export class MethodBodyWriter {
         ffiTypeWriter?: FfiTypeWriter,
         descriptors?: FfiDescriptorRegistry,
     ) {
-        this.ffiTypeWriter = ffiTypeWriter ?? new FfiTypeWriter();
-        this.callExpression = new CallExpressionBuilder(descriptors, imports);
+        this.bodyEmitter = new CallableBodyEmitter(
+            ffiMapper,
+            imports,
+            ffiTypeWriter ?? new FfiTypeWriter(),
+            descriptors,
+        );
     }
 
     /**
@@ -293,6 +134,7 @@ export class MethodBodyWriter {
      */
     setSelfNames(names: ReadonlySet<string>): void {
         this.selfNames = names;
+        this.bodyEmitter.setSelfNames(names);
     }
 
     /**
@@ -364,58 +206,10 @@ export class MethodBodyWriter {
     /**
      * Determines if a return type needs object wrapping (getNativeObject call).
      */
-    needsObjectWrap(returnTypeMapping: MappedType): ObjectWrapInfo {
-        const baseReturnType = returnTypeMapping.ts === "void" ? "void" : returnTypeMapping.ts;
-
-        const needsGObjectWrap =
-            returnTypeMapping.ffi.type === "gobject" &&
-            baseReturnType !== "unknown" &&
-            returnTypeMapping.kind !== "interface";
-
-        const needsBoxedWrap =
-            returnTypeMapping.ffi.type === "boxed" &&
-            baseReturnType !== "unknown" &&
-            returnTypeMapping.kind !== "interface";
-
-        const needsFundamentalWrap =
-            returnTypeMapping.ffi.type === "fundamental" &&
-            baseReturnType !== "unknown" &&
-            returnTypeMapping.kind !== "interface";
-
-        const needsInterfaceWrap =
-            (returnTypeMapping.ffi.type === "gobject" || returnTypeMapping.ffi.type === "fundamental") &&
-            baseReturnType !== "unknown" &&
-            returnTypeMapping.kind === "interface";
-
-        const needsStructWrap =
-            returnTypeMapping.ffi.type === "struct" &&
-            baseReturnType !== "unknown" &&
-            returnTypeMapping.kind !== "interface";
-
-        const itemType = returnTypeMapping.ffi.itemType;
-        const needsArrayItemWrap =
-            returnTypeMapping.ffi.type === "array" &&
-            itemType !== undefined &&
-            (itemType.type === "gobject" || itemType.type === "boxed" || itemType.type === "fundamental");
-
-        const arrayItemType = needsArrayItemWrap ? baseReturnType.replace(/\[\]$/, "") : undefined;
-        const arrayItemIsInterface = returnTypeMapping.itemKind === "interface";
-
-        const needsHashTableWrap = returnTypeMapping.ffi.type === "hashtable";
-
-        return {
-            needsWrap:
-                needsGObjectWrap || needsBoxedWrap || needsFundamentalWrap || needsInterfaceWrap || needsStructWrap,
-            needsGObjectWrap,
-            needsBoxedWrap,
-            needsFundamentalWrap,
-            needsInterfaceWrap,
-            needsStructWrap,
-            needsArrayItemWrap,
-            arrayItemType,
-            arrayItemIsInterface,
-            needsHashTableWrap,
-        };
+    needsObjectWrap(
+        ...args: Parameters<CallableBodyEmitter["needsObjectWrap"]>
+    ): ReturnType<CallableBodyEmitter["needsObjectWrap"]> {
+        return this.bodyEmitter.needsObjectWrap(...args);
     }
 
     /**
@@ -525,25 +319,11 @@ export class MethodBodyWriter {
         return `[${parts.join(", ")}]`;
     }
 
-    writeCallbackWrapperDeclarations(writer: Writer, args: readonly CallArgument[]): void {
-        for (const arg of args) {
-            if (arg.callbackWrapper) {
-                writer.write(`const ${arg.callbackWrapper.wrappedName} = `);
-                arg.callbackWrapper.wrapExpression(writer);
-                writer.write(";");
-                writer.newLine();
-            }
-        }
-    }
-
     /**
      * Builds CallArgument entries from a callable shape.
-     *
-     * Resolves callback wrappers and translates {@link ShapeCallArg} into
-     * the {@link CallArgument} form consumed by {@link CallExpressionBuilder}.
      */
-    buildShapeCallArguments(shape: CallableShape, parameters: readonly GirParameter[]): CallArgument[] {
-        return shape.callArgs.map((arg) => this.toCallArgument(arg, parameters, shape));
+    buildShapeCallArguments(...args: Parameters<CallableBodyEmitter["buildShapeCallArguments"]>): CallArgument[] {
+        return this.bodyEmitter.buildShapeCallArguments(...args);
     }
 
     /**
@@ -625,7 +405,7 @@ export class MethodBodyWriter {
             parameters: [{ name: "widgetClass", type: "ClassStructTarget" }, ...params],
             returnType: tsReturnType === "void" ? undefined : tsReturnType,
             docs: buildJsDocStructure(method.doc, options.namespace),
-            statements: this.writeCallableBody({
+            statements: this.bodyEmitter.writeCallableBody({
                 sharedLibrary: options.sharedLibrary,
                 cIdentifier: method.cIdentifier,
                 shape,
@@ -671,107 +451,8 @@ export class MethodBodyWriter {
             parameters: params,
             returnType: `Promise<${resultType === "void" ? "void" : resultType}>`,
             docs: buildJsDocStructure(asyncCallable.doc, options.namespace),
-            statements: this.writeAsyncCallableBody(shape, options, callbackJsName),
+            statements: this.bodyEmitter.writeAsyncCallableBody(shape, options, callbackJsName),
         };
-    }
-
-    private writeAsyncCallableBody(
-        shape: CallableShape,
-        options: AsyncCallableStructureOptions,
-        callbackJsName: string,
-    ): (writer: Writer) => void {
-        this.imports.addImport("../../runtime.js", ["promisify"]);
-        if (shape.hiddenOuts.length > 0) {
-            this.imports.addImport("@gtkx/native", ["createRef"]);
-        }
-
-        const split = this.splitAsyncCallArguments(shape, options, callbackJsName);
-        const finishExpression = options.self
-            ? `this.${options.finishMemberName}.bind(this)`
-            : options.finishMemberName;
-
-        return (writer) => {
-            for (const hidden of shape.hiddenOuts) {
-                this.writeHiddenOutDeclaration(writer, hidden);
-            }
-            writer.write(
-                `return promisify(${split.asyncFnExpression}, ${finishExpression}, ${split.cancellableExpression}, ` +
-                    `[${split.leadingArgs.join(", ")}]`,
-            );
-            if (split.trailingArgs.length > 0) {
-                writer.write(`, [${split.trailingArgs.join(", ")}]`);
-            }
-            writer.writeLine(");");
-        };
-    }
-
-    /**
-     * Splits the FFI call arguments of a GIO async callable into the inputs
-     * the {@link promisify} runtime helper expects: the native `*_async`
-     * binding, the leading arguments preceding the `GCancellable*` slot, the
-     * `cancellable` expression, and any trailing arguments between that slot
-     * and the dropped `GAsyncReadyCallback`.
-     */
-    private splitAsyncCallArguments(
-        shape: CallableShape,
-        options: AsyncCallableStructureOptions,
-        callbackJsName: string,
-    ): {
-        asyncFnExpression: string;
-        leadingArgs: string[];
-        cancellableExpression: string;
-        trailingArgs: string[];
-    } {
-        const callArguments = this.buildShapeCallArguments(shape, options.asyncCallable.parameters);
-        const filteredParams = this.filterParameters(options.asyncCallable.parameters);
-        const cancellableParam = findCancellableParameter(options.asyncCallable);
-        const cancellableGirIndex = cancellableParam ? filteredParams.indexOf(cancellableParam) : -1;
-        const callbackMapping = shape.paramMappings.find((m) => m.jsName === callbackJsName);
-        const callbackGirIndex = callbackMapping?.girIndex ?? -1;
-        const cancellableMapping =
-            cancellableGirIndex >= 0 ? shape.paramMappings.find((m) => m.girIndex === cancellableGirIndex) : undefined;
-
-        const leadingArgs: string[] = options.self ? [options.self.value] : [];
-        const trailingArgs: string[] = [];
-        shape.callArgs.forEach((shapeArg, index) => {
-            const sourceIndex = shapeArg.sourceParamIndex;
-            if (sourceIndex === callbackGirIndex || sourceIndex === cancellableGirIndex) return;
-            const value = callArguments[index]?.value;
-            if (value === undefined) return;
-            const afterCancellable =
-                cancellableGirIndex >= 0 && sourceIndex !== null && sourceIndex > cancellableGirIndex;
-            (afterCancellable ? trailingArgs : leadingArgs).push(value);
-        });
-
-        return {
-            asyncFnExpression: this.resolveAsyncFnExpression(shape, options),
-            leadingArgs,
-            cancellableExpression: cancellableMapping?.jsName ?? "undefined",
-            trailingArgs,
-        };
-    }
-
-    /**
-     * Resolves the JavaScript expression naming the native `*_async` start
-     * callable handed to {@link promisify}.
-     *
-     * A GIO async callable carries a `GAsyncReadyCallback` and a closure
-     * target rather than C varargs, so its descriptor always hoists to a
-     * curried `t.fn(...)` binding whose identifier is returned here.
-     */
-    private resolveAsyncFnExpression(shape: CallableShape, options: AsyncCallableStructureOptions): string {
-        const binding = this.callExpression.registerBinding({
-            sharedLibrary: options.sharedLibrary,
-            cIdentifier: options.asyncCallable.cIdentifier,
-            args: this.buildShapeCallArguments(shape, options.asyncCallable.parameters),
-            returnType: shape.returnTypeMapping.ffi,
-            selfArg: options.self,
-            hasVarargs: hasVarargs(options.asyncCallable.parameters),
-        });
-        if (binding === null || binding.varargs === true) {
-            throw new Error(`Async callable ${options.asyncCallable.cIdentifier} cannot be hoisted to an FFI binding`);
-        }
-        return binding.name;
     }
 
     /**
@@ -819,652 +500,52 @@ export class MethodBodyWriter {
     /**
      * Writes method body using the precomputed shape.
      */
-    writeMethodBody(
-        method: GirMethod,
-        shape: CallableShape,
-        options: MethodBodyStatementsOptions,
-    ): (writer: Writer) => void {
-        return this.writeCallableBody({
-            sharedLibrary: options.sharedLibrary,
-            cIdentifier: method.cIdentifier,
-            shape,
-            parameters: method.parameters,
-            throws: method.throws,
-            self: { type: options.selfTypeDescriptor, value: "getHandle(this)" },
-            hasVarargs: hasVarargs(method.parameters),
-        });
+    writeMethodBody(...args: Parameters<CallableBodyEmitter["writeMethodBody"]>): (writer: Writer) => void {
+        return this.bodyEmitter.writeMethodBody(...args);
     }
 
     /**
      * Writes function body using the precomputed shape.
      */
-    writeFunctionBody(
-        func: GirFunction,
-        shape: CallableShape,
-        options: FunctionBodyStatementsOptions,
-    ): (writer: Writer) => void {
-        return this.writeCallableBody({
-            sharedLibrary: options.sharedLibrary,
-            cIdentifier: func.cIdentifier,
-            shape,
-            parameters: func.parameters,
-            throws: func.throws,
-            ownClassName: options.returnsOwnClass ? options.className : undefined,
-            hasVarargs: hasVarargs(func.parameters),
-        });
-    }
-
-    private writeCallableBody(options: CallableBodyOptions): (writer: Writer) => void {
-        this.imports.addTypeImport("../../handles.js", ["NativeHandle"]);
-
-        const { shape } = options;
-        const ownClassName = options.ownClassName;
-        const wrapInfo = this.needsObjectWrap(shape.returnTypeMapping);
-        const hasReturnValue = shape.hasOriginalReturn;
-        const hasRefHandleHidden = shape.hiddenOuts.some((h) => h.kind === "ref-handle");
-
-        if (options.throws) {
-            this.imports.addImport("@gtkx/native", ["createRef"]);
-            this.setupGErrorImports();
-        }
-
-        if (hasRefHandleHidden) {
-            this.imports.addImport("../../registry.js", ["getNativeObject"]);
-        }
-
-        if (shape.hiddenOuts.length > 0) {
-            this.imports.addImport("@gtkx/native", ["createRef"]);
-        }
-
-        return (writer) => {
-            const callArguments = this.buildShapeCallArguments(shape, options.parameters);
-            this.writeCallableBodyContent(
-                writer,
-                options,
-                shape,
-                callArguments,
-                wrapInfo,
-                ownClassName,
-                hasReturnValue,
-            );
-        };
-    }
-
-    private writeCallableBodyContent(
-        writer: Writer,
-        options: CallableBodyOptions,
-        shape: CallableShape,
-        callArguments: CallArgument[],
-        wrapInfo: ObjectWrapInfo,
-        ownClassName: string | undefined,
-        hasReturnValue: boolean,
-    ): void {
-        this.writeCallbackWrapperDeclarations(writer, callArguments);
-
-        if (options.throws) {
-            writer.writeLine("const error = createRef(null);");
-        }
-
-        for (const hidden of shape.hiddenOuts) {
-            this.writeHiddenOutDeclaration(writer, hidden);
-        }
-
-        if (options.throws) {
-            callArguments.push({
-                type: this.ffiTypeWriter.createGErrorRefTypeDescriptor(),
-                value: "error",
-            });
-        }
-
-        const returnTupleNeedsBuild = shape.returnTupleEntries.length > 0;
-        const hasRefHandleHidden = shape.hiddenOuts.some((h) => h.kind === "ref-handle");
-        if (returnTupleNeedsBuild || options.throws || hasRefHandleHidden) {
-            this.emitTupleReturningBody(writer, options, shape, callArguments, wrapInfo, ownClassName);
-            return;
-        }
-
-        const writeCall = this.makeCallEmitter(writer, options, shape, callArguments);
-        const hasOwnClassReturn = ownClassName !== undefined;
-        const hasObjectWrapReturn = wrapInfo.needsWrap && hasReturnValue;
-
-        if (hasOwnClassReturn || hasObjectWrapReturn) {
-            writeCall("ptr", null);
-            this.writeObjectReturnFromPtr(writer, shape, wrapInfo, ownClassName);
-            return;
-        }
-
-        if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
-            writeCall("arr", "unknown[]");
-            this.writeArrayItemReturn(writer, shape, wrapInfo);
-            return;
-        }
-
-        if (wrapInfo.needsHashTableWrap) {
-            writeCall("tuples", null);
-            this.writeRefHandleRewrap(writer, shape);
-            if (shape.originalReturnNullable) {
-                writer.writeLine("if (tuples === null) return null;");
-            }
-            writer.writeLine("return new Map(tuples);");
-            return;
-        }
-
-        this.writeSimpleCall(writer, options, shape, callArguments, ownClassName, hasReturnValue);
-    }
-
-    private makeCallEmitter(
-        writer: Writer,
-        options: CallableBodyOptions,
-        shape: CallableShape,
-        callArguments: CallArgument[],
-    ): (target: string | null, cast: string | null) => void {
-        return (target, _cast) => {
-            if (target === null) {
-                writer.write("return ");
-            } else {
-                writer.write(`const ${target} = `);
-            }
-            this.callExpression.toWriter({
-                sharedLibrary: options.sharedLibrary,
-                cIdentifier: options.cIdentifier,
-                args: callArguments,
-                returnType: shape.returnTypeMapping.ffi,
-                selfArg: options.self,
-                hasVarargs: options.hasVarargs,
-            })(writer);
-            writer.write(";");
-            writer.newLine();
-        };
-    }
-
-    private writeObjectReturnFromPtr(
-        writer: Writer,
-        shape: CallableShape,
-        wrapInfo: ObjectWrapInfo,
-        ownClassName: string | undefined,
-    ): void {
-        this.writeRefHandleRewrap(writer, shape);
-        const baseReturnType = ownClassName ?? shape.originalReturnTsType;
-        if (ownClassName === undefined && shape.originalReturnNullable) {
-            writer.writeLine("if (ptr === null) return null;");
-        }
-        if (wrapInfo.needsInterfaceWrap) {
-            this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
-            writer.writeLine(`return getNativeObjectAsInterface(ptr, ${baseReturnType});`);
-            return;
-        }
-        this.imports.addImport("../../registry.js", ["getNativeObject"]);
-        const needsTypedWrap = wrapInfo.needsBoxedWrap || wrapInfo.needsFundamentalWrap || wrapInfo.needsStructWrap;
-        if (needsTypedWrap) {
-            writer.writeLine(`return getNativeObject(ptr, ${baseReturnType});`);
-        } else {
-            writer.writeLine("return getNativeObject(ptr);");
-        }
-    }
-
-    private writeArrayItemReturn(writer: Writer, shape: CallableShape, wrapInfo: ObjectWrapInfo): void {
-        this.writeRefHandleRewrap(writer, shape);
-        if (wrapInfo.arrayItemIsInterface) {
-            this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
-            writer.writeLine(`return arr.map((item) => getNativeObjectAsInterface(item, ${wrapInfo.arrayItemType}));`);
-        } else {
-            this.imports.addImport("../../registry.js", ["getNativeObject"]);
-            writer.writeLine("return arr.map((item) => getNativeObject(item));");
-        }
-    }
-
-    private writeSimpleCall(
-        writer: Writer,
-        options: CallableBodyOptions,
-        shape: CallableShape,
-        callArguments: CallArgument[],
-        _ownClassName: string | undefined,
-        hasReturnValue: boolean,
-    ): void {
-        if (hasReturnValue) {
-            writer.write("return ");
-        }
-        this.callExpression.toWriter({
-            sharedLibrary: options.sharedLibrary,
-            cIdentifier: options.cIdentifier,
-            args: callArguments,
-            returnType: shape.returnTypeMapping.ffi,
-            selfArg: options.self,
-            hasVarargs: options.hasVarargs,
-        })(writer);
-        writer.write(";");
-        writer.newLine();
-    }
-
-    private emitTupleReturningBody(
-        writer: Writer,
-        options: CallableBodyOptions,
-        shape: CallableShape,
-        callArguments: CallArgument[],
-        wrapInfo: ObjectWrapInfo,
-        ownClassName: string | undefined,
-    ): void {
-        const baseReturnType = ownClassName ?? shape.originalReturnTsType;
-        const tsReturnType = formatNullableReturn(baseReturnType, shape.originalReturnNullable);
-        const hasReturnValue = shape.hasOriginalReturn;
-        const hasOwnClassReturn = ownClassName !== undefined;
-        const needsResultPtr = hasReturnValue && (wrapInfo.needsWrap || hasOwnClassReturn);
-        const needsArrayWrapVar = hasReturnValue && wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType !== undefined;
-        const needsHashTableVar = hasReturnValue && wrapInfo.needsHashTableWrap;
-
-        const resultExpression = this.emitTupleCallStatement(writer, options, shape, callArguments, {
-            hasReturnValue,
-            needsResultPtr,
-            needsArrayWrapVar,
-            needsHashTableVar,
-            tsReturnType,
-        });
-
-        if (options.throws) {
-            this.writeErrorCheck(writer);
-        }
-
-        const rewrapBindings = this.writeRefHandleRewrap(writer, shape);
-
-        const originalReturnExpression = this.buildOriginalReturnExpression(writer, shape, wrapInfo, {
-            resultExpression,
-            hasReturnValue,
-            ownClassName,
-            baseReturnType,
-        });
-
-        if (shape.returnTupleEntries.length === 0) {
-            if (originalReturnExpression !== null) {
-                writer.writeLine(`return ${originalReturnExpression};`);
-            }
-            return;
-        }
-
-        this.writeTupleReturn(writer, shape, originalReturnExpression, rewrapBindings);
-    }
-
-    private emitTupleCallStatement(
-        writer: Writer,
-        options: CallableBodyOptions,
-        shape: CallableShape,
-        callArguments: CallArgument[],
-        info: {
-            hasReturnValue: boolean;
-            needsResultPtr: boolean;
-            needsArrayWrapVar: boolean;
-            needsHashTableVar: boolean;
-            tsReturnType: string;
-        },
-    ): string | null {
-        const writeCall = () => {
-            this.callExpression.toWriter({
-                sharedLibrary: options.sharedLibrary,
-                cIdentifier: options.cIdentifier,
-                args: callArguments,
-                returnType: shape.returnTypeMapping.ffi,
-                selfArg: options.self,
-                hasVarargs: options.hasVarargs,
-            })(writer);
-        };
-
-        if (!info.hasReturnValue) {
-            writeCall();
-            writer.write(";");
-            writer.newLine();
-            return null;
-        }
-
-        const baseVar = this.uniqueResultVarName(shape, "result");
-        const suffix = computeResultSuffix(info.needsResultPtr, info.needsArrayWrapVar, info.needsHashTableVar);
-        const resultExpression = `${baseVar}${suffix}`;
-        writer.write(`const ${resultExpression} = `);
-        writeCall();
-        writer.write(";");
-        writer.newLine();
-        return resultExpression;
-    }
-
-    private buildOriginalReturnExpression(
-        writer: Writer,
-        shape: CallableShape,
-        wrapInfo: ObjectWrapInfo,
-        info: {
-            resultExpression: string | null;
-            hasReturnValue: boolean;
-            ownClassName: string | undefined;
-            baseReturnType: string;
-        },
-    ): string | null {
-        const { resultExpression, hasReturnValue, ownClassName, baseReturnType } = info;
-        if (!hasReturnValue || resultExpression === null) return null;
-
-        if (ownClassName !== undefined || wrapInfo.needsWrap) {
-            const targetType = ownClassName ?? baseReturnType;
-            const wrapped = this.formatObjectWrap(resultExpression, targetType, wrapInfo);
-            if (ownClassName === undefined && shape.originalReturnNullable) {
-                writer.writeLine(
-                    `const ${resultExpression}Wrapped = ${resultExpression} === null ? null : ${wrapped};`,
-                );
-                return `${resultExpression}Wrapped`;
-            }
-            return wrapped;
-        }
-
-        if (wrapInfo.needsArrayItemWrap && wrapInfo.arrayItemType) {
-            if (wrapInfo.arrayItemIsInterface) {
-                this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
-                return `${resultExpression}.map((item) => getNativeObjectAsInterface(item, ${wrapInfo.arrayItemType}))`;
-            }
-            this.imports.addImport("../../registry.js", ["getNativeObject"]);
-            return `${resultExpression}.map((item) => getNativeObject(item))`;
-        }
-
-        if (wrapInfo.needsHashTableWrap) {
-            return shape.originalReturnNullable
-                ? `(${resultExpression} === null ? null : new Map(${resultExpression}))`
-                : `new Map(${resultExpression})`;
-        }
-
-        return resultExpression;
-    }
-
-    private writeTupleReturn(
-        writer: Writer,
-        shape: CallableShape,
-        originalReturnExpression: string | null,
-        rewrapBindings: Map<string, string>,
-    ): void {
-        const tupleParamMappings = shape.paramMappings.filter((m) => m.isOut && !m.isLengthParam);
-        const tupleExprs: string[] = [];
-        let outIndex = 0;
-        for (const entry of shape.returnTupleEntries) {
-            if (entry.kind === "original-return") {
-                tupleExprs.push(originalReturnExpression ?? "undefined");
-                continue;
-            }
-            const mapping = tupleParamMappings[outIndex];
-            tupleExprs.push(this.expressionForOutMapping(shape, mapping, rewrapBindings));
-            outIndex++;
-        }
-
-        if (shape.returnTupleEntries.length === 1 && !shape.hasOriginalReturn) {
-            writer.writeLine(`return ${tupleExprs[0]};`);
-            return;
-        }
-        writer.writeLine(`return [${tupleExprs.join(", ")}];`);
-    }
-
-    private expressionForOutMapping(
-        shape: CallableShape,
-        mapping: ParamMapping | undefined,
-        rewrapBindings: Map<string, string>,
-    ): string {
-        if (!mapping) return "undefined";
-
-        if (mapping.hiddenOutIndex === null) {
-            return mapping.nullable || mapping.optional ? `(${mapping.jsName} ?? null)` : mapping.jsName;
-        }
-
-        const hidden = shape.hiddenOuts[mapping.hiddenOutIndex];
-        if (!hidden) return "undefined";
-
-        if (hidden.kind === "alloc-struct" || hidden.kind === "factory-struct") {
-            return hidden.varName;
-        }
-        if (hidden.kind === "ref-handle") {
-            return rewrapBindings.get(hidden.varName) ?? `${hidden.varName}.value`;
-        }
-        return `${hidden.varName}.value`;
-    }
-
-    private uniqueResultVarName(shape: CallableShape, base: string): string {
-        const usedNames = new Set<string>();
-        for (const param of shape.signatureParams) {
-            usedNames.add(param.name);
-        }
-        for (const hidden of shape.hiddenOuts) {
-            usedNames.add(hidden.varName);
-        }
-        if (!usedNames.has(base)) return base;
-        let suffix = 2;
-        while (usedNames.has(`${base}${suffix}`)) suffix++;
-        return `${base}${suffix}`;
+    writeFunctionBody(...args: Parameters<CallableBodyEmitter["writeFunctionBody"]>): (writer: Writer) => void {
+        return this.bodyEmitter.writeFunctionBody(...args);
     }
 
     /**
-     * Public alias for the hidden-out declaration emitter.
-     * Used by the constructor builder to seed factory bodies.
+     * Emits the `const` declarations for resolved callback wrappers.
+     */
+    writeCallbackWrapperDeclarations(
+        ...args: Parameters<CallableBodyEmitter["writeCallbackWrapperDeclarations"]>
+    ): void {
+        this.bodyEmitter.writeCallbackWrapperDeclarations(...args);
+    }
+
+    /**
+     * Emits a hidden out-parameter declaration; used to seed factory bodies.
      */
     writeHiddenOutDeclarationFor(writer: Writer, hidden: HiddenOut): void {
-        this.writeHiddenOutDeclaration(writer, hidden);
-    }
-
-    private writeHiddenOutDeclaration(writer: Writer, hidden: HiddenOut): void {
-        if (hidden.kind === "factory-struct") {
-            writer.writeLine(`const ${hidden.varName} = ${hidden.factoryCIdentifier}();`);
-            return;
-        }
-        if (hidden.kind === "alloc-struct") {
-            if (hidden.wrapClassName) {
-                writer.writeLine(`const ${hidden.varName} = new ${hidden.wrapClassName}();`);
-            } else {
-                writer.writeLine(`const ${hidden.varName} = createRef(null);`);
-            }
-            return;
-        }
-        if (hidden.kind === "ref-handle") {
-            writer.writeLine(`const ${hidden.varName} = createRef(null);`);
-            return;
-        }
-        writer.writeLine(`const ${hidden.varName} = createRef(${hidden.initialValue});`);
-    }
-
-    private writeRefHandleRewrap(writer: Writer, shape: CallableShape): Map<string, string> {
-        const bindings = new Map<string, string>();
-        for (const hidden of shape.hiddenOuts) {
-            if (hidden.kind !== "ref-handle") continue;
-            const wrappedName = `${hidden.varName}Wrapped`;
-            bindings.set(hidden.varName, wrappedName);
-            const className = hidden.wrapClassName;
-            if (!className) {
-                writer.writeLine(`const ${wrappedName} = ${hidden.varName}.value;`);
-                continue;
-            }
-            if (hidden.nullable) {
-                writer.writeLine(
-                    `const ${wrappedName} = ${hidden.varName}.value === null ? null : ${
-                        hidden.wrapAsBoxed
-                            ? `getNativeObject(${hidden.varName}.value, ${className})`
-                            : `getNativeObject(${hidden.varName}.value)`
-                    };`,
-                );
-            } else {
-                writer.writeLine(
-                    `const ${wrappedName} = ${
-                        hidden.wrapAsBoxed
-                            ? `getNativeObject(${hidden.varName}.value, ${className})`
-                            : `getNativeObject(${hidden.varName}.value)`
-                    };`,
-                );
-            }
-        }
-        return bindings;
-    }
-
-    private formatObjectWrap(
-        ptrExpr: string,
-        baseReturnType: string,
-        wrapInfo: ReturnType<MethodBodyWriter["needsObjectWrap"]>,
-    ): string {
-        if (wrapInfo.needsInterfaceWrap) {
-            this.imports.addImport("../../registry.js", ["getNativeObjectAsInterface"]);
-            return `getNativeObjectAsInterface(${ptrExpr}, ${baseReturnType})`;
-        }
-        this.imports.addImport("../../registry.js", ["getNativeObject"]);
-        if (wrapInfo.needsBoxedWrap || wrapInfo.needsFundamentalWrap || wrapInfo.needsStructWrap) {
-            return `getNativeObject(${ptrExpr}, ${baseReturnType})`;
-        }
-        return `getNativeObject(${ptrExpr})`;
-    }
-
-    private toCallArgument(arg: ShapeCallArg, parameters: readonly GirParameter[], shape: CallableShape): CallArgument {
-        if (arg.sourceParamIndex !== null) {
-            const filtered = parameters.length > 0 ? this.filterParameters(parameters) : [];
-            const param = filtered[arg.sourceParamIndex];
-            if (param) {
-                const mapping = shape.paramMappings.find((m) => m.girIndex === arg.sourceParamIndex);
-                if (mapping?.isSignatureParam && !mapping.isOut) {
-                    const callbackWrapper = this.buildCallbackWrapper(param, mapping.jsName, mapping.nullable);
-                    return {
-                        type: arg.ffi,
-                        value: callbackWrapper ? callbackWrapper.wrappedName : arg.value,
-                        optional: arg.optional,
-                        callbackWrapper,
-                    };
-                }
-            }
-        }
-        return {
-            type: arg.ffi,
-            value: arg.value,
-            optional: arg.optional,
-        };
-    }
-
-    private buildCallbackWrapper(
-        param: GirParameter,
-        jsParamName: string,
-        isOptional: boolean,
-    ): CallbackWrapperInfo | undefined {
-        const callbackParams = this.ffiMapper.getCallbackParamMappings(param);
-        const callbackReturnType = this.ffiMapper.getCallbackReturnType(param);
-        const returnUnwrapInfo = needsReturnUnwrap(callbackReturnType);
-
-        const wrapInfos = callbackParams
-            ? callbackParams.map((p) => ({
-                  ...p,
-                  wrapInfo: needsParamWrap(p.mapped),
-              }))
-            : [];
-
-        const anyParamNeedsWrap = wrapInfos.some((w) => w.wrapInfo.needsWrap);
-        const needsWrapper = anyParamNeedsWrap || returnUnwrapInfo.needsUnwrap;
-
-        if (!needsWrapper) {
-            return undefined;
-        }
-
-        for (const w of wrapInfos) {
-            if (w.wrapInfo.needsWrap) {
-                this.imports.addImport(
-                    "../../registry.js",
-                    w.wrapInfo.isInterface ? ["getNativeObjectAsInterface"] : ["getNativeObject"],
-                );
-            }
-            this.addTypeImportsFromMapping(w.mapped);
-        }
-
-        const wrappedName = createWrappedName(jsParamName);
-        const wrapExpression = buildCallbackWrapperExpression(jsParamName, wrapInfos, returnUnwrapInfo);
-
-        return {
-            paramName: jsParamName,
-            wrappedName,
-            wrapExpression,
-            isOptional,
-        };
+        this.bodyEmitter.writeHiddenOutDeclarationFor(writer, hidden);
     }
 
     /**
      * Sets up GError import tracking and returns the appropriate GError reference.
      */
     setupGErrorImports(currentNamespace?: string): string {
-        this.imports.addImport("../../native.js", ["checkError"]);
-
-        const namespace = currentNamespace ?? this.ffiMapper.getCurrentNamespace();
-        const isGLibNamespace = namespace === "GLib";
-
-        if (isGLibNamespace) {
-            this.imports.addImport("./error.js", ["Error"]);
-            return "Error";
-        }
-        this.imports.addNamespaceImport("../glib/glib.js", "GLib");
-        return "GLib.Error";
-    }
-
-    private writeErrorCheck(writer: Writer): void {
-        const gerrorRef = this.setupGErrorImports();
-        writer.writeLine(`checkError(error, ${gerrorRef});`);
+        return this.bodyEmitter.setupGErrorImports(currentNamespace);
     }
 
     /**
      * Writes a static factory method body.
      *
      * Out and inout parameters from the original GIR signature are hidden
-     * behind internal allocations (passed via {@link hiddenOuts}); their
+     * behind internal allocations (passed via {@link HiddenOut}); their
      * post-call values are discarded — factory methods always return the
      * constructed object.
      */
-    writeFactoryMethodBody(options: {
-        sharedLibrary: string;
-        cIdentifier: string;
-        args: CallArgument[];
-        returnTypeDescriptor: FfiTypeDescriptor;
-        wrapClassName: string;
-        throws: boolean;
-        useClassInWrap: boolean;
-        hiddenOuts?: readonly HiddenOut[];
-    }): (writer: Writer) => void {
-        this.imports.addTypeImport("../../handles.js", ["NativeHandle"]);
-        this.imports.addImport("../../registry.js", ["getNativeObject"]);
-        const { sharedLibrary, cIdentifier, args, returnTypeDescriptor, wrapClassName, throws, useClassInWrap } =
-            options;
-        const hiddenOuts = options.hiddenOuts ?? [];
-
-        if (throws) {
-            this.imports.addImport("@gtkx/native", ["createRef"]);
-            this.setupGErrorImports();
-        }
-        if (hiddenOuts.length > 0) {
-            this.imports.addImport("@gtkx/native", ["createRef"]);
-        }
-
-        const allArgs = throws
-            ? [...args, { type: this.ffiTypeWriter.createGErrorRefTypeDescriptor(), value: "error" }]
-            : args;
-
-        const callWriter = this.callExpression.toWriter({
-            sharedLibrary,
-            cIdentifier,
-            args: allArgs,
-            returnType: returnTypeDescriptor,
-        });
-
-        return (writer) => {
-            this.writeCallbackWrapperDeclarations(writer, args);
-
-            if (throws) {
-                writer.writeLine("const error = createRef(null);");
-            }
-
-            for (const hidden of hiddenOuts) {
-                this.writeHiddenOutDeclaration(writer, hidden);
-            }
-
-            writer.write("const ptr = ");
-            callWriter(writer);
-            writer.writeLine(";");
-
-            if (throws) {
-                this.writeErrorCheck(writer);
-            }
-
-            if (useClassInWrap) {
-                writer.writeLine(`return getNativeObject(ptr, ${wrapClassName});`);
-            } else {
-                writer.writeLine("return getNativeObject(ptr);");
-            }
-        };
+    writeFactoryMethodBody(
+        ...args: Parameters<CallableBodyEmitter["writeFactoryMethodBody"]>
+    ): (writer: Writer) => void {
+        return this.bodyEmitter.writeFactoryMethodBody(...args);
     }
 
     /**
