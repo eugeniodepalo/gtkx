@@ -1,7 +1,7 @@
 /**
  * Return-type rewrites
  *
- * Reduces ts-for-gir's comment-labelled multi-return tuples to fixed-arity
+ * Reduces ts-for-gir's comment-labeled multi-return tuples to fixed-arity
  * `any` tuples and widens optional-parameter-derived out/inout returns with
  * `| null`.
  */
@@ -62,7 +62,7 @@ const countTupleEntries = (body: string): number => {
 };
 
 /**
- * Replaces the comment-labelled multi-return tuple type that ts-for-gir emits
+ * Replaces the comment-labeled multi-return tuple type that ts-for-gir emits
  * for functions and methods with out-parameters
  * (`: [ /* returnType *\/ A, /* out *\/ B ]`) with a fixed-length tuple of
  * `any` of the same arity (`: [any, any]`).

@@ -448,7 +448,7 @@ export class FfiMapper {
     }
 
     /**
-     * Checks whether a record has a no-arg JS constructor synthesised by
+     * Checks whether a record has a no-arg JS constructor synthesized by
      * the record generator.
      *
      * Captures the size-computability requirement of

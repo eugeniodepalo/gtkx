@@ -123,7 +123,7 @@ export class Matrix extends NativeObject {
     }
 
     /**
-     * Allocates a matrix initialised to the identity transformation.
+     * Allocates a matrix initialized to the identity transformation.
      */
     static initIdentity(): Matrix {
         const { handle, obj } = allocMatrix();
@@ -132,7 +132,7 @@ export class Matrix extends NativeObject {
     }
 
     /**
-     * Allocates a matrix initialised to a translation by `(tx, ty)`.
+     * Allocates a matrix initialized to a translation by `(tx, ty)`.
      */
     static initTranslate(tx: number, ty: number): Matrix {
         const { handle, obj } = allocMatrix();
@@ -141,7 +141,7 @@ export class Matrix extends NativeObject {
     }
 
     /**
-     * Allocates a matrix initialised to a scaling by `(sx, sy)`.
+     * Allocates a matrix initialized to a scaling by `(sx, sy)`.
      */
     static initScale(sx: number, sy: number): Matrix {
         const { handle, obj } = allocMatrix();
@@ -150,7 +150,7 @@ export class Matrix extends NativeObject {
     }
 
     /**
-     * Allocates a matrix initialised to a rotation by `radians`.
+     * Allocates a matrix initialized to a rotation by `radians`.
      */
     static initRotate(radians: number): Matrix {
         const { handle, obj } = allocMatrix();

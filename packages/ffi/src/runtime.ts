@@ -12,7 +12,7 @@
  * Re-export ordering is load-bearing. The acyclic runtime modules are
  * re-exported first so every symbol a generated module calls at load time
  * (`t.fn`, `registerNativeClass`, `registerConstructionMeta`,
- * `registerInterfaceClassStruct`) is fully initialised before any generated
+ * `registerInterfaceClassStruct`) is fully initialized before any generated
  * module body runs. `./object.js` is re-exported last: it reaches the
  * generated `gobject` bindings through `./gobject/gvalue.js`, closing an
  * import cycle back onto this barrel. Its `constructNativeObject` export is

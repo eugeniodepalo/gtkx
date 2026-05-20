@@ -7,7 +7,7 @@
  *
  * - Is this record a class or interface vtable that JS should never see?
  * - Should this record receive a full TypeScript binding?
- * - Can a no-arg JS constructor be synthesised for this record?
+ * - Can a no-arg JS constructor be synthesized for this record?
  *
  * Keeping these three predicates in one place avoids the drift that
  * accumulates when the same conditions are re-implemented at every call

@@ -82,7 +82,7 @@ export type RelativeBezierCurve = {
 };
 
 /**
- * Centre, radius, and angular span shared by {@link Context.arc} and
+ * Center, radius, and angular span shared by {@link Context.arc} and
  * {@link Context.arcNegative}.
  */
 export type ArcParams = {

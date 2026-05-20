@@ -16,7 +16,7 @@ declare module "../generated/gtk/gtk.js" {
          * Animates this scrolled window's adjustment toward `value`.
          *
          * The animation eases out over a fixed duration; a pending animation
-         * on the same window is cancelled before a new one starts.
+         * on the same window is canceled before a new one starts.
          *
          * @param value - The target adjustment value.
          * @param vertical - Animate the vertical adjustment when `true`

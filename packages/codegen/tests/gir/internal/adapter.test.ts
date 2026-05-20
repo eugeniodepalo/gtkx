@@ -417,7 +417,7 @@ describe("adaptNamespace / signals (1)", () => {
         expect(signal.parameters[0]?.name).toBe("x");
     });
 
-    it("falls back to when=last when `when` is unrecognised", () => {
+    it("falls back to when=last when `when` is unrecognized", () => {
         const result = adapt(
             createMinimalGir(`
                 <class name="Widget" c:type="TestWidget">
@@ -569,7 +569,7 @@ describe("adaptNamespace / array and GLib container types (3)", () => {
         expect(fn?.returnType.elementType?.name).toBe("gint");
     });
 
-    it("parses GLib.ByteArray with a synthesised guint8 element type", () => {
+    it("parses GLib.ByteArray with a synthesized guint8 element type", () => {
         const fn = adapt(
             createMinimalGir(`
                 <function name="bytes" c:identifier="test_bytes">

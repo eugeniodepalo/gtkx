@@ -29,7 +29,7 @@ import { allocMatrix, type Matrix as CairoMatrix } from "./matrix.js";
 const { fn } = t;
 
 /**
- * RGBA color tuple shared by Pattern colour APIs.
+ * RGBA color tuple shared by Pattern color APIs.
  */
 export type RgbaColor = {
     red: number;

@@ -561,7 +561,7 @@ describe("relaxNumericConstants", () => {
 });
 
 describe("relaxMultiReturnTuples", () => {
-    it("reduces a labelled multi-return tuple to a same-arity any tuple", () => {
+    it("reduces a labeled multi-return tuple to a same-arity any tuple", () => {
         const source = "    getBounds(): [ /* returnType */ boolean, /* x */ number, /* y */ number ]";
         const result = relaxMultiReturnTuples(source);
 
@@ -569,7 +569,7 @@ describe("relaxMultiReturnTuples", () => {
         expect(result).not.toContain("returnType");
     });
 
-    it("leaves sources without a labelled tuple untouched", () => {
+    it("leaves sources without a labeled tuple untouched", () => {
         const source = "    getName(): string";
         expect(relaxMultiReturnTuples(source)).toBe(source);
     });

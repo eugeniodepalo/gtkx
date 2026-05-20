@@ -155,7 +155,7 @@ describe("valueFromJS / valueToJS round-trips — collections and references", (
 });
 
 describe("valueToJS extra coverage", () => {
-    it("returns null when reading a default-initialised G_TYPE_POINTER", () => {
+    it("returns null when reading a default-initialized G_TYPE_POINTER", () => {
         const v = new Value();
         v.init(Type.POINTER);
         expect(valueToJS(v)).toBeNull();
@@ -314,11 +314,11 @@ describe("valueFromFfi — arrays and errors", () => {
 });
 
 describe("valueFromJS extra coverage", () => {
-    it("returns a null-initialised BOXED value when value is null", () => {
+    it("returns a null-initialized BOXED value when value is null", () => {
         expect(valueGetType(valueFromJS(gdkRgbaGType(), null))).toBe(gdkRgbaGType());
     });
 
-    it("returns a null-initialised BOXED value when value is undefined", () => {
+    it("returns a null-initialized BOXED value when value is undefined", () => {
         expect(valueGetType(valueFromJS(gdkRgbaGType(), undefined))).toBe(gdkRgbaGType());
     });
 

@@ -42,7 +42,7 @@ impl std::fmt::Debug for NativeErrorReporter {
 static REPORTER: OnceLock<NativeErrorReporter> = OnceLock::new();
 
 impl NativeErrorReporter {
-    /// Returns the global reporter, initialising it on first access.
+    /// Returns the global reporter, initializing it on first access.
     pub fn global() -> &'static Self {
         REPORTER.get_or_init(|| Self {
             tsfn: OnceLock::new(),
@@ -63,7 +63,7 @@ impl NativeErrorReporter {
 
     /// Reports a free-form message as a JavaScript exception.
     ///
-    /// Falls back to `stderr` if the reporter has not been initialised, so
+    /// Falls back to `stderr` if the reporter has not been initialized, so
     /// startup errors are still observable.
     pub fn report_str(&self, message: &str) {
         let Some(tsfn) = self.tsfn.get() else {

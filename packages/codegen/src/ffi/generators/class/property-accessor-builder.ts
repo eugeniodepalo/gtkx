@@ -39,7 +39,7 @@ import { toCamelCase } from "../../../utils/naming.js";
 export type PropertyAccessorEmission = {
     /**
      * ES6 get/set accessor carrying the property's runtime get/set
-     * behaviour, suitable for adding directly to a class or interface body.
+     * behavior, suitable for adding directly to a class or interface body.
      */
     readonly accessor: AccessorBuilder;
 };

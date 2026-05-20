@@ -438,7 +438,7 @@ const MERGE_SORT_CHUNK = 65536;
 interface IncrementalMergeSortArgs {
     arr: ColorItem[];
     cmp: (a: ColorItem, b: ColorItem) => number;
-    ctx: { cancelled: boolean };
+    ctx: { canceled: boolean };
     setSorted: (s: ColorItem[]) => void;
     setProgress: (p: number) => void;
 }
@@ -452,7 +452,7 @@ const runIncrementalMergeSort = ({ arr, cmp, ctx, setSorted, setProgress }: Incr
     setSorted(arr);
 
     const sortStep = () => {
-        if (ctx.cancelled) return;
+        if (ctx.canceled) return;
 
         const passStart = blockSize;
         const passEnd = Math.min(blockSize * 2, n);
@@ -479,11 +479,11 @@ const runIncrementalMergeSort = ({ arr, cmp, ctx, setSorted, setProgress }: Incr
 function useIncrementalSort(colors: ColorItem[], mode: SortMode): { sorted: ColorItem[]; progress: number } {
     const [sorted, setSorted] = useState<ColorItem[]>(colors);
     const [progress, setProgress] = useState(1);
-    const sortingRef = useRef<{ cancelled: boolean }>({ cancelled: false });
+    const sortingRef = useRef<{ canceled: boolean }>({ canceled: false });
 
     useEffect(() => {
-        sortingRef.current.cancelled = true;
-        const ctx = { cancelled: false };
+        sortingRef.current.canceled = true;
+        const ctx = { canceled: false };
         sortingRef.current = ctx;
 
         const cmp = getCompareFn(mode);
@@ -507,7 +507,7 @@ function useIncrementalSort(colors: ColorItem[], mode: SortMode): { sorted: Colo
         runIncrementalMergeSort({ arr, cmp, ctx, setSorted, setProgress });
 
         return () => {
-            ctx.cancelled = true;
+            ctx.canceled = true;
         };
     }, [colors, mode]);
 

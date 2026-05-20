@@ -58,7 +58,7 @@ const loadWordsFromFile = async (
 };
 
 interface FilterCtx {
-    cancelled: boolean;
+    canceled: boolean;
 }
 
 const runFilterStep = ({
@@ -78,7 +78,7 @@ const runFilterStep = ({
     setFilterProgress: (n: number) => void;
     setFilteredWords: (w: string[]) => void;
 }) => {
-    if (ctx.cancelled) return;
+    if (ctx.canceled) return;
 
     const end = Math.min(offset + FILTER_CHUNK_SIZE, words.length);
     for (let i = offset; i < end; i++) {
@@ -110,11 +110,11 @@ const runFilterStep = ({
 function useFilteredWords(words: string[], searchText: string) {
     const [filteredWords, setFilteredWords] = useState(initialWords);
     const [filterProgress, setFilterProgress] = useState(1);
-    const filterRef = useRef<FilterCtx>({ cancelled: false });
+    const filterRef = useRef<FilterCtx>({ canceled: false });
 
     useEffect(() => {
-        filterRef.current.cancelled = true;
-        const ctx = { cancelled: false };
+        filterRef.current.canceled = true;
+        const ctx = { canceled: false };
         filterRef.current = ctx;
 
         if (searchText === "") {
@@ -132,7 +132,7 @@ function useFilteredWords(words: string[], searchText: string) {
         );
 
         return () => {
-            ctx.cancelled = true;
+            ctx.canceled = true;
         };
     }, [words, searchText]);
 

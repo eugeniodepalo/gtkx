@@ -128,16 +128,16 @@ export const queryByRole = (
 };
 
 /**
- * Finds all elements that are labelled by a GtkLabel whose text matches.
+ * Finds all elements that are labeled by a GtkLabel whose text matches.
  *
  * Uses GtkLabel's mnemonic widget association to find form elements
- * by their label text. Only returns widgets that are properly labelled
+ * by their label text. Only returns widgets that are properly labeled
  * via GtkLabel's mnemonic-widget property.
  *
  * @param container - The container to search within
  * @param text - Label text to match (string, RegExp, or custom matcher)
  * @param options - Query options including normalization
- * @returns Array of labelled widgets (empty if none found)
+ * @returns Array of labeled widgets (empty if none found)
  */
 export const queryAllByLabelText = (
     container: Container,
@@ -382,7 +382,7 @@ export const findAllByRole = async (
     });
 
 /**
- * Finds a single element that is labelled by a GtkLabel whose text matches.
+ * Finds a single element that is labeled by a GtkLabel whose text matches.
  *
  * Waits for the element to appear, throwing if not found within timeout.
  * Uses GtkLabel's mnemonic widget association to find form elements.
@@ -390,7 +390,7 @@ export const findAllByRole = async (
  * @param container - The container to search within
  * @param text - Label text to match (string, RegExp, or custom matcher)
  * @param options - Query options including normalization and timeout
- * @returns Promise resolving to the labelled widget
+ * @returns Promise resolving to the labeled widget
  *
  * @example
  * ```tsx

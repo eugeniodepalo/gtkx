@@ -134,7 +134,7 @@ const getDevDependencies = (testing: TestingOption): string[] => {
 
 const guardCancellation = <T>(deps: ScaffolderDeps, value: T | symbol): T => {
     if (deps.prompts.isCancel(value)) {
-        deps.prompts.cancel("Operation cancelled");
+        deps.prompts.cancel("Operation canceled");
         deps.exit(0);
     }
     return value as T;

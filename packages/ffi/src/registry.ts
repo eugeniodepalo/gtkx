@@ -75,7 +75,7 @@ export function getInterfaceGType(cls: NativeClass): GType {
  * raw pointers received from the native layer into typed JavaScript
  * wrappers. The returned instance bypasses the constructor entirely,
  * leaving prototype-defined methods and accessors in place but skipping
- * any allocation or property initialisation.
+ * any allocation or property initialization.
  *
  * @param cls - Target wrapper class
  * @param handle - Native handle to wrap

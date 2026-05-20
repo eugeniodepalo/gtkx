@@ -7,7 +7,7 @@
  * ships the root README". A package counts as published when its
  * `package.json` does not set `private: true`; private packages are skipped.
  * The per-package `README.md` files are gitignored build artifacts, so this
- * script must run before `pnpm -r publish` to materialise them.
+ * script must run before `pnpm -r publish` to materialize them.
  */
 
 import { copyFile, readdir, readFile } from "node:fs/promises";

@@ -3,7 +3,7 @@
  *
  * Emits TypeScript type aliases for each GIR `<alias>` element in a
  * namespace. The TypeDeclarationBuilder is a no-op in JS mode, so the
- * generator's behaviour collapses to recording aliases for callers that
+ * generator's behavior collapses to recording aliases for callers that
  * inspect the file builder's structure programmatically.
  */
 

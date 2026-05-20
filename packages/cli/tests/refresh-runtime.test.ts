@@ -52,9 +52,9 @@ describe("isReactRefreshBoundary", () => {
     });
 
     it("recognizes React.memo-wrapped components", () => {
-        const memoised = (() => null) as { (): null; $$typeof?: symbol };
-        memoised.$$typeof = Symbol.for("react.memo");
-        expect(isReactRefreshBoundary({ wrapped: memoised })).toBe(true);
+        const memoized = (() => null) as { (): null; $$typeof?: symbol };
+        memoized.$$typeof = Symbol.for("react.memo");
+        expect(isReactRefreshBoundary({ wrapped: memoized })).toBe(true);
     });
 
     it("recognizes React.forwardRef-wrapped components", () => {

@@ -31,7 +31,7 @@ export type AsyncCapableCallable = GirMethod | GirFunction;
  * Returns the `GAsyncReadyCallback`-typed parameter of a callable, or `null`
  * when the callable has none.
  *
- * The parameter is recognised by its GIR `scope="async"` together with a type
+ * The parameter is recognized by its GIR `scope="async"` together with a type
  * resolving to `Gio.AsyncReadyCallback` (bare name when the callable itself is
  * in the Gio namespace, `Gio.`-qualified otherwise).
  */

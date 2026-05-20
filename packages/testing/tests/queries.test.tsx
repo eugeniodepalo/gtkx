@@ -236,7 +236,7 @@ describe("findByLabelText", () => {
 });
 
 describe("findAllByLabelText", () => {
-    it("finds all elements labelled by matching GtkLabels", async () => {
+    it("finds all elements labeled by matching GtkLabels", async () => {
         const ref1 = { current: null as Gtk.Entry | null };
         const ref2 = { current: null as Gtk.Entry | null };
         const Form = () => (
