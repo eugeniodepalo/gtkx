@@ -320,14 +320,20 @@ const UcdNameColumn = () => (
     />
 );
 
-const UcdTypeColumn = () => (
+interface UcdInscriptionColumnProps {
+    id: string;
+    title: string;
+    label: (item: UcdEntry) => string;
+}
+
+const UcdInscriptionColumn = ({ id, title, label }: UcdInscriptionColumnProps) => (
     <GtkColumnView.Column
-        id="type"
-        title="Type"
+        id={id}
+        title={title}
         resizable
         renderCell={(item: UcdEntry) => (
             <GtkInscription
-                text={UNICODE_TYPE_NAMES[GLib.unicharType(item.char)] ?? "Unknown"}
+                text={label(item)}
                 cssClasses={["dim-label"]}
                 xalign={0}
                 textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
@@ -335,42 +341,30 @@ const UcdTypeColumn = () => (
                 marginBottom={4}
             />
         )}
+    />
+);
+
+const UcdTypeColumn = () => (
+    <UcdInscriptionColumn
+        id="type"
+        title="Type"
+        label={(item) => UNICODE_TYPE_NAMES[GLib.unicharType(item.char)] ?? "Unknown"}
     />
 );
 
 const UcdBreakTypeColumn = () => (
-    <GtkColumnView.Column
+    <UcdInscriptionColumn
         id="break-type"
         title="Break Type"
-        resizable
-        renderCell={(item: UcdEntry) => (
-            <GtkInscription
-                text={BREAK_TYPE_NAMES[GLib.unicharBreakType(item.char)] ?? "Unknown"}
-                cssClasses={["dim-label"]}
-                xalign={0}
-                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
-                marginTop={4}
-                marginBottom={4}
-            />
-        )}
+        label={(item) => BREAK_TYPE_NAMES[GLib.unicharBreakType(item.char)] ?? "Unknown"}
     />
 );
 
 const UcdCombiningClassColumn = () => (
-    <GtkColumnView.Column
+    <UcdInscriptionColumn
         id="combining-class"
         title="Combining Class"
-        resizable
-        renderCell={(item: UcdEntry) => (
-            <GtkInscription
-                text={COMBINING_CLASS_NAMES[GLib.unicharCombiningClass(item.char)] ?? "Unknown"}
-                cssClasses={["dim-label"]}
-                xalign={0}
-                textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END}
-                marginTop={4}
-                marginBottom={4}
-            />
-        )}
+        label={(item) => COMBINING_CLASS_NAMES[GLib.unicharCombiningClass(item.char)] ?? "Unknown"}
     />
 );
 

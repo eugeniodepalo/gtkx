@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton } from "@gtkx/react";
 import { type RefObject, useEffect, useRef } from "react";
 import type { Demo } from "../types.js";
+import { ThreeButtonsBox } from "./_shared.js";
 import sourceCode from "./constraints-interactive.tsx?raw";
 
 type ConstraintTarget = Gtk.Widget | Gtk.ConstraintGuide | null;
@@ -119,11 +119,12 @@ function ConstraintsInteractive() {
     }, []);
 
     return (
-        <GtkBox ref={containerRef} hexpand vexpand>
-            <GtkButton ref={button1Ref} label="Child 1" />
-            <GtkButton ref={button2Ref} label="Child 2" />
-            <GtkButton ref={button3Ref} label="Child 3" />
-        </GtkBox>
+        <ThreeButtonsBox
+            containerRef={containerRef}
+            button1Ref={button1Ref}
+            button2Ref={button2Ref}
+            button3Ref={button3Ref}
+        />
     );
 }
 

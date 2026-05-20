@@ -359,21 +359,16 @@ function copyDefined({
     return k;
 }
 
-function mergeInterleave({
-    arr,
-    tmp,
-    cmp,
-    start,
-    mid,
-    end,
-}: {
+interface MergeRange {
     arr: ColorItem[];
     tmp: ColorItem[];
     cmp: (a: ColorItem, b: ColorItem) => number;
     start: number;
     mid: number;
     end: number;
-}): { i: number; j: number; k: number } {
+}
+
+function mergeInterleave({ arr, tmp, cmp, start, mid, end }: MergeRange): { i: number; j: number; k: number } {
     let i = start;
     let j = mid;
     let k = start;
@@ -392,21 +387,7 @@ function mergeInterleave({
     return { i, j, k };
 }
 
-function mergeRange({
-    arr,
-    tmp,
-    cmp,
-    start,
-    mid,
-    end,
-}: {
-    arr: ColorItem[];
-    tmp: ColorItem[];
-    cmp: (a: ColorItem, b: ColorItem) => number;
-    start: number;
-    mid: number;
-    end: number;
-}): void {
+function mergeRange({ arr, tmp, cmp, start, mid, end }: MergeRange): void {
     const { i, j, k } = mergeInterleave({ arr, tmp, cmp, start, mid, end });
     const afterLeftTail = copyDefined({ src: arr, dst: tmp, from: i, to: mid, dstStart: k });
     copyDefined({ src: arr, dst: tmp, from: j, to: end, dstStart: afterLeftTail });

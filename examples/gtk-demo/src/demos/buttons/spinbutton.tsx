@@ -94,85 +94,78 @@ interface SpinRowProps {
     spinRef: React.RefObject<Gtk.SpinButton | null>;
 }
 
-const NumericSpinRow = ({ value, setValue, spinRef }: SpinRowProps) => (
+interface SpinRowConfig extends SpinRowProps {
+    row: number;
+    label: string;
+    spin: React.ComponentProps<typeof GtkSpinButton>;
+}
+
+const SpinRow = ({ row, label, value, setValue, spinRef, spin }: SpinRowConfig) => (
     <>
-        <GtkGrid.Child column={0} row={0}>
-            <GtkLabel label="_Numeric" useUnderline xalign={1} mnemonicWidget={spinRef.current} />
+        <GtkGrid.Child column={0} row={row}>
+            <GtkLabel label={label} useUnderline xalign={1} mnemonicWidget={spinRef.current} />
         </GtkGrid.Child>
-        <GtkGrid.Child column={1} row={0}>
-            <GtkSpinButton
-                ref={spinRef}
-                halign={Gtk.Align.START}
-                widthChars={5}
-                digits={2}
-                climbRate={1}
-                numeric
-                value={value}
-                lower={-10000}
-                upper={10000}
-                stepIncrement={0.5}
-                pageIncrement={100}
-                onValueChanged={setValue}
-            />
+        <GtkGrid.Child column={1} row={row}>
+            <GtkSpinButton ref={spinRef} halign={Gtk.Align.START} value={value} onValueChanged={setValue} {...spin} />
         </GtkGrid.Child>
-        <GtkGrid.Child column={2} row={0}>
+        <GtkGrid.Child column={2} row={row}>
             <GtkLabel label={String(value)} widthChars={10} xalign={1} />
         </GtkGrid.Child>
     </>
 );
 
-const HexSpinRow = ({ value, setValue, spinRef }: SpinRowProps) => (
-    <>
-        <GtkGrid.Child column={0} row={1}>
-            <GtkLabel label="_Hexadecimal" useUnderline xalign={1} mnemonicWidget={spinRef.current} />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={1} row={1}>
-            <GtkSpinButton
-                ref={spinRef}
-                halign={Gtk.Align.START}
-                widthChars={4}
-                wrap
-                value={value}
-                lower={0}
-                upper={255}
-                stepIncrement={1}
-                pageIncrement={16}
-                onValueChanged={setValue}
-                onInput={handleHexInput}
-                onOutput={handleHexOutput}
-            />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={2} row={1}>
-            <GtkLabel label={String(value)} widthChars={10} xalign={1} />
-        </GtkGrid.Child>
-    </>
+const NumericSpinRow = (props: SpinRowProps) => (
+    <SpinRow
+        {...props}
+        row={0}
+        label="_Numeric"
+        spin={{
+            widthChars: 5,
+            digits: 2,
+            climbRate: 1,
+            numeric: true,
+            lower: -10000,
+            upper: 10000,
+            stepIncrement: 0.5,
+            pageIncrement: 100,
+        }}
+    />
 );
 
-const TimeSpinRow = ({ value, setValue, spinRef }: SpinRowProps) => (
-    <>
-        <GtkGrid.Child column={0} row={2}>
-            <GtkLabel label="_Time" useUnderline xalign={1} mnemonicWidget={spinRef.current} />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={1} row={2}>
-            <GtkSpinButton
-                ref={spinRef}
-                halign={Gtk.Align.START}
-                widthChars={5}
-                wrap
-                value={value}
-                lower={0}
-                upper={1410}
-                stepIncrement={30}
-                pageIncrement={60}
-                onValueChanged={setValue}
-                onInput={handleTimeInput}
-                onOutput={handleTimeOutput}
-            />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={2} row={2}>
-            <GtkLabel label={String(value)} widthChars={10} xalign={1} />
-        </GtkGrid.Child>
-    </>
+const HexSpinRow = (props: SpinRowProps) => (
+    <SpinRow
+        {...props}
+        row={1}
+        label="_Hexadecimal"
+        spin={{
+            widthChars: 4,
+            wrap: true,
+            lower: 0,
+            upper: 255,
+            stepIncrement: 1,
+            pageIncrement: 16,
+            onInput: handleHexInput,
+            onOutput: handleHexOutput,
+        }}
+    />
+);
+
+const TimeSpinRow = (props: SpinRowProps) => (
+    <SpinRow
+        {...props}
+        row={2}
+        label="_Time"
+        spin={{
+            widthChars: 5,
+            wrap: true,
+            lower: 0,
+            upper: 1410,
+            stepIncrement: 30,
+            pageIncrement: 60,
+            onInput: handleTimeInput,
+            onOutput: handleTimeOutput,
+        }}
+    />
 );
 
 interface MonthSpinRowProps extends SpinRowProps {
@@ -181,31 +174,24 @@ interface MonthSpinRowProps extends SpinRowProps {
 }
 
 const MonthSpinRow = ({ value, setValue, spinRef, onInput, onOutput }: MonthSpinRowProps) => (
-    <>
-        <GtkGrid.Child column={0} row={3}>
-            <GtkLabel label="_Month" useUnderline xalign={1} mnemonicWidget={spinRef.current} />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={1} row={3}>
-            <GtkSpinButton
-                ref={spinRef}
-                halign={Gtk.Align.START}
-                widthChars={9}
-                wrap
-                updatePolicy={Gtk.SpinButtonUpdatePolicy.IF_VALID}
-                value={value}
-                lower={1}
-                upper={12}
-                stepIncrement={1}
-                pageIncrement={5}
-                onValueChanged={setValue}
-                onInput={onInput}
-                onOutput={onOutput}
-            />
-        </GtkGrid.Child>
-        <GtkGrid.Child column={2} row={3}>
-            <GtkLabel label={String(value)} widthChars={10} xalign={1} />
-        </GtkGrid.Child>
-    </>
+    <SpinRow
+        value={value}
+        setValue={setValue}
+        spinRef={spinRef}
+        row={3}
+        label="_Month"
+        spin={{
+            widthChars: 9,
+            wrap: true,
+            updatePolicy: Gtk.SpinButtonUpdatePolicy.IF_VALID,
+            lower: 1,
+            upper: 12,
+            stepIncrement: 1,
+            pageIncrement: 5,
+            onInput,
+            onOutput,
+        }}
+    />
 );
 
 const SpinButtonDemo = () => {

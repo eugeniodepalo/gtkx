@@ -22,7 +22,11 @@ describe("render - Shortcut (1)", () => {
     });
 
     it.each([
-        { label: "supports an array of triggers (alternative trigger)", trigger: ["<Control>s", "F2"], disabled: false },
+        {
+            label: "supports an array of triggers (alternative trigger)",
+            trigger: ["<Control>s", "F2"],
+            disabled: false,
+        },
         { label: "uses NeverTrigger when disabled", trigger: "<Control>s", disabled: true },
         { label: "uses NeverTrigger for an empty trigger array", trigger: [], disabled: false },
     ])("$label", async ({ trigger, disabled }) => {
