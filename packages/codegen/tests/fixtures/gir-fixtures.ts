@@ -382,3 +382,26 @@ export function createButtonClass(
         repo,
     );
 }
+
+/**
+ * The canonical `Button.new` / `Button.new_with_label` constructor pair used by
+ * the class-generator and constructor-builder test suites. Each constructor's
+ * return type is the `Gtk.Button` qualified name; `new_with_label` takes a
+ * `utf8` `label` parameter.
+ */
+export function gtkButtonNewConstructors(): GirConstructor[] {
+    return [
+        createNormalizedConstructor({
+            name: "new",
+            cIdentifier: "gtk_button_new",
+            returnType: createNormalizedType({ name: "Gtk.Button" }),
+            parameters: [],
+        }),
+        createNormalizedConstructor({
+            name: "new_with_label",
+            cIdentifier: "gtk_button_new_with_label",
+            returnType: createNormalizedType({ name: "Gtk.Button" }),
+            parameters: [createNormalizedParameter({ name: "label", type: createNormalizedType({ name: "utf8" }) })],
+        }),
+    ];
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PropertyAnalyzer } from "../../src/analyzers/property-analyzer.js";
-import { FfiMapper } from "../../src/type-system/ffi-mapper.js";
+import { createAnalyzerSetup } from "../fixtures/analyzer-harness.js";
 import {
     createNormalizedClass,
     createNormalizedConstructor,
@@ -17,14 +17,9 @@ import {
     qualifiedName,
     singleClassRepo,
 } from "../fixtures/gir-fixtures.js";
-import { createMockRepository } from "../fixtures/mock-repository.js";
 
-function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>>) {
-    const repo = createMockRepository(namespaces);
-    const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-    const analyzer = new PropertyAnalyzer(repo as ConstructorParameters<typeof PropertyAnalyzer>[0], mapper);
-    return { repo, mapper, analyzer };
-}
+const createTestSetup = (namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>>) =>
+    createAnalyzerSetup(PropertyAnalyzer, namespaces);
 
 function analyzeProperties(
     cls: ReturnType<typeof createNormalizedClass>,
@@ -335,14 +330,12 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (10)", () => {
             classes: new Map([["Image", imageClass]]),
         });
 
-        const repo = createMockRepository(
+        const { analyzer } = createTestSetup(
             new Map([
                 ["Gtk", gtkNs],
                 ["Gdk", gdkNs],
             ]),
         );
-        const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-        const analyzer = new PropertyAnalyzer(repo as ConstructorParameters<typeof PropertyAnalyzer>[0], mapper);
 
         const result = analyzer.analyzeWidgetProperties(imageClass);
 
@@ -420,14 +413,12 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (13)", () => {
             classes: new Map([["Widget", widgetClass]]),
         });
 
-        const repo = createMockRepository(
+        const { analyzer } = createTestSetup(
             new Map([
                 ["Gtk", gtkNs],
                 ["Gdk", gdkNs],
             ]),
         );
-        const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-        const analyzer = new PropertyAnalyzer(repo as ConstructorParameters<typeof PropertyAnalyzer>[0], mapper);
 
         const result = analyzer.analyzeWidgetProperties(widgetClass);
 

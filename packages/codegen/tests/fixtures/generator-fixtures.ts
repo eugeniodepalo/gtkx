@@ -35,25 +35,40 @@ export function buildGeneratorOptions(namespace: string): GeneratorOptionsLike {
 }
 
 /**
- * Context shared by every Gtk class/interface/function generator test:
- * a mock repository, an FfiMapper for it, a fresh file builder, and the
- * standard Gtk generator options.
- *
- * If a Gtk namespace is not already present in `namespaces`, an empty one is
- * inserted so downstream lookups succeed.
+ * Result of {@link setupFfiContext}: the namespace map, mock repository,
+ * `FfiMapper`, a fresh file builder, and the generator options for
+ * `namespace`.
  */
-export function setupGtkFfiContext(namespaces: Map<string, GirNamespace> = new Map()): {
+export interface FfiContextSetup {
     namespaces: Map<string, GirNamespace>;
     repo: GirRepository;
     ffiMapper: FfiMapper;
     file: ReturnType<typeof fileBuilder>;
     options: GeneratorOptionsLike;
-} {
-    if (!namespaces.has("Gtk")) {
-        namespaces.set("Gtk", createNormalizedNamespace({ name: "Gtk" }));
+}
+
+/**
+ * Context shared by every class/interface/function generator test in a single
+ * namespace: a mock repository spanning `namespaces`, an FfiMapper bound to
+ * `namespace`, a fresh file builder, and the corresponding generator options.
+ *
+ * If `namespace` is not present in `namespaces`, an empty one is inserted so
+ * downstream lookups succeed.
+ */
+export function setupFfiContext(namespace: string, namespaces: Map<string, GirNamespace> = new Map()): FfiContextSetup {
+    if (!namespaces.has(namespace)) {
+        namespaces.set(namespace, createNormalizedNamespace({ name: namespace }));
     }
     const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
+    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], namespace);
     const file = fileBuilder();
-    return { namespaces, repo, ffiMapper, file, options: GTK_GENERATOR_OPTIONS };
+    return { namespaces, repo, ffiMapper, file, options: buildGeneratorOptions(namespace) };
+}
+
+/**
+ * Convenience specialization of {@link setupFfiContext} bound to the Gtk
+ * namespace, the dominant namespace under test.
+ */
+export function setupGtkFfiContext(namespaces: Map<string, GirNamespace> = new Map()): FfiContextSetup {
+    return setupFfiContext("Gtk", namespaces);
 }

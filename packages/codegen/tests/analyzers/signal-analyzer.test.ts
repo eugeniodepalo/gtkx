@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SignalAnalyzer } from "../../src/analyzers/signal-analyzer.js";
-import { FfiMapper } from "../../src/type-system/ffi-mapper.js";
+import { createAnalyzerSetup } from "../fixtures/analyzer-harness.js";
 import {
     createNormalizedClass,
     createNormalizedNamespace,
@@ -13,14 +13,9 @@ import {
     qualifiedName,
     singleClassRepo,
 } from "../fixtures/gir-fixtures.js";
-import { createMockRepository } from "../fixtures/mock-repository.js";
 
-function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>>) {
-    const repo = createMockRepository(namespaces);
-    const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-    const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
-    return { repo, mapper, analyzer };
-}
+const createTestSetup = (namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>>) =>
+    createAnalyzerSetup(SignalAnalyzer, namespaces);
 
 describe("SignalAnalyzer / analyzeWidgetSignals (1)", () => {
     it("returns empty array for class with no signals", () => {
@@ -233,14 +228,12 @@ describe("SignalAnalyzer / analyzeWidgetSignals (8)", () => {
             classes: new Map([["Widget", widgetClass]]),
         });
 
-        const repo = createMockRepository(
+        const { analyzer } = createTestSetup(
             new Map([
                 ["Gtk", gtkNs],
                 ["Gdk", gdkNs],
             ]),
         );
-        const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-        const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
 
         const result = analyzer.analyzeWidgetSignals(widgetClass);
 
@@ -274,14 +267,12 @@ describe("SignalAnalyzer / analyzeWidgetSignals (9)", () => {
             classes: new Map([["DragSource", dndClass]]),
         });
 
-        const repo = createMockRepository(
+        const { analyzer } = createTestSetup(
             new Map([
                 ["Gtk", gtkNs],
                 ["Gdk", gdkNs],
             ]),
         );
-        const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-        const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
 
         const result = analyzer.analyzeWidgetSignals(dndClass);
 
@@ -342,14 +333,12 @@ describe("SignalAnalyzer / analyzeWidgetSignals (11)", () => {
             classes: new Map([["Gesture", gestureClass]]),
         });
 
-        const repo = createMockRepository(
+        const { analyzer } = createTestSetup(
             new Map([
                 ["Gtk", gtkNs],
                 ["Gdk", gdkNs],
             ]),
         );
-        const mapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-        const analyzer = new SignalAnalyzer(repo as ConstructorParameters<typeof SignalAnalyzer>[0], mapper);
 
         const result = analyzer.analyzeWidgetSignals(gestureClass);
 

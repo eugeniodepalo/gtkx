@@ -8,6 +8,7 @@ import {
     type createNormalizedNamespace,
     createNormalizedParameter,
     createNormalizedType,
+    gtkButtonNewConstructors,
     qualifiedName,
 } from "../../../fixtures/gir-fixtures.js";
 
@@ -102,27 +103,7 @@ describe("ConstructorBuilder / factoryMethods (1)", () => {
     });
 
     it("emits every GIR constructor as a static factory method", () => {
-        const { builder } = createTestSetup({
-            constructors: [
-                createNormalizedConstructor({
-                    name: "new",
-                    cIdentifier: "gtk_button_new",
-                    returnType: createNormalizedType({ name: "Gtk.Button" }),
-                    parameters: [],
-                }),
-                createNormalizedConstructor({
-                    name: "new_with_label",
-                    cIdentifier: "gtk_button_new_with_label",
-                    returnType: createNormalizedType({ name: "Gtk.Button" }),
-                    parameters: [
-                        createNormalizedParameter({
-                            name: "label",
-                            type: createNormalizedType({ name: "utf8" }),
-                        }),
-                    ],
-                }),
-            ],
-        });
+        const { builder } = createTestSetup({ constructors: gtkButtonNewConstructors() });
 
         const { factoryMethods } = builder.build();
 

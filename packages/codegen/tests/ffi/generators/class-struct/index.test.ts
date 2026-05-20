@@ -51,6 +51,40 @@ function callbackField(
     });
 }
 
+type VfuncSpec = {
+    name: string;
+    returnType?: string;
+    parameters?: ReturnType<typeof createNormalizedParameter>[];
+    introspectable?: boolean;
+};
+
+function vfuncField(spec: VfuncSpec): ReturnType<typeof createNormalizedField> {
+    return callbackField(
+        spec.name,
+        createNormalizedCallback({
+            name: spec.name,
+            returnType: createNormalizedType({ name: spec.returnType ?? "none" }),
+            parameters: spec.parameters ?? [],
+            ...(spec.introspectable !== undefined ? { introspectable: spec.introspectable } : {}),
+        }),
+    );
+}
+
+function makeVtableRecord(opts: {
+    name: string;
+    cType: string;
+    isGtypeStructFor?: string;
+    vfuncs?: VfuncSpec[];
+    extraFields?: ReturnType<typeof createNormalizedField>[];
+}): ReturnType<typeof createNormalizedRecord> {
+    return createNormalizedRecord({
+        name: opts.name,
+        cType: opts.cType,
+        ...(opts.isGtypeStructFor !== undefined ? { isGtypeStructFor: opts.isGtypeStructFor } : {}),
+        fields: [...(opts.vfuncs?.map(vfuncField) ?? []), ...(opts.extraFields ?? [])],
+    });
+}
+
 describe("ClassStructGenerator (1)", () => {
     it("returns false and emits nothing when the record has no callback fields", () => {
         const { generator, file } = createTestSetup();
@@ -66,20 +100,11 @@ describe("ClassStructGenerator (1)", () => {
 
     it("emits a module-private registry under the record's normalized name", () => {
         const { generator, file } = createTestSetup();
-        const record = createNormalizedRecord({
+        const record = makeVtableRecord({
             name: "ObjectClass",
             cType: "GObjectClass",
             isGtypeStructFor: "Object",
-            fields: [
-                callbackField(
-                    "finalize",
-                    createNormalizedCallback({
-                        name: "finalize",
-                        returnType: createNormalizedType({ name: "none" }),
-                        parameters: [],
-                    }),
-                ),
-            ],
+            vfuncs: [{ name: "finalize" }],
         });
         expect(generator.generate(record)).toBe(true);
         const code = stringify(file);
@@ -113,20 +138,11 @@ describe("ClassStructGenerator (2)", () => {
 
     it("camelCases vfunc keys but preserves the snake_case vfuncName diagnostic", () => {
         const { generator, file } = createTestSetup();
-        const record = createNormalizedRecord({
+        const record = makeVtableRecord({
             name: "ObjectClass",
             cType: "GObjectClass",
             isGtypeStructFor: "Object",
-            fields: [
-                callbackField(
-                    "set_property",
-                    createNormalizedCallback({
-                        name: "set_property",
-                        returnType: createNormalizedType({ name: "none" }),
-                        parameters: [],
-                    }),
-                ),
-            ],
+            vfuncs: [{ name: "set_property" }],
         });
         generator.generate(record);
         const code = stringify(file);
@@ -138,29 +154,11 @@ describe("ClassStructGenerator (2)", () => {
 describe("ClassStructGenerator (3)", () => {
     it("skips non-introspectable vfuncs and reports the skip via the logger", () => {
         const { generator, file, skipMessages } = createTestSetup();
-        const record = createNormalizedRecord({
+        const record = makeVtableRecord({
             name: "ObjectClass",
             cType: "GObjectClass",
             isGtypeStructFor: "Object",
-            fields: [
-                callbackField(
-                    "finalize",
-                    createNormalizedCallback({
-                        name: "finalize",
-                        returnType: createNormalizedType({ name: "none" }),
-                        parameters: [],
-                    }),
-                ),
-                callbackField(
-                    "constructor",
-                    createNormalizedCallback({
-                        name: "constructor",
-                        returnType: createNormalizedType({ name: "none" }),
-                        parameters: [],
-                        introspectable: false,
-                    }),
-                ),
-            ],
+            vfuncs: [{ name: "finalize" }, { name: "constructor", introspectable: false }],
         });
         expect(generator.generate(record)).toBe(true);
         const output = stringify(file);
@@ -175,26 +173,22 @@ describe("ClassStructGenerator (3)", () => {
 describe("ClassStructGenerator (4)", () => {
     it("skips vfuncs with non-caller-allocated out parameters", () => {
         const { generator, skipMessages } = createTestSetup();
-        const record = createNormalizedRecord({
+        const record = makeVtableRecord({
             name: "WidgetClass",
             cType: "TestWidgetClass",
             isGtypeStructFor: "Widget",
-            fields: [
-                callbackField(
-                    "get_size",
-                    createNormalizedCallback({
-                        name: "get_size",
-                        returnType: createNormalizedType({ name: "none" }),
-                        parameters: [
-                            createNormalizedParameter({
-                                name: "out_w",
-                                direction: "out",
-                                callerAllocates: false,
-                                type: createNormalizedType({ name: "gint" }),
-                            }),
-                        ],
-                    }),
-                ),
+            vfuncs: [
+                {
+                    name: "get_size",
+                    parameters: [
+                        createNormalizedParameter({
+                            name: "out_w",
+                            direction: "out",
+                            callerAllocates: false,
+                            type: createNormalizedType({ name: "gint" }),
+                        }),
+                    ],
+                },
             ],
         });
         generator.generate(record);
@@ -205,20 +199,11 @@ describe("ClassStructGenerator (4)", () => {
 describe("ClassStructGenerator (5)", () => {
     it("imports the FFI type helper for an eligible vfunc registry", () => {
         const { generator, file } = createTestSetup();
-        const record = createNormalizedRecord({
+        const record = makeVtableRecord({
             name: "ObjectClass",
             cType: "GObjectClass",
             isGtypeStructFor: "Object",
-            fields: [
-                callbackField(
-                    "finalize",
-                    createNormalizedCallback({
-                        name: "finalize",
-                        returnType: createNormalizedType({ name: "none" }),
-                        parameters: [],
-                    }),
-                ),
-            ],
+            vfuncs: [{ name: "finalize" }],
         });
         generator.generate(record);
         const code = stringify(file);
@@ -227,20 +212,11 @@ describe("ClassStructGenerator (5)", () => {
 
     it("skips records that have no c:type (class struct without an exported C name)", () => {
         const { generator, file, skipMessages } = createTestSetup();
-        const record = createNormalizedRecord({
+        const record = makeVtableRecord({
             name: "AnonymousClass",
             cType: "",
             isGtypeStructFor: "Anonymous",
-            fields: [
-                callbackField(
-                    "finalize",
-                    createNormalizedCallback({
-                        name: "finalize",
-                        returnType: createNormalizedType({ name: "none" }),
-                        parameters: [],
-                    }),
-                ),
-            ],
+            vfuncs: [{ name: "finalize" }],
         });
         expect(generator.generate(record)).toBe(false);
         expect(stringify(file)).toBe("");
@@ -251,19 +227,10 @@ describe("ClassStructGenerator (5)", () => {
 describe("ClassStructGenerator (6)", () => {
     it("skips records whose vtable kind cannot be inferred from owner or name", () => {
         const { generator, file, skipMessages } = createTestSetup();
-        const record = createNormalizedRecord({
+        const record = makeVtableRecord({
             name: "MysteryVTable",
             cType: "GMysteryVTable",
-            fields: [
-                callbackField(
-                    "act",
-                    createNormalizedCallback({
-                        name: "act",
-                        returnType: createNormalizedType({ name: "none" }),
-                        parameters: [],
-                    }),
-                ),
-            ],
+            vfuncs: [{ name: "act" }],
         });
         expect(generator.generate(record)).toBe(false);
         expect(stringify(file)).toBe("");
@@ -272,19 +239,10 @@ describe("ClassStructGenerator (6)", () => {
 
     it("treats records ending in Iface as interface vtables", () => {
         const { generator, file } = createTestSetup();
-        const record = createNormalizedRecord({
+        const record = makeVtableRecord({
             name: "ActionIface",
             cType: "GActionIface",
-            fields: [
-                callbackField(
-                    "activate",
-                    createNormalizedCallback({
-                        name: "activate",
-                        returnType: createNormalizedType({ name: "none" }),
-                        parameters: [],
-                    }),
-                ),
-            ],
+            vfuncs: [{ name: "activate" }],
         });
         expect(generator.generate(record)).toBe(true);
         const code = stringify(file);
@@ -295,28 +253,19 @@ describe("ClassStructGenerator (6)", () => {
 describe("ClassStructGenerator (7)", () => {
     it("writes argTypes for eligible vfuncs that have parameters", () => {
         const { generator, file } = createTestSetup();
-        const record = createNormalizedRecord({
+        const record = makeVtableRecord({
             name: "ObjectClass",
             cType: "GObjectClass",
             isGtypeStructFor: "Object",
-            fields: [
-                callbackField(
-                    "set_size",
-                    createNormalizedCallback({
-                        name: "set_size",
-                        returnType: createNormalizedType({ name: "gboolean" }),
-                        parameters: [
-                            createNormalizedParameter({
-                                name: "width",
-                                type: createNormalizedType({ name: "gint" }),
-                            }),
-                            createNormalizedParameter({
-                                name: "height",
-                                type: createNormalizedType({ name: "gint" }),
-                            }),
-                        ],
-                    }),
-                ),
+            vfuncs: [
+                {
+                    name: "set_size",
+                    returnType: "gboolean",
+                    parameters: [
+                        createNormalizedParameter({ name: "width", type: createNormalizedType({ name: "gint" }) }),
+                        createNormalizedParameter({ name: "height", type: createNormalizedType({ name: "gint" }) }),
+                    ],
+                },
             ],
         });
         expect(generator.generate(record)).toBe(true);

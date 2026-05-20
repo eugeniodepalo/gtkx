@@ -3,7 +3,7 @@ import { fileBuilder } from "../../../../src/builders/file-builder.js";
 import { Writer } from "../../../../src/builders/text-writer.js";
 import { SignalBuilder, type SignalBuilderOptions } from "../../../../src/ffi/generators/class/signal-builder.js";
 import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
-import { setupGtkFfiContext } from "../../../fixtures/generator-fixtures.js";
+import { setupFfiContext, setupGtkFfiContext } from "../../../fixtures/generator-fixtures.js";
 import {
     createNormalizedClass,
     createNormalizedEnumeration,
@@ -52,6 +52,29 @@ function buildSignalStructures(
     namespaces?: Map<string, ReturnType<typeof createNormalizedNamespace>>,
 ) {
     return createTestSetup(classOverrides, namespaces).builder.buildConnectMethodStructures();
+}
+
+function createSignalBuilderInNamespace(
+    namespace: string,
+    classOverrides: Parameters<typeof createNormalizedClass>[0],
+    extraNamespaces?: Map<string, ReturnType<typeof createNormalizedNamespace>>,
+) {
+    const ns = createNormalizedNamespace({ name: namespace });
+    const namespaces = new Map<string, ReturnType<typeof createNormalizedNamespace>>([[namespace, ns]]);
+    if (extraNamespaces) {
+        for (const [key, value] of extraNamespaces) namespaces.set(key, value);
+    }
+    const { repo, ffiMapper, file, options } = setupFfiContext(namespace, namespaces);
+    const cls = createNormalizedClass(classOverrides, repo);
+    ns.classes.set(cls.name, cls);
+    const builder = new SignalBuilder({
+        cls,
+        ffiMapper,
+        imports: file,
+        repository: repo as SignalBuilderOptions["repository"],
+        options,
+    });
+    return { ns, repo, cls, builder, ffiMapper };
 }
 
 describe("SignalBuilder / constructor", () => {
@@ -526,7 +549,7 @@ describe("SignalBuilder - collectAllSignals composition (1)", () => {
 
 describe("SignalBuilder - collectAllSignals composition (2)", () => {
     it("collects signals inherited from a same-namespace parent", () => {
-        const ns = createNormalizedNamespace({ name: "Gtk" });
+        const gtkNs = createNormalizedNamespace({ name: "Gtk" });
         const parent = createNormalizedClass(
             {
                 name: "Widget",
@@ -534,35 +557,20 @@ describe("SignalBuilder - collectAllSignals composition (2)", () => {
                 parent: null,
                 signals: [createNormalizedSignal({ name: "destroy" })],
             },
-            createMockRepository(new Map([["Gtk", ns]])),
+            createMockRepository(new Map([["Gtk", gtkNs]])),
         );
-        ns.classes.set("Widget", parent);
+        gtkNs.classes.set("Widget", parent);
 
-        const repo = createMockRepository(new Map([["Gtk", ns]]));
-        const child = createNormalizedClass(
+        const { builder } = createSignalBuilderInNamespace(
+            "Gtk",
             {
                 name: "Button",
                 qualifiedName: qualifiedName("Gtk", "Button"),
                 parent: qualifiedName("Gtk", "Widget"),
                 signals: [createNormalizedSignal({ name: "clicked" })],
             },
-            repo,
+            new Map([["Gtk", gtkNs]]),
         );
-        ns.classes.set("Button", child);
-
-        const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-        const builder = new SignalBuilder({
-            cls: child,
-            ffiMapper,
-            imports: fileBuilder(),
-            repository: repo as SignalBuilderOptions["repository"],
-            options: {
-                namespace: "Gtk",
-                sharedLibrary: "libgtk-4.so.1",
-                glibLibrary: "libglib-2.0.so.0",
-                gobjectLibrary: "libgobject-2.0.so.0",
-            },
-        });
 
         const { allSignals, hasCrossNamespaceParent } = builder.collectAllSignals();
 
@@ -585,37 +593,16 @@ describe("SignalBuilder - collectAllSignals composition (3)", () => {
         );
         gobjectNs.classes.set("Object", parent);
 
-        const gtkNs = createNormalizedNamespace({ name: "Gtk" });
-        const repo = createMockRepository(
-            new Map([
-                ["Gtk", gtkNs],
-                ["GObject", gobjectNs],
-            ]),
-        );
-        const child = createNormalizedClass(
+        const { builder } = createSignalBuilderInNamespace(
+            "Gtk",
             {
                 name: "Button",
                 qualifiedName: qualifiedName("Gtk", "Button"),
                 parent: qualifiedName("GObject", "Object"),
                 signals: [createNormalizedSignal({ name: "clicked" })],
             },
-            repo,
+            new Map([["GObject", gobjectNs]]),
         );
-        gtkNs.classes.set("Button", child);
-
-        const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-        const builder = new SignalBuilder({
-            cls: child,
-            ffiMapper,
-            imports: fileBuilder(),
-            repository: repo as SignalBuilderOptions["repository"],
-            options: {
-                namespace: "Gtk",
-                sharedLibrary: "libgtk-4.so.1",
-                glibLibrary: "libglib-2.0.so.0",
-                gobjectLibrary: "libgobject-2.0.so.0",
-            },
-        });
 
         const { hasCrossNamespaceParent } = builder.collectAllSignals();
 
@@ -625,31 +612,11 @@ describe("SignalBuilder - collectAllSignals composition (3)", () => {
 
 describe("SignalBuilder - GObject namespace specifics (1)", () => {
     it("emits the root GObject connect body without a super delegate", () => {
-        const ns = createNormalizedNamespace({ name: "GObject" });
-        const repo = createMockRepository(new Map([["GObject", ns]]));
-        const cls = createNormalizedClass(
-            {
-                name: "Object",
-                qualifiedName: qualifiedName("GObject", "Object"),
-                parent: null,
-                signals: [createNormalizedSignal({ name: "notify" })],
-            },
-            repo,
-        );
-        ns.classes.set("Object", cls);
-
-        const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GObject");
-        const builder = new SignalBuilder({
-            cls,
-            ffiMapper,
-            imports: fileBuilder(),
-            repository: repo as SignalBuilderOptions["repository"],
-            options: {
-                namespace: "GObject",
-                sharedLibrary: "libgobject-2.0.so.0",
-                glibLibrary: "libglib-2.0.so.0",
-                gobjectLibrary: "libgobject-2.0.so.0",
-            },
+        const { builder } = createSignalBuilderInNamespace("GObject", {
+            name: "Object",
+            qualifiedName: qualifiedName("GObject", "Object"),
+            parent: null,
+            signals: [createNormalizedSignal({ name: "notify" })],
         });
 
         const structures = builder.buildConnectMethodStructures();
@@ -662,31 +629,11 @@ describe("SignalBuilder - GObject namespace specifics (1)", () => {
 
 describe("SignalBuilder - GObject namespace specifics (2)", () => {
     it("inlines the GObject value helpers in the meta registration call", () => {
-        const ns = createNormalizedNamespace({ name: "GObject" });
-        const repo = createMockRepository(new Map([["GObject", ns]]));
-        const cls = createNormalizedClass(
-            {
-                name: "Object",
-                qualifiedName: qualifiedName("GObject", "Object"),
-                parent: null,
-                signals: [createNormalizedSignal({ name: "notify" })],
-            },
-            repo,
-        );
-        ns.classes.set("Object", cls);
-
-        const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GObject");
-        const builder = new SignalBuilder({
-            cls,
-            ffiMapper,
-            imports: fileBuilder(),
-            repository: repo as SignalBuilderOptions["repository"],
-            options: {
-                namespace: "GObject",
-                sharedLibrary: "libgobject-2.0.so.0",
-                glibLibrary: "libglib-2.0.so.0",
-                gobjectLibrary: "libgobject-2.0.so.0",
-            },
+        const { builder } = createSignalBuilderInNamespace("GObject", {
+            name: "Object",
+            qualifiedName: qualifiedName("GObject", "Object"),
+            parent: null,
+            signals: [createNormalizedSignal({ name: "notify" })],
         });
 
         const code = renderMeta(builder);

@@ -4,11 +4,7 @@ import { stringify } from "../../../../src/builders/stringify.js";
 import { ClassGenerator } from "../../../../src/ffi/generators/class/index.js";
 import type { GirRepository } from "../../../../src/gir/index.js";
 import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
-import {
-    buildGeneratorOptions,
-    GTK_GENERATOR_OPTIONS,
-    setupGtkFfiContext,
-} from "../../../fixtures/generator-fixtures.js";
+import { buildGeneratorOptions, setupGtkFfiContext } from "../../../fixtures/generator-fixtures.js";
 import {
     createNormalizedClass,
     createNormalizedConstructor,
@@ -18,6 +14,7 @@ import {
     createNormalizedParameter,
     createNormalizedSignal,
     createNormalizedType,
+    gtkButtonNewConstructors,
     qualifiedName,
 } from "../../../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../../../fixtures/mock-repository.js";
@@ -25,6 +22,10 @@ import { createMockRepository } from "../../../fixtures/mock-repository.js";
 function createTestSetup(
     classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]> = {},
     namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map(),
+    extras: {
+        widgetOverrides?: Partial<Parameters<typeof createNormalizedClass>[0]>;
+        resolveInterface?: (qn: string) => unknown;
+    } = {},
 ) {
     const { repo, ffiMapper, file, options } = setupGtkFfiContext(namespaces);
     const gtkNs = namespaces.get("Gtk") as ReturnType<typeof createNormalizedNamespace>;
@@ -33,6 +34,7 @@ function createTestSetup(
         name: "Widget",
         qualifiedName: qualifiedName("Gtk", "Widget"),
         parent: null,
+        ...extras.widgetOverrides,
     });
     gtkNs.classes.set("Widget", widgetClass);
 
@@ -43,6 +45,10 @@ function createTestSetup(
         ...classOverrides,
     });
     gtkNs.classes.set(cls.name, cls);
+
+    if (extras.resolveInterface) {
+        (repo as unknown as { resolveInterface(qn: string): unknown }).resolveInterface = extras.resolveInterface;
+    }
 
     const generator = new ClassGenerator({
         cls,
@@ -58,8 +64,9 @@ function createTestSetup(
 function generateClassCode(
     classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]> = {},
     namespaces?: Map<string, ReturnType<typeof createNormalizedNamespace>>,
+    extras?: Parameters<typeof createTestSetup>[2],
 ) {
-    const setup = createTestSetup(classOverrides, namespaces ?? new Map());
+    const setup = createTestSetup(classOverrides, namespaces ?? new Map(), extras);
     setup.generator.generate();
     return { ...setup, code: stringify(setup.file) };
 }
@@ -261,25 +268,7 @@ describe("ClassGenerator / constructor generation", () => {
 
     it("generates factory methods for non-main constructors", () => {
         const { code } = generateClassCode({
-            constructors: [
-                createNormalizedConstructor({
-                    name: "new",
-                    cIdentifier: "gtk_button_new",
-                    returnType: createNormalizedType({ name: "Gtk.Button" }),
-                    parameters: [],
-                }),
-                createNormalizedConstructor({
-                    name: "new_with_label",
-                    cIdentifier: "gtk_button_new_with_label",
-                    returnType: createNormalizedType({ name: "Gtk.Button" }),
-                    parameters: [
-                        createNormalizedParameter({
-                            name: "label",
-                            type: createNormalizedType({ name: "utf8" }),
-                        }),
-                    ],
-                }),
-            ],
+            constructors: gtkButtonNewConstructors(),
         });
         expect(code).toContain("newWithLabel");
     });
@@ -436,45 +425,18 @@ function setupClassImplementingInterface(
     interfaceMethods: ReturnType<typeof createNormalizedMethod>[],
     ifaceQn = qualifiedName("Gtk", interfaceName),
 ) {
-    const gtkNs = createNormalizedNamespace({ name: "Gtk" });
-    const widgetClass = createNormalizedClass({
-        name: "Widget",
-        qualifiedName: qualifiedName("Gtk", "Widget"),
-        parent: null,
-    });
-    const button = createNormalizedClass({
-        name: "Button",
-        qualifiedName: qualifiedName("Gtk", "Button"),
-        parent: qualifiedName("Gtk", "Widget"),
-        implements: [ifaceQn],
-    });
-    gtkNs.classes.set(widgetClass.name, widgetClass);
-    gtkNs.classes.set(button.name, button);
-
-    const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
-    // biome-ignore lint/suspicious/noExplicitAny: mock repo
-    const ifaceMethods = interfaceMethods.map((m) => m as any);
-    (repo as unknown as { resolveInterface(qn: string): unknown }).resolveInterface = (qn: string) => {
-        if (qn !== ifaceQn) return null;
-        return {
-            name: interfaceName,
-            methods: ifaceMethods,
-            properties: [],
-            signals: [],
-            virtualMethodNames: [],
-            prerequisites: [],
-        };
-    };
-
-    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-    const file = fileBuilder();
-
-    const generator = new ClassGenerator({
-        cls: button,
-        ffiMapper,
-        file,
-        repository: repo as unknown as GirRepository,
-        options: GTK_GENERATOR_OPTIONS,
+    const { generator, file } = createTestSetup({ implements: [ifaceQn] }, undefined, {
+        resolveInterface: (qn) => {
+            if (qn !== ifaceQn) return null;
+            return {
+                name: interfaceName,
+                methods: interfaceMethods,
+                properties: [],
+                signals: [],
+                virtualMethodNames: [],
+                prerequisites: [],
+            };
+        },
     });
     return { generator, file };
 }
@@ -514,77 +476,30 @@ function buildCollidingInterfaceMock(name: string, cIdentifier: string) {
 
 describe("ClassGenerator / interface methods (2)", () => {
     it("renames interface methods when their name collides across multiple interfaces", () => {
-        const gtkNs = createNormalizedNamespace({ name: "Gtk" });
-        const widgetClass = createNormalizedClass({
-            name: "Widget",
-            qualifiedName: qualifiedName("Gtk", "Widget"),
-            parent: null,
-        });
-        const button = createNormalizedClass({
-            name: "Button",
-            qualifiedName: qualifiedName("Gtk", "Button"),
-            parent: qualifiedName("Gtk", "Widget"),
-            implements: [qualifiedName("Gtk", "Editable"), qualifiedName("Gtk", "Buildable")],
-        });
-        gtkNs.classes.set(widgetClass.name, widgetClass);
-        gtkNs.classes.set(button.name, button);
-
-        const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
-        (repo as unknown as { resolveInterface(qn: string): unknown }).resolveInterface = (qn: string) => {
-            if (qn === qualifiedName("Gtk", "Editable")) {
-                return buildCollidingInterfaceMock("Editable", "gtk_editable_get_name");
-            }
-            if (qn === qualifiedName("Gtk", "Buildable")) {
-                return buildCollidingInterfaceMock("Buildable", "gtk_buildable_get_name");
-            }
-            return null;
-        };
-
-        const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-        const file = fileBuilder();
-
-        const generator = new ClassGenerator({
-            cls: button,
-            ffiMapper,
-            file,
-            repository: repo as unknown as GirRepository,
-            options: GTK_GENERATOR_OPTIONS,
-        });
-        generator.generate();
-
-        const code = stringify(file);
+        const { code } = generateClassCode(
+            {
+                implements: [qualifiedName("Gtk", "Editable"), qualifiedName("Gtk", "Buildable")],
+            },
+            undefined,
+            {
+                resolveInterface: (qn) => {
+                    if (qn === qualifiedName("Gtk", "Editable")) {
+                        return buildCollidingInterfaceMock("Editable", "gtk_editable_get_name");
+                    }
+                    if (qn === qualifiedName("Gtk", "Buildable")) {
+                        return buildCollidingInterfaceMock("Buildable", "gtk_buildable_get_name");
+                    }
+                    return null;
+                },
+            },
+        );
         expect(code).toMatch(/get(?:Editable|Buildable)?Name/);
     });
 });
 
 describe("ClassGenerator / interface methods (3)", () => {
     it("ignores unresolvable interface entries", () => {
-        const gtkNs = createNormalizedNamespace({ name: "Gtk" });
-        const widgetClass = createNormalizedClass({
-            name: "Widget",
-            qualifiedName: qualifiedName("Gtk", "Widget"),
-            parent: null,
-        });
-        const button = createNormalizedClass({
-            name: "Button",
-            qualifiedName: qualifiedName("Gtk", "Button"),
-            parent: qualifiedName("Gtk", "Widget"),
-            implements: ["Phantom.Iface"],
-        });
-        gtkNs.classes.set(widgetClass.name, widgetClass);
-        gtkNs.classes.set(button.name, button);
-
-        const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
-        const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-        const file = fileBuilder();
-
-        const generator = new ClassGenerator({
-            cls: button,
-            ffiMapper,
-            file,
-            repository: repo as unknown as GirRepository,
-            options: GTK_GENERATOR_OPTIONS,
-        });
+        const { generator } = createTestSetup({ implements: ["Phantom.Iface"] });
         const result = generator.generate();
         expect(result).toBeDefined();
     });
@@ -592,45 +507,29 @@ describe("ClassGenerator / interface methods (3)", () => {
 
 describe("ClassGenerator / name collisions with parent methods (1)", () => {
     it("emits a renamed method via filterClassMethods when a name collides with a parent", () => {
-        const gtkNs = createNormalizedNamespace({ name: "Gtk" });
-        const widget = createNormalizedClass({
-            name: "Widget",
-            qualifiedName: qualifiedName("Gtk", "Widget"),
-            parent: null,
-            methods: [
-                createNormalizedMethod({
-                    name: "get_name",
-                    cIdentifier: "gtk_widget_get_name",
-                    returnType: createNormalizedType({ name: "utf8" }),
-                }),
-            ],
-        });
-        const button = createNormalizedClass({
-            name: "Button",
-            qualifiedName: qualifiedName("Gtk", "Button"),
-            parent: qualifiedName("Gtk", "Widget"),
-            methods: [
-                createNormalizedMethod({
-                    name: "get_name",
-                    cIdentifier: "gtk_button_get_name",
-                    returnType: createNormalizedType({ name: "utf8" }),
-                }),
-            ],
-        });
-        gtkNs.classes.set(widget.name, widget);
-        gtkNs.classes.set(button.name, button);
-
-        const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
-        const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-        const file = fileBuilder();
-
-        const generator = new ClassGenerator({
-            cls: button,
-            ffiMapper,
-            file,
-            repository: repo as unknown as GirRepository,
-            options: GTK_GENERATOR_OPTIONS,
-        });
+        const { generator, file } = createTestSetup(
+            {
+                methods: [
+                    createNormalizedMethod({
+                        name: "get_name",
+                        cIdentifier: "gtk_button_get_name",
+                        returnType: createNormalizedType({ name: "utf8" }),
+                    }),
+                ],
+            },
+            undefined,
+            {
+                widgetOverrides: {
+                    methods: [
+                        createNormalizedMethod({
+                            name: "get_name",
+                            cIdentifier: "gtk_widget_get_name",
+                            returnType: createNormalizedType({ name: "utf8" }),
+                        }),
+                    ],
+                },
+            },
+        );
 
         const result = generator.generate();
         expect(result).toBeDefined();
@@ -640,16 +539,9 @@ describe("ClassGenerator / name collisions with parent methods (1)", () => {
 
 describe("ClassGenerator / name collisions with parent methods (2)", () => {
     it("renames a method named connect on a class with a parent to avoid the signal helper collision", () => {
-        const gtkNs = createNormalizedNamespace({ name: "Gtk" });
-        const widget = createNormalizedClass({
-            name: "Widget",
-            qualifiedName: qualifiedName("Gtk", "Widget"),
-            parent: null,
-        });
-        const socket = createNormalizedClass({
+        const { code } = generateClassCode({
             name: "Socket",
             qualifiedName: qualifiedName("Gtk", "Socket"),
-            parent: qualifiedName("Gtk", "Widget"),
             methods: [
                 createNormalizedMethod({
                     name: "connect",
@@ -658,23 +550,6 @@ describe("ClassGenerator / name collisions with parent methods (2)", () => {
                 }),
             ],
         });
-        gtkNs.classes.set(widget.name, widget);
-        gtkNs.classes.set(socket.name, socket);
-
-        const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
-        const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-        const file = fileBuilder();
-
-        const generator = new ClassGenerator({
-            cls: socket,
-            ffiMapper,
-            file,
-            repository: repo as unknown as GirRepository,
-            options: GTK_GENERATOR_OPTIONS,
-        });
-
-        generator.generate();
-        const code = stringify(file);
         expect(code).not.toMatch(/^\s*connect\(/m);
     });
 });
