@@ -6,7 +6,13 @@
  * `GAsyncReadyCallback` parameter and retypes the return to `Promise<R>`.
  */
 
-import { escapeRegExp, findMatchingParen, rewriteOwnerBlockBodies, splitParameterList } from "./shared.js";
+import {
+    escapeRegExp,
+    findMatchingParen,
+    rewriteMemberDeclarations,
+    rewriteNamespaceMembers,
+    splitParameterList,
+} from "./shared.js";
 
 /**
  * One GIO-style async callable paired with its companion `*_finish` callable,
@@ -74,32 +80,12 @@ const rewriteAsyncMemberDeclaration = (
     const head = isFunction
         ? String.raw`((?:^|\n)[ \t]*export[ \t]+function[ \t]+${escapeRegExp(memberName)}\s*)\(`
         : String.raw`((?:^|\n)[ \t]*${escapeRegExp(memberName)}\s*)\(`;
-    const pattern = new RegExp(head, "g");
-    let result = region;
-    for (;;) {
-        const match = pattern.exec(result);
-        if (match === null) break;
-        const headText = match[1] ?? "";
-        const parenStart = match.index + headText.length;
-        const parenEnd = findMatchingParen(result, parenStart + 1);
-        if (parenEnd < 0) {
-            pattern.lastIndex = parenStart + 1;
-            continue;
-        }
-        const params = result.slice(parenStart + 1, parenEnd);
+    return rewriteMemberDeclarations(region, new RegExp(head, "g"), ({ region, headText, parenStart, parenEnd }) => {
+        const params = region.slice(parenStart + 1, parenEnd);
         const newParams = dropAsyncCallbackParameter(params);
-        if (newParams === null) {
-            pattern.lastIndex = parenEnd + 1;
-            continue;
-        }
-        const afterParams = result.slice(parenEnd + 1);
-        const returnMatch = /^\s*:\s*[^\n;]+/.exec(afterParams);
-        const returnLength = returnMatch ? returnMatch[0].length : 0;
-        const replacement = `${headText}(${newParams}): Promise<${finishReturnType}>`;
-        result = result.slice(0, match.index) + replacement + result.slice(parenEnd + 1 + returnLength);
-        pattern.lastIndex = match.index + replacement.length;
-    }
-    return result;
+        if (newParams === null) return null;
+        return `${headText}(${newParams}): Promise<${finishReturnType}>`;
+    });
 };
 
 /**
@@ -159,19 +145,7 @@ const rewriteAsyncEntriesInRegion = (
  * @returns The source with async callable signatures made Promise-returning.
  */
 export function rewriteAsyncSignatures(source: string, asyncMembers?: NamespaceAsyncMembers): string {
-    if (asyncMembers === undefined || asyncMembers.size === 0) return source;
-
-    let result = source;
-
-    const functionEntries = asyncMembers.get("");
-    if (functionEntries) {
-        result = rewriteAsyncEntriesInRegion(result, functionEntries, true);
-    }
-
-    for (const [owner, entries] of asyncMembers) {
-        if (owner === "" || entries.length === 0) continue;
-        result = rewriteOwnerBlockBodies(result, owner, (body) => rewriteAsyncEntriesInRegion(body, entries, false));
-    }
-
-    return result;
+    return rewriteNamespaceMembers(source, asyncMembers, (region, entries, owner) =>
+        rewriteAsyncEntriesInRegion(region, entries, owner === ""),
+    );
 }

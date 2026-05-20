@@ -182,6 +182,114 @@ export const rewriteOwnerBlockBodies = (
 };
 
 /**
+ * Cursor info passed to the {@link rewriteMemberDeclarations} rewriter.
+ *
+ * `region` is the current region text (post any prior rewrites), `headText` is
+ * the head captured by the pattern's first group, and `matchIndex`,
+ * `parenStart`, `parenEnd`, `returnEnd` describe the matched declaration's
+ * absolute spans within `region`.
+ */
+export type DeclarationCursor = {
+    /** The region text being rewritten. */
+    region: string;
+    /** The head text captured by the pattern's first group. */
+    headText: string;
+    /** Start of the head match. */
+    matchIndex: number;
+    /** Index of the opening parenthesis introducing the parameter list. */
+    parenStart: number;
+    /** Index of the closing parenthesis terminating the parameter list. */
+    parenEnd: number;
+    /** Index immediately past the return-type annotation (or `parenEnd + 1`). */
+    returnEnd: number;
+};
+
+/**
+ * Iterates over every member declaration whose head matches `headPattern`
+ * within `region`, scanning balanced parentheses for the parameter list and
+ * the optional return-type annotation. The rewriter receives a
+ * {@link DeclarationCursor} and returns the full replacement text spanning
+ * `[matchIndex, returnEnd)`, or `null` to leave the declaration unchanged.
+ *
+ * The pattern must be global and capture, in its first group, the head text
+ * from a leading newline (or start anchor) up to but not including the
+ * opening parenthesis.
+ *
+ * @param region - The source region to rewrite.
+ * @param headPattern - Global RegExp whose group 1 captures the head text.
+ * @param rewrite - Per-declaration rewriter producing the replacement or `null`.
+ * @returns The region with each accepted declaration rewritten.
+ */
+export const rewriteMemberDeclarations = (
+    region: string,
+    headPattern: RegExp,
+    rewrite: (cursor: DeclarationCursor) => string | null,
+): string => {
+    let result = region;
+    headPattern.lastIndex = 0;
+    for (;;) {
+        const match = headPattern.exec(result);
+        if (match === null) break;
+        const headText = match[1] ?? "";
+        const parenStart = match.index + headText.length;
+        const parenEnd = findMatchingParen(result, parenStart + 1);
+        if (parenEnd < 0) {
+            headPattern.lastIndex = parenStart + 1;
+            continue;
+        }
+        const afterParams = result.slice(parenEnd + 1);
+        const returnMatch = /^\s*:\s*[^\n;]+/.exec(afterParams);
+        const returnEnd = parenEnd + 1 + (returnMatch ? returnMatch[0].length : 0);
+        const replacement = rewrite({
+            region: result,
+            headText,
+            matchIndex: match.index,
+            parenStart,
+            parenEnd,
+            returnEnd,
+        });
+        if (replacement === null) {
+            headPattern.lastIndex = returnEnd;
+            continue;
+        }
+        result = result.slice(0, match.index) + replacement + result.slice(returnEnd);
+        headPattern.lastIndex = match.index + replacement.length;
+    }
+    return result;
+};
+
+/**
+ * Applies `rewriteEntries` to each region of a contract's namespace that
+ * carries member entries: the file's top level (standalone functions, keyed
+ * by `""` in `members`) and each owner block named by a non-empty key.
+ *
+ * The rewriter receives the region text, its entries, and the owner key
+ * (empty string for the file top level), and returns the rewritten region.
+ *
+ * @param source - The `.d.ts` source.
+ * @param members - Per-namespace member map keyed by owner type name.
+ * @param rewriteEntries - The per-region rewriter.
+ * @returns The source with each region rewritten.
+ */
+export const rewriteNamespaceMembers = <E>(
+    source: string,
+    members: ReadonlyMap<string, readonly E[]> | undefined,
+    rewriteEntries: (region: string, entries: readonly E[], owner: string) => string,
+): string => {
+    if (members === undefined || members.size === 0) return source;
+    let result = source;
+    const topLevel = members.get("");
+    if (topLevel && topLevel.length > 0) {
+        result = rewriteEntries(result, topLevel, "");
+    }
+    for (const [owner, entries] of members) {
+        if (owner === "" || entries.length === 0) continue;
+        result = rewriteOwnerBlockBodies(result, owner, (body) => rewriteEntries(body, entries, owner));
+    }
+    return result;
+};
+
+/**
  * Removes the ranges `[start, end)` from `source` and returns the spliced
  * result. The ranges must be sorted in increasing order and non-overlapping.
  */

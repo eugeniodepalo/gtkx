@@ -16,15 +16,11 @@ use native::ffi::{
 use native::types::IntegerKind;
 
 fn make_glist_one() -> *mut glib::ffi::GList {
-    unsafe {
-        glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1))
-    }
+    unsafe { glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1)) }
 }
 
 fn make_gslist_one() -> *mut glib::ffi::GSList {
-    unsafe {
-        glib::ffi::g_slist_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1))
-    }
+    unsafe { glib::ffi::g_slist_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1)) }
 }
 
 fn make_g_array() -> *mut glib::ffi::GArray {

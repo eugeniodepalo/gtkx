@@ -143,17 +143,7 @@ function buildTypeKindAndTraversal(
     return {
         getTypeKind(qn: string): TypeKind | null {
             const { namespace, name } = splitQualifiedName(qn);
-            const ns = namespaces.get(namespace);
-            if (!ns) return null;
-
-            if (ns.classes.has(name)) return "class";
-            if (ns.interfaces.has(name)) return "interface";
-            if (ns.records.has(name)) return "record";
-            if (ns.enumerations.has(name)) return "enum";
-            if (ns.bitfields.has(name)) return "flags";
-            if (ns.callbacks.has(name)) return "callback";
-
-            return null;
+            return namespaces.get(namespace)?.lookupKind(name) ?? null;
         },
         getInheritanceChain(qn: string): string[] {
             const cls = getRepo().resolveClass(qn);

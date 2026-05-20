@@ -6,6 +6,7 @@ import type { GirConstant } from "./constant.js";
 import type { GirEnumeration } from "./enumeration.js";
 import type { GirInterface } from "./interface.js";
 import type { GirRecord } from "./record.js";
+import type { TypeKind } from "./repository-like.js";
 
 /**
  * Constructor data for {@link GirNamespace}.
@@ -61,5 +62,23 @@ export class GirNamespace {
         this.constants = data.constants;
         this.aliases = data.aliases;
         this.doc = data.doc;
+    }
+
+    /**
+     * Returns the {@link TypeKind} for a member declared in this namespace,
+     * or `null` when the name is not a typed member (e.g. a function or
+     * constant). Aliases are not reported by this lookup — use the repository
+     * helpers when alias resolution is required.
+     *
+     * @param name - The member's unqualified name within this namespace.
+     */
+    lookupKind(name: string): TypeKind | null {
+        if (this.classes.has(name)) return "class";
+        if (this.interfaces.has(name)) return "interface";
+        if (this.records.has(name)) return "record";
+        if (this.enumerations.has(name)) return "enum";
+        if (this.bitfields.has(name)) return "flags";
+        if (this.callbacks.has(name)) return "callback";
+        return null;
     }
 }

@@ -170,17 +170,7 @@ export class GirRepository implements RepositoryLike {
         if (isIntrinsicType(qualifiedName)) return null;
 
         const { namespace, name } = splitQualifiedName(qualifiedName);
-        const ns = this.namespaces.get(namespace);
-        if (!ns) return null;
-
-        if (ns.classes.has(name)) return "class";
-        if (ns.interfaces.has(name)) return "interface";
-        if (ns.records.has(name)) return "record";
-        if (ns.enumerations.has(name)) return "enum";
-        if (ns.bitfields.has(name)) return "flags";
-        if (ns.callbacks.has(name)) return "callback";
-
-        return null;
+        return this.namespaces.get(namespace)?.lookupKind(name) ?? null;
     }
 
     /** Gets the full inheritance chain for a class (most derived to base). */

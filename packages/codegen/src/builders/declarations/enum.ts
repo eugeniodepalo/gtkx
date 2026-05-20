@@ -1,6 +1,6 @@
 import { writeJsDoc } from "../members/doc.js";
 import type { Writer } from "../text-writer.js";
-import type { Builder } from "../types.js";
+import { DualModeBuilder } from "../types.js";
 
 /** A single member within an enum declaration. */
 export type EnumMember = {
@@ -36,13 +36,15 @@ export type EnumOptions = {
  * resets the ordinal so the next implicit member continues from that
  * value plus one.
  */
-export class EnumDeclarationBuilder implements Builder {
+export class EnumDeclarationBuilder extends DualModeBuilder {
     private readonly members: EnumMember[] = [];
 
     constructor(
         readonly name: string,
         private readonly opts: EnumOptions = {},
-    ) {}
+    ) {
+        super();
+    }
 
     /** Add a member to the enum body. */
     addMember(member: EnumMember): this {
@@ -50,16 +52,7 @@ export class EnumDeclarationBuilder implements Builder {
         return this;
     }
 
-    /** @inheritdoc */
-    write(writer: Writer): void {
-        if (writer.getMode() === "js") {
-            this.writeJs(writer);
-            return;
-        }
-        this.writeTs(writer);
-    }
-
-    private writeJs(writer: Writer): void {
+    protected writeJs(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
         if (this.opts.exported) writer.write("export ");
         const { errorDomainResolver } = this.opts;
@@ -79,7 +72,7 @@ export class EnumDeclarationBuilder implements Builder {
         writer.writeLine(");");
     }
 
-    private writeTs(writer: Writer): void {
+    protected writeTs(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
         if (this.opts.exported) writer.write("export ");
         if (this.opts.const) writer.write("const ");

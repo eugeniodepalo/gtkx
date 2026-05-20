@@ -73,6 +73,22 @@ impl std::fmt::Debug for TrampolineValue {
     }
 }
 
+macro_rules! ffi_numeric_with {
+    ($($rest:pat_param)|*) => {
+        Self::U8(_)
+            | Self::I8(_)
+            | Self::U16(_)
+            | Self::I16(_)
+            | Self::U32(_)
+            | Self::I32(_)
+            | Self::U64(_)
+            | Self::I64(_)
+            | Self::F32(_)
+            | Self::F64(_)
+            $(| $rest)*
+    };
+}
+
 impl FfiValue {
     #[must_use]
     pub fn as_raw_ptr(&self) -> *mut c_void {
@@ -102,18 +118,7 @@ impl FfiValue {
         match self {
             Self::Ptr(ptr) => Ok(*ptr),
             Self::Storage(storage) => Ok(storage.ptr()),
-            Self::U8(_)
-            | Self::I8(_)
-            | Self::U16(_)
-            | Self::I16(_)
-            | Self::U32(_)
-            | Self::I32(_)
-            | Self::U64(_)
-            | Self::I64(_)
-            | Self::F32(_)
-            | Self::F64(_)
-            | Self::Trampoline(_)
-            | Self::Void => {
+            ffi_numeric_with!(Self::Trampoline(_) | Self::Void) => {
                 anyhow::bail!("Expected a pointer FfiValue for {type_name}, got {self:?}")
             }
         }
@@ -151,19 +156,9 @@ impl FfiValue {
                     args.push(libffi::arg(destroy_ptr));
                 }
             }
-            Self::U8(_)
-            | Self::I8(_)
-            | Self::U16(_)
-            | Self::I16(_)
-            | Self::U32(_)
-            | Self::I32(_)
-            | Self::U64(_)
-            | Self::I64(_)
-            | Self::F32(_)
-            | Self::F64(_)
-            | Self::Ptr(_)
-            | Self::Storage(_)
-            | Self::Void => args.push(self.into()),
+            ffi_numeric_with!(Self::Ptr(_) | Self::Storage(_) | Self::Void) => {
+                args.push(self.into());
+            }
         }
     }
 }

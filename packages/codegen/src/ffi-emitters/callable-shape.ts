@@ -335,7 +335,12 @@ const handleRefPrimitiveOut = (acc: ShapeAccumulator, ctx: ParamContext): void =
     recordMapping(acc, ctx, ctx.isInout, hiddenIndex);
 };
 
-const handleFactoryCallerAllocates = (acc: ShapeAccumulator, ctx: ParamContext): void => {
+const pushStructOut = (
+    acc: ShapeAccumulator,
+    ctx: ParamContext,
+    kind: "factory-struct" | "alloc-struct",
+    factoryCIdentifier?: string,
+): void => {
     const hiddenIndex = acc.hiddenOuts.length;
     const varName = `${ctx.jsName}Ref`;
     const wrapInfo = extractBoxedWrapInfo(ctx.mapped);
@@ -344,12 +349,12 @@ const handleFactoryCallerAllocates = (acc: ShapeAccumulator, ctx: ParamContext):
         tsType: ctx.mapped.ts,
         initialValue: "",
         ffi: ctx.mapped.ffi,
-        kind: "factory-struct",
+        kind,
         isLengthParam: ctx.isLengthParam,
         nullable: false,
         wrapClassName: wrapInfo.className,
         wrapAsBoxed: wrapInfo.isBoxed,
-        factoryCIdentifier: ctx.factoryCIdentifier,
+        ...(factoryCIdentifier !== undefined ? { factoryCIdentifier } : {}),
     });
     acc.callArgs.push({
         ffi: ctx.mapped.ffi,
@@ -360,28 +365,12 @@ const handleFactoryCallerAllocates = (acc: ShapeAccumulator, ctx: ParamContext):
     recordMapping(acc, ctx, false, hiddenIndex);
 };
 
+const handleFactoryCallerAllocates = (acc: ShapeAccumulator, ctx: ParamContext): void => {
+    pushStructOut(acc, ctx, "factory-struct", ctx.factoryCIdentifier);
+};
+
 const handleAllocStructOut = (acc: ShapeAccumulator, ctx: ParamContext): void => {
-    const hiddenIndex = acc.hiddenOuts.length;
-    const varName = `${ctx.jsName}Ref`;
-    const wrapInfo = extractBoxedWrapInfo(ctx.mapped);
-    acc.hiddenOuts.push({
-        varName,
-        tsType: ctx.mapped.ts,
-        initialValue: "",
-        ffi: ctx.mapped.ffi,
-        kind: "alloc-struct",
-        isLengthParam: ctx.isLengthParam,
-        nullable: false,
-        wrapClassName: wrapInfo.className,
-        wrapAsBoxed: wrapInfo.isBoxed,
-    });
-    acc.callArgs.push({
-        ffi: ctx.mapped.ffi,
-        value: `getHandle(${varName})`,
-        optional: false,
-        sourceParamIndex: ctx.girIndex,
-    });
-    recordMapping(acc, ctx, false, hiddenIndex);
+    pushStructOut(acc, ctx, "alloc-struct");
 };
 
 const dispatchOutParam = (acc: ShapeAccumulator, ctx: ParamContext): void => {

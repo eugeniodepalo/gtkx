@@ -5,7 +5,7 @@
  * `Map<K, V>` type the gtkx runtime marshals such tables to.
  */
 
-import { escapeRegExp, findMatchingParen, rewriteOwnerBlockBodies } from "./shared.js";
+import { escapeRegExp, rewriteMemberDeclarations, rewriteNamespaceMembers } from "./shared.js";
 
 /**
  * One contract member carrying a keyed `GHashTable` parameter or return,
@@ -46,32 +46,12 @@ const rewriteHashTableMemberDeclaration = (region: string, entry: HashTableMembe
     const head = entry.isFunction
         ? String.raw`((?:^|\n)[ \t]*export[ \t]+function[ \t]+${escapeRegExp(entry.member)}\s*)\(`
         : String.raw`((?:^|\n)[ \t]*(?:static[ \t]+)?${escapeRegExp(entry.member)}\s*)\(`;
-    const pattern = new RegExp(head, "g");
-    let result = region;
-    for (;;) {
-        const match = pattern.exec(result);
-        if (match === null) break;
-        const headText = match[1] ?? "";
-        const parenStart = match.index + headText.length;
-        const parenEnd = findMatchingParen(result, parenStart + 1);
-        if (parenEnd < 0) {
-            pattern.lastIndex = parenStart + 1;
-            continue;
-        }
-        const afterParams = result.slice(parenEnd + 1);
-        const returnMatch = /^\s*:\s*[^\n;]+/.exec(afterParams);
-        const returnLength = returnMatch ? returnMatch[0].length : 0;
-        const declarationEnd = parenEnd + 1 + returnLength;
-        const declaration = result.slice(parenStart, declarationEnd);
-        if (!HASH_TABLE_TYPE_TOKEN.test(declaration)) {
-            pattern.lastIndex = declarationEnd;
-            continue;
-        }
-        const rewritten = declaration.replace(HASH_TABLE_TYPE_TOKEN, entry.mapType);
-        result = result.slice(0, parenStart) + rewritten + result.slice(declarationEnd);
-        pattern.lastIndex = parenStart + rewritten.length;
-    }
-    return result;
+    return rewriteMemberDeclarations(region, new RegExp(head, "g"), ({ region, headText, parenStart, returnEnd }) => {
+        const declaration = region.slice(parenStart, returnEnd);
+        HASH_TABLE_TYPE_TOKEN.lastIndex = 0;
+        if (!HASH_TABLE_TYPE_TOKEN.test(declaration)) return null;
+        return `${headText}${declaration.replace(HASH_TABLE_TYPE_TOKEN, entry.mapType)}`;
+    });
 };
 
 const rewriteHashTableEntriesInRegion = (region: string, entries: readonly HashTableMemberEntry[]): string => {
@@ -97,19 +77,7 @@ const rewriteHashTableEntriesInRegion = (region: string, entries: readonly HashT
  * @returns The source with keyed `GHashTable` signatures retyped to `Map`.
  */
 export function rewriteHashTableTypes(source: string, hashTableMembers?: NamespaceHashTableMembers): string {
-    if (hashTableMembers === undefined || hashTableMembers.size === 0) return source;
-
-    let result = source;
-
-    const functionEntries = hashTableMembers.get("");
-    if (functionEntries) {
-        result = rewriteHashTableEntriesInRegion(result, functionEntries);
-    }
-
-    for (const [owner, entries] of hashTableMembers) {
-        if (owner === "" || entries.length === 0) continue;
-        result = rewriteOwnerBlockBodies(result, owner, (body) => rewriteHashTableEntriesInRegion(body, entries));
-    }
-
-    return result;
+    return rewriteNamespaceMembers(source, hashTableMembers, (region, entries) =>
+        rewriteHashTableEntriesInRegion(region, entries),
+    );
 }

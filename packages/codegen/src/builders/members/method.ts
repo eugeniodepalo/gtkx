@@ -1,6 +1,6 @@
 import type { Writer } from "../text-writer.js";
-import type { Builder, Writable } from "../types.js";
-import { writeWritable } from "../types.js";
+import type { Writable } from "../types.js";
+import { DualModeBuilder, writeWritable } from "../types.js";
 import { type BodyContent, writeBody } from "./body.js";
 import { writeJsDoc } from "./doc.js";
 import type { ParameterBuilder } from "./parameter.js";
@@ -30,22 +30,15 @@ export type MethodOptions = {
  * because the contract lives in the companion `.d.ts`. Methods without a
  * body emit an empty `{}` block.
  */
-export class MethodBuilder implements Builder {
+export class MethodBuilder extends DualModeBuilder {
     constructor(
         readonly name: string,
         private readonly opts: MethodOptions,
-    ) {}
-
-    /** @inheritdoc */
-    write(writer: Writer): void {
-        if (writer.getMode() === "js") {
-            this.writeJs(writer);
-            return;
-        }
-        this.writeTs(writer);
+    ) {
+        super();
     }
 
-    private writeJs(writer: Writer): void {
+    protected writeJs(writer: Writer): void {
         writeJsDoc(writer, this.opts.doc);
         if (this.opts.isStatic) writer.write("static ");
 
@@ -59,7 +52,7 @@ export class MethodBuilder implements Builder {
         writer.newLine();
     }
 
-    private writeTs(writer: Writer): void {
+    protected writeTs(writer: Writer): void {
         if (this.opts.overloads) {
             for (const overload of this.opts.overloads) {
                 this.writeSignature(writer, this.name, overload.params, overload.returnType);

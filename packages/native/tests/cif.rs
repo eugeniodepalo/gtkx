@@ -90,7 +90,6 @@ fn try_from_integer_i8() {
 
     let v = expect_variant!(arg, I8);
     assert_eq!(v, -42);
-    
 }
 
 #[test]
@@ -99,7 +98,6 @@ fn try_from_integer_u8() {
 
     let v = expect_variant!(arg, U8);
     assert_eq!(v, 200);
-    
 }
 
 #[test]
@@ -111,7 +109,6 @@ fn try_from_integer_i32() {
 
     let v = expect_variant!(arg, I32);
     assert_eq!(v, -123_456);
-    
 }
 
 #[test]
@@ -123,7 +120,6 @@ fn try_from_integer_u64() {
 
     let v = expect_variant!(arg, U64);
     assert_eq!(v, 9_999_999_999);
-    
 }
 
 #[test]
@@ -136,7 +132,6 @@ fn try_from_integer_optional_null() {
 
     let v = expect_variant!(arg, I32);
     assert_eq!(v, 0);
-    
 }
 
 #[test]
@@ -145,7 +140,6 @@ fn try_from_float_f32() {
 
     let v = expect_variant!(arg, F32);
     assert!((v - 3.125).abs() < 0.001);
-    
 }
 
 #[test]
@@ -154,7 +148,6 @@ fn try_from_float_f64() {
 
     let v = expect_variant!(arg, F64);
     assert!((v - 2.625).abs() < 0.000_000_1);
-    
 }
 
 #[test]
@@ -173,7 +166,6 @@ fn try_from_string_full() {
         assert_eq!(s.to_str().unwrap(), "hello world");
         gtk4::glib::ffi::g_free(ptr);
     }
-    
 }
 
 #[test]
@@ -191,7 +183,6 @@ fn try_from_string_borrowed() {
         let s = std::ffi::CStr::from_ptr(owned.ptr() as *const i8);
         assert_eq!(s.to_str().unwrap(), "hello world");
     }
-    
 }
 
 #[test]
@@ -206,7 +197,6 @@ fn try_from_string_null() {
 
     let ptr = expect_variant!(arg, Ptr);
     assert!(ptr.is_null());
-    
 }
 
 #[test]
@@ -215,7 +205,6 @@ fn try_from_boolean_true() {
 
     let v = expect_variant!(arg, I32);
     assert_eq!(v, 1);
-    
 }
 
 #[test]
@@ -224,7 +213,6 @@ fn try_from_boolean_false() {
 
     let v = expect_variant!(arg, I32);
     assert_eq!(v, 0);
-    
 }
 
 #[test]
@@ -233,7 +221,6 @@ fn try_from_null() {
 
     let ptr = expect_variant!(arg, Ptr);
     assert!(ptr.is_null());
-    
 }
 
 #[test]
@@ -242,7 +229,6 @@ fn try_from_undefined() {
 
     let ptr = expect_variant!(arg, Ptr);
     assert!(ptr.is_null());
-    
 }
 
 #[test]
@@ -266,7 +252,6 @@ fn try_from_array_u8() {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const u8, 3);
         assert_eq!(slice, &[1, 2, 3]);
     }
-    
 }
 
 #[test]
@@ -290,7 +275,6 @@ fn try_from_array_i32() {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
         assert_eq!(slice, &[-10, 0, 10]);
     }
-    
 }
 
 #[test]
@@ -311,7 +295,6 @@ fn try_from_array_f64() {
         assert!((slice[0] - 1.1).abs() < 0.001);
         assert!((slice[1] - 2.2).abs() < 0.001);
     }
-    
 }
 
 #[test]
@@ -341,7 +324,6 @@ fn try_from_array_string() {
         assert_eq!(s1.to_str().unwrap(), "bar");
         assert!(ptrs[2].is_null());
     }
-    
 }
 
 #[test]
@@ -365,7 +347,6 @@ fn try_from_array_boolean() {
         let slice = std::slice::from_raw_parts(owned.ptr() as *const i32, 3);
         assert_eq!(slice, &[1, 0, 1]);
     }
-    
 }
 
 #[test]
@@ -432,7 +413,6 @@ fn try_from_struct_null() {
 
     let ptr = expect_variant!(arg, Ptr);
     assert!(ptr.is_null());
-    
 }
 
 #[test]
@@ -446,7 +426,6 @@ fn try_from_struct_undefined() {
 
     let ptr = expect_variant!(arg, Ptr);
     assert!(ptr.is_null());
-    
 }
 
 #[test]

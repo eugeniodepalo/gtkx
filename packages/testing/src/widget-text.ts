@@ -18,7 +18,7 @@ const getDefaultText = (widget: Gtk.Widget): string | null => {
     return null;
 };
 
-const collectDirectChildLabels = (widget: Gtk.Widget): string[] => {
+const collectLabels = (widget: Gtk.Widget, recursive: boolean): string[] => {
     const labels: string[] = [];
     let child = widget.getFirstChild();
 
@@ -27,23 +27,7 @@ const collectDirectChildLabels = (widget: Gtk.Widget): string[] => {
             const labelText = getLabelText(child);
             if (labelText) labels.push(labelText);
         }
-        child = child.getNextSibling();
-    }
-
-    return labels;
-};
-
-const collectChildLabels = (widget: Gtk.Widget): string[] => {
-    const labels: string[] = [];
-    let child = widget.getFirstChild();
-
-    while (child) {
-        if (child.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
-            const labelText = getLabelText(child);
-            if (labelText) labels.push(labelText);
-        }
-
-        labels.push(...collectChildLabels(child));
+        if (recursive) labels.push(...collectLabels(child, true));
         child = child.getNextSibling();
     }
 
@@ -64,7 +48,7 @@ export const getWidgetText = (widget: Gtk.Widget): string | null => {
     const role = widget.getAccessibleRole();
     if (role === undefined) return null;
 
-    const childLabels = collectDirectChildLabels(widget);
+    const childLabels = collectLabels(widget, false);
     return childLabels.length > 0 ? childLabels.join("") : null;
 };
 
@@ -110,7 +94,7 @@ export const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
     const ownText = getDefaultText(widget);
     if (ownText) return ownText;
 
-    const childLabels = collectChildLabels(widget);
+    const childLabels = collectLabels(widget, true);
     return childLabels.length > 0 ? childLabels.join(" ") : null;
 };
 
