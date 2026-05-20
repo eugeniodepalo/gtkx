@@ -4,6 +4,7 @@ export default defineConfig({
     title: "GTKX",
     description: "Linux application development for the modern age powered by GTK4 and React",
     appearance: "force-dark",
+    srcExclude: ["GOLD.md"],
     head: [["link", { rel: "icon", href: "/favicon.svg" }]],
     themeConfig: {
         logo: "/logo.svg",
