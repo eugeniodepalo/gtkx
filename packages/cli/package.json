@@ -66,13 +66,14 @@
         "@gtkx/codegen": "workspace:*",
         "@gtkx/ffi": "workspace:*",
         "@gtkx/mcp": "workspace:*",
-        "@gtkx/react": "workspace:*",
         "@swc/core": "^1.15.33",
         "c12": "^3.3.0",
         "citty": "^0.2.2",
         "ejs": "^5.0.2",
         "jiti": "^2.7.0",
+        "nypm": "^0.6.6",
         "react-refresh": "^0.18.0",
+        "tinyexec": "^1.1.2",
         "typescript": "^6.0.3",
         "vite": "^8.0.13"
     },
@@ -83,10 +84,14 @@
         "memfs": "^4.57.2"
     },
     "peerDependencies": {
+        "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "react": "^19"
     },
     "peerDependenciesMeta": {
+        "@gtkx/react": {
+            "optional": true
+        },
         "@gtkx/testing": {
             "optional": true
         }

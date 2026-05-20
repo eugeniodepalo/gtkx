@@ -1,0 +1,49 @@
+import { describe, expect, it } from "vitest";
+import { gtkxSkipReactDomOptimize } from "../../src/vite-plugins/skip-react-dom-optimize.js";
+
+type ConfigHook = (config: { optimizeDeps?: { include?: string[] } }) => void;
+
+const getConfigHook = (): ConfigHook => {
+    const plugin = gtkxSkipReactDomOptimize();
+    const hook = plugin.config;
+    if (typeof hook !== "function") {
+        throw new TypeError("expected plugin.config to be a function");
+    }
+    return hook as ConfigHook;
+};
+
+describe("gtkxSkipReactDomOptimize", () => {
+    it("has the canonical plugin name and post enforcement", () => {
+        const plugin = gtkxSkipReactDomOptimize();
+        expect(plugin.name).toBe("gtkx:remove-react-dom-optimized");
+        expect(plugin.enforce).toBe("post");
+    });
+
+    it("filters react-dom and react-dom/* entries out of optimizeDeps.include", () => {
+        const config: { optimizeDeps?: { include?: string[] } } = {
+            optimizeDeps: { include: ["react", "react-dom", "react-dom/client", "lodash"] },
+        };
+
+        getConfigHook()(config);
+
+        expect(config.optimizeDeps?.include).toEqual(["react", "lodash"]);
+    });
+
+    it("initializes optimizeDeps when missing and leaves include unset", () => {
+        const config: { optimizeDeps?: { include?: string[] } } = {};
+
+        getConfigHook()(config);
+
+        expect(config.optimizeDeps).toEqual({ include: undefined });
+    });
+
+    it("leaves include unchanged when no react-dom entries are present", () => {
+        const config: { optimizeDeps?: { include?: string[] } } = {
+            optimizeDeps: { include: ["react", "lodash"] },
+        };
+
+        getConfigHook()(config);
+
+        expect(config.optimizeDeps?.include).toEqual(["react", "lodash"]);
+    });
+});

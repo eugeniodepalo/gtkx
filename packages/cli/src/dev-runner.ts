@@ -1,117 +1,133 @@
 import { resolve } from "node:path";
-import { whenStopped } from "@gtkx/ffi";
-import * as Gio from "@gtkx/ffi/gio";
-import { createServer, type ViteDevServer } from "vite";
+import type { InlineConfig, Plugin, ViteDevServer } from "vite";
 import { RELOAD_EXIT_CODE } from "./dev-protocol.js";
-import { startMcpClient, stopMcpClient } from "./mcp-client.js";
-import { isReactRefreshBoundary, performRefresh } from "./refresh-runtime.js";
-import { gtkxAssets } from "./vite-plugins/assets.js";
-import { gtkxGSettings } from "./vite-plugins/gsettings.js";
-import { gtkxRefresh } from "./vite-plugins/react-refresh-runtime.js";
-import { swcSsrRefresh } from "./vite-plugins/react-refresh-transform.js";
+
+const ENTRY_ARG_INDEX = 2;
 
 /**
- * Argv slot the CLI supervisor uses to pass the entry path to the runner.
- * Anything beyond `argv[2]` is reserved for future runner flags.
- */
-export const ENTRY_ARG_INDEX = 2;
-
-/**
- * Logs a runner-prefixed message to stdout.
+ * Collaborators the dev runner uses to talk to the outside world.
  *
- * @param message - The message text to emit.
+ * Production wires this to Vite, the GLib runtime, and the MCP client; tests
+ * inject deterministic mocks via {@link createDevRunner}.
  */
-export const log = (message: string): void => {
-    console.log(`[gtkx] ${message}`);
+export type DevRunnerDeps = {
+    createServer(config: InlineConfig): Promise<ViteDevServer>;
+    whenStopped(): Promise<void>;
+    getApplicationId(): string | null;
+    startMcpClient(appId: string): Promise<unknown>;
+    stopMcpClient(): void;
+    performRefresh(): void;
+    isReactRefreshBoundary(module: Record<string, unknown>): boolean;
+    plugins(): Plugin[];
+    log(message: string): void;
+    exit(code: number): never;
 };
 
 /**
- * Creates the Vite dev server used by the runner.
- *
- * Wires the GTKX plugins, disables file discovery, and configures custom
- * middleware mode so the runner controls module loading via SSR.
- *
- * @param root - Project root directory.
+ * The dev runner exposes a single `run` method; everything else is
+ * encapsulated by the closure returned from {@link createDevRunner}.
  */
-export const createViteDevServer = async (root: string): Promise<ViteDevServer> => {
-    return createServer({
-        root,
-        appType: "custom",
-        plugins: [
-            gtkxGSettings(),
-            gtkxAssets(),
-            swcSsrRefresh(),
-            gtkxRefresh(),
-            {
-                name: "gtkx:remove-react-dom-optimized",
-                enforce: "post",
-                config(config) {
-                    config.optimizeDeps ??= {};
-                    config.optimizeDeps.include = config.optimizeDeps.include?.filter(
-                        (dep) => dep !== "react-dom" && !dep.startsWith("react-dom/"),
-                    );
-                },
-            },
-        ],
-        server: { middlewareMode: true },
-        optimizeDeps: { noDiscovery: true, include: [] },
-        ssr: { external: true },
-    });
+export type DevRunner = {
+    /**
+     * Starts the Vite dev server, registers file watchers, loads the user's
+     * entry, and connects the MCP client when the entry registers a
+     * `Gio.Application`. Resolves once the runner is fully wired and HMR is
+     * active; never resolves if the entry triggers a process exit.
+     *
+     * @param entryPath - Absolute path of the user's entry module.
+     */
+    run(entryPath: string): Promise<void>;
 };
 
-/**
- * Closes the Vite dev server and exits with {@link RELOAD_EXIT_CODE}.
- *
- * The CLI supervisor watches for this exit code to relaunch the runner.
- *
- * @param server - The active Vite dev server to shut down.
- */
-export const requestReload = async (server: ViteDevServer): Promise<never> => {
-    log("Full reload (process restart)");
-    await server.close();
-    process.exit(RELOAD_EXIT_CODE);
-};
+const buildConfig = (root: string, plugins: Plugin[]): InlineConfig => ({
+    root,
+    appType: "custom",
+    plugins,
+    server: { middlewareMode: true },
+    optimizeDeps: { noDiscovery: true, include: [] },
+    ssr: { external: true },
+});
 
 /**
- * Reacts to a watched file change by invalidating modules and either fast
- * refreshing or requesting a full reload.
+ * Builds a configured dev runner.
  *
- * Returns silently when the changed file is not part of the module graph.
- * Performs a React fast-refresh when the reloaded module is a refresh
- * boundary; otherwise delegates to {@link requestReload}.
+ * The factory takes every side-effecting collaborator via `deps`, leaving
+ * the runner's logic pure and observable from tests.
  *
- * @param server - The active Vite dev server.
- * @param changedPath - Absolute path of the changed file.
+ * @param deps - Side-effecting collaborators.
+ * @returns The configured {@link DevRunner}.
  */
-export const handleFileChange = async (server: ViteDevServer, changedPath: string): Promise<void> => {
-    const module = server.moduleGraph.getModuleById(changedPath);
-    if (!module) return;
+export const createDevRunner = (deps: DevRunnerDeps): DevRunner => {
+    const requestReload = async (server: ViteDevServer): Promise<never> => {
+        deps.log("Full reload (process restart)");
+        await server.close();
+        return deps.exit(RELOAD_EXIT_CODE);
+    };
 
-    log(`File changed: ${changedPath}`);
+    const handleFileChange = async (server: ViteDevServer, changedPath: string): Promise<void> => {
+        const module = server.moduleGraph.getModuleById(changedPath);
+        if (!module) return;
 
-    server.moduleGraph.invalidateModule(module);
-    for (const importer of module.importers) {
-        server.moduleGraph.invalidateModule(importer);
-    }
+        deps.log(`File changed: ${changedPath}`);
 
-    const newMod = (await server.ssrLoadModule(changedPath)) as Record<string, unknown>;
-    if (isReactRefreshBoundary(newMod)) {
-        log("Fast refreshing...");
-        performRefresh();
-        log("Fast refresh complete");
-        return;
-    }
+        server.moduleGraph.invalidateModule(module);
+        for (const importer of module.importers) {
+            server.moduleGraph.invalidateModule(importer);
+        }
 
-    await requestReload(server);
+        const newMod = (await server.ssrLoadModule(changedPath)) as Record<string, unknown>;
+        if (deps.isReactRefreshBoundary(newMod)) {
+            deps.log("Fast refreshing...");
+            deps.performRefresh();
+            deps.log("Fast refresh complete");
+            return;
+        }
+
+        await requestReload(server);
+    };
+
+    return {
+        async run(entryPath: string): Promise<void> {
+            const root = process.cwd();
+            const server = await deps.createServer(buildConfig(root, deps.plugins()));
+
+            deps.whenStopped()
+                .then(async () => {
+                    deps.stopMcpClient();
+                    await server.close();
+                })
+                .catch((error: unknown) => {
+                    console.error("[gtkx-dev-runner] Error closing server:", error);
+                });
+
+            server.watcher.on("change", (changedPath) => {
+                handleFileChange(server, changedPath).catch((error) => {
+                    console.error("[gtkx] Hot reload failed:", error);
+                });
+            });
+
+            deps.log(`Loading entry: ${entryPath}`);
+            await server.ssrLoadModule(entryPath);
+
+            const appId = deps.getApplicationId();
+            if (appId) {
+                deps.log(`Connected app id: ${appId}`);
+                await deps.startMcpClient(appId);
+            } else {
+                deps.log("Entry did not call render() — MCP client not started.");
+            }
+
+            deps.log("HMR enabled - watching for changes...");
+        },
+    };
 };
 
 /**
  * Runner entry point invoked by the CLI supervisor.
  *
- * Reads the entry path from `process.argv`, starts the Vite dev server,
- * registers watchers, and loads the user entry. When the entry calls
- * `render()` (registering a `Gio.Application`), connects to the MCP socket
- * server using the app id.
+ * Reads the entry path from `process.argv`, builds the production runner via
+ * a dynamic import of `dev-runner-deps.ts`, and runs it. Exits with code `1`
+ * if the supervisor failed to pass an entry path.
  */
 export const main = async (): Promise<void> => {
     const cwd = process.cwd();
@@ -123,34 +139,7 @@ export const main = async (): Promise<void> => {
     }
 
     const entryPath = resolve(cwd, entryArg);
-    const server = await createViteDevServer(cwd);
-
-    whenStopped()
-        .then(async () => {
-            stopMcpClient();
-            await server.close();
-        })
-        .catch((error: unknown) => {
-            console.error("[gtkx-dev-runner] Error closing server:", error);
-        });
-
-    server.watcher.on("change", (changedPath) => {
-        handleFileChange(server, changedPath).catch((error) => {
-            console.error("[gtkx] Hot reload failed:", error);
-        });
-    });
-
-    log(`Loading entry: ${entryPath}`);
-    await server.ssrLoadModule(entryPath);
-
-    const application = Gio.Application.getDefault();
-    const appId = application?.applicationId;
-    if (appId) {
-        log(`Connected app id: ${appId}`);
-        await startMcpClient(appId);
-    } else {
-        log("Entry did not call render() — MCP client not started.");
-    }
-
-    log("HMR enabled - watching for changes...");
+    const { defaultDevRunnerDeps } = await import("./dev-runner-deps.js");
+    const runner = createDevRunner(defaultDevRunnerDeps());
+    await runner.run(entryPath);
 };

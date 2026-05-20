@@ -8,8 +8,7 @@
         },
         "packages/cli": {
             "entry": ["src/global.d.ts"],
-            "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
-            "ignoreDependencies": ["@gtkx/react"]
+            "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
         },
         "packages/codegen": {
             "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]

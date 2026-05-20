@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defineConfig, isValidAppId } from "../src/config.js";
+import { isValidProjectName } from "../src/create.js";
 
 describe("defineConfig", () => {
     it("returns the config unchanged when valid", () => {
@@ -97,5 +98,51 @@ describe("isValidAppId", () => {
     it("rejects trailing or leading dots", () => {
         expect(isValidAppId(".com.example")).toBe(false);
         expect(isValidAppId("com.example.")).toBe(false);
+    });
+
+    it("accepts a two-segment ID", () => {
+        expect(isValidAppId("org.app")).toBe(true);
+    });
+
+    it("accepts single-character segments", () => {
+        expect(isValidAppId("a.b")).toBe(true);
+    });
+
+    it("accepts a deeply nested ID", () => {
+        expect(isValidAppId("com.example.sub.category.app")).toBe(true);
+    });
+
+    it("accepts elements containing digits after the first character", () => {
+        expect(isValidAppId("org.gtkx123.app456")).toBe(true);
+    });
+
+    it("rejects an ID with consecutive dots", () => {
+        expect(isValidAppId("com..app")).toBe(false);
+    });
+
+    it("rejects a segment starting with a hyphen", () => {
+        expect(isValidAppId("com.-app.test")).toBe(false);
+    });
+});
+
+describe("isValidProjectName", () => {
+    it("accepts lowercase letters, digits, and hyphens", () => {
+        expect(isValidProjectName("my-cool-app-123")).toBe(true);
+    });
+
+    it("rejects uppercase letters", () => {
+        expect(isValidProjectName("MyApp")).toBe(false);
+    });
+
+    it("rejects underscores", () => {
+        expect(isValidProjectName("my_app")).toBe(false);
+    });
+
+    it("rejects dots", () => {
+        expect(isValidProjectName("my.app")).toBe(false);
+    });
+
+    it("rejects empty strings", () => {
+        expect(isValidProjectName("")).toBe(false);
     });
 });
