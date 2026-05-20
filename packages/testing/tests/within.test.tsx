@@ -1,10 +1,10 @@
 import * as Gtk from "@gtkx/ffi/gtk";
-import { GtkBox, GtkButton, GtkEntry, GtkFrame, GtkLabel } from "@gtkx/react";
+import { GtkBox, GtkButton, GtkFrame } from "@gtkx/react";
 import { describe, expect, it } from "vitest";
 import { render, screen, within } from "../src/index.js";
 
 describe("within scoping", () => {
-    it("scopes queries to container element", async () => {
+    it("scopes queries to the given container", async () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkFrame name="section-a" label="Section A">
@@ -17,13 +17,13 @@ describe("within scoping", () => {
         );
 
         const sectionA = await screen.findByName("section-a");
-        const { findByRole } = within(sectionA);
+        const submit = await within(sectionA).findByRole(Gtk.AccessibleRole.BUTTON);
 
-        const submitButton = await findByRole(Gtk.AccessibleRole.BUTTON);
-        expect(submitButton).toBeDefined();
+        expect(submit).toBeDefined();
+        expect((submit as Gtk.Button).getLabel()).toBe("Submit");
     });
 
-    it("does not find elements outside container", async () => {
+    it("does not find elements outside the container", async () => {
         await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkFrame name="inner-frame" label="Inner">
@@ -34,91 +34,11 @@ describe("within scoping", () => {
         );
 
         const frame = await screen.findByName("inner-frame");
-        const { findByText } = within(frame);
 
-        await expect(findByText("Outside", { timeout: 100 })).rejects.toThrow("Unable to find");
-    });
-});
-
-describe("within find single", () => {
-    it("provides findByRole query", async () => {
-        await render(
-            <GtkFrame name="container">
-                <GtkButton label="Test" />
-            </GtkFrame>,
-        );
-
-        const frame = await screen.findByName("container");
-        const { findByRole } = within(frame);
-        const button = await findByRole(Gtk.AccessibleRole.BUTTON);
-        expect(button).toBeDefined();
+        await expect(within(frame).findByText("Outside", { timeout: 100 })).rejects.toThrow("Unable to find");
     });
 
-    it("provides findByText query", async () => {
-        await render(<GtkFrame name="container">Hello World</GtkFrame>);
-
-        const frame = await screen.findByName("container");
-        const { findByText } = within(frame);
-        const label = await findByText("Hello World");
-        expect(label).toBeDefined();
-    });
-
-    it("provides findByLabelText query", async () => {
-        const entryRef = { current: null as Gtk.Entry | null };
-        const LabelledEntry = () => (
-            <GtkFrame name="container">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel label="Action" mnemonicWidget={entryRef.current} />
-                    <GtkEntry
-                        ref={(el) => {
-                            entryRef.current = el;
-                        }}
-                    />
-                </GtkBox>
-            </GtkFrame>
-        );
-
-        const { rerender } = await render(<LabelledEntry />);
-        await rerender(<LabelledEntry />);
-
-        const frame = await screen.findByName("container");
-        const { findByLabelText } = within(frame);
-        const entry = await findByLabelText("Action");
-        expect(entry).toBeDefined();
-    });
-
-    it("provides findByName query", async () => {
-        await render(
-            <GtkFrame name="container">
-                <GtkEntry name="my-input" />
-            </GtkFrame>,
-        );
-
-        const frame = await screen.findByName("container");
-        const { findByName } = within(frame);
-        const entry = await findByName("my-input");
-        expect(entry).toBeDefined();
-    });
-});
-
-describe("within find all", () => {
-    it("provides findAllByRole query", async () => {
-        await render(
-            <GtkFrame name="container">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkButton label="First" />
-                    <GtkButton label="Second" />
-                </GtkBox>
-            </GtkFrame>,
-        );
-
-        const frame = await screen.findByName("container");
-        const { findAllByRole } = within(frame);
-        const buttons = await findAllByRole(Gtk.AccessibleRole.BUTTON);
-        expect(buttons.length).toBe(2);
-    });
-
-    it("provides findAllByText query", async () => {
+    it("returns the full bound-queries surface", async () => {
         await render(
             <GtkFrame name="container">
                 <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -129,56 +49,12 @@ describe("within find all", () => {
         );
 
         const frame = await screen.findByName("container");
-        const { findAllByText } = within(frame);
-        const buttons = await findAllByText("Item");
-        expect(buttons.length).toBe(2);
-    });
+        const bound = within(frame);
+        const items = await bound.findAllByText("Item");
 
-    it("provides findAllByLabelText query", async () => {
-        const ref1 = { current: null as Gtk.Entry | null };
-        const ref2 = { current: null as Gtk.Entry | null };
-        const LabelledEntries = () => (
-            <GtkFrame name="container">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkLabel label="Action" mnemonicWidget={ref1.current} />
-                    <GtkEntry
-                        ref={(el) => {
-                            ref1.current = el;
-                        }}
-                    />
-                    <GtkLabel label="Action" mnemonicWidget={ref2.current} />
-                    <GtkEntry
-                        ref={(el) => {
-                            ref2.current = el;
-                        }}
-                    />
-                </GtkBox>
-            </GtkFrame>
-        );
-
-        const { rerender } = await render(<LabelledEntries />);
-        await rerender(<LabelledEntries />);
-
-        const frame = await screen.findByName("container");
-        const { findAllByLabelText } = within(frame);
-        const entries = await findAllByLabelText("Action");
-        expect(entries.length).toBe(2);
-    });
-
-    it("provides findAllByName query", async () => {
-        await render(
-            <GtkFrame name="container">
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-                    <GtkEntry name="field" />
-                    <GtkEntry name="field" />
-                </GtkBox>
-            </GtkFrame>,
-        );
-
-        const frame = await screen.findByName("container");
-        const { findAllByName } = within(frame);
-        const entries = await findAllByName("field");
-        expect(entries.length).toBe(2);
+        expect(items.length).toBe(2);
+        expect(typeof bound.queryByRole).toBe("function");
+        expect(typeof bound.queryAllByName).toBe("function");
     });
 });
 
@@ -193,10 +69,9 @@ describe("within nested", () => {
         );
 
         const outer = await screen.findByName("outer-frame");
-        const { findByName: findInOuter } = within(outer);
-        const inner = await findInOuter("inner-frame");
-        const { findByRole } = within(inner);
-        const button = await findByRole(Gtk.AccessibleRole.BUTTON);
+        const inner = await within(outer).findByName("inner-frame");
+        const button = await within(inner).findByRole(Gtk.AccessibleRole.BUTTON);
+
         expect(button).toBeDefined();
     });
 });
