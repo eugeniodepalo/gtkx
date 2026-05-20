@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/ffi/gtk";
-import { tick } from "./timing.js";
+import { withTick } from "./timing.js";
 
 /**
  * Emits a GTK signal on a widget or event controller.
@@ -26,11 +26,11 @@ import { tick } from "./timing.js";
  *
  * @see {@link userEvent} for high-level user interactions
  */
-export const fireEvent = async (
+export const fireEvent = (
     element: Gtk.Widget | Gtk.EventController,
     signalName: string,
     ...args: unknown[]
-): Promise<void> => {
-    element.emit(signalName, ...args);
-    await tick();
-};
+): Promise<void> =>
+    withTick(() => {
+        element.emit(signalName, ...args);
+    });

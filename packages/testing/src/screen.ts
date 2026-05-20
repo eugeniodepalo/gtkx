@@ -1,29 +1,10 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { bindQueries } from "./bind-queries.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
-import { type ScreenshotOptions, screenshot as screenshotWidget } from "./screenshot.js";
+import { logScreenshotPath, resolveWindow, saveScreenshotToTempFile, type WindowSelector } from "./screen-screenshot.js";
+import { type ScreenshotOptions, screenshot as captureScreenshot } from "./screenshot.js";
 import type { ScreenshotResult } from "./types.js";
-
-const getScreenshotDir = (): string => {
-    const dir = join(tmpdir(), "gtkx-screenshots");
-    if (!existsSync(dir)) {
-        mkdirSync(dir, { recursive: true });
-    }
-    return dir;
-};
-
-const saveAndLogScreenshot = (result: ScreenshotResult): void => {
-    const dir = getScreenshotDir();
-    const filename = `${Date.now()}-screenshot.png`;
-    const filepath = join(dir, filename);
-    const buffer = Buffer.from(result.data, "base64");
-    writeFileSync(filepath, buffer);
-    console.log(`Screenshot saved: file://${filepath}`);
-};
 
 let currentRoot: Gtk.Application | null = null;
 
@@ -73,13 +54,18 @@ export const screen = {
         logRoles(getRoot());
     },
     /**
-     * Capture a screenshot of the application window, saving it to a temporary file and logging the file path.
+     * Capture a screenshot of a toplevel window, save it to a temp file, and
+     * log a clickable `file://` URI.
+     *
+     * Composed of {@link resolveWindow} + {@link captureScreenshot} +
+     * {@link saveScreenshotToTempFile} + {@link logScreenshotPath}. Use those
+     * primitives directly to capture without filesystem or console side
+     * effects.
      *
      * @param selector - Window selector: index (number), title substring (string), or title pattern (RegExp).
      *                   If omitted, captures the first window.
      * @param options - Optional timeout and interval configuration for waiting on widget rendering.
      * @returns Screenshot result containing base64-encoded PNG data
-     * @throws Error if no windows are available or no matching window is found
      *
      * @example
      * ```tsx
@@ -89,43 +75,11 @@ export const screen = {
      * await screen.screenshot(/^My App/);     // Window with title matching regex
      * ```
      */
-    screenshot: async (selector?: number | string | RegExp, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
-        const windows = Gtk.Window.listToplevels();
-
-        if (windows.length === 0) {
-            throw new Error("No windows available for screenshot");
-        }
-
-        let targetWindow: Gtk.Window | undefined;
-
-        if (selector === undefined) {
-            const [first] = windows;
-            if (!(first instanceof Gtk.Window)) {
-                throw new TypeError("First toplevel is not a Window");
-            }
-            targetWindow = first;
-        } else if (typeof selector === "number") {
-            const indexed = windows[selector];
-            if (!(indexed instanceof Gtk.Window)) {
-                throw new TypeError(`Window at index ${selector} not found`);
-            }
-            targetWindow = indexed;
-        } else {
-            const isRegex = selector instanceof RegExp;
-            targetWindow = windows.find((w): w is Gtk.Window => {
-                if (!(w instanceof Gtk.Window)) return false;
-                const title = w.getTitle() ?? "";
-                return isRegex ? selector.test(title) : title.includes(selector);
-            });
-
-            if (!targetWindow) {
-                const pattern = isRegex ? selector.toString() : `"${selector}"`;
-                throw new Error(`No window found with title matching ${pattern}`);
-            }
-        }
-
-        const result = await screenshotWidget(targetWindow, options);
-        saveAndLogScreenshot(result);
+    screenshot: async (selector?: WindowSelector, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
+        const target = resolveWindow(selector);
+        const result = await captureScreenshot(target, options);
+        const filepath = saveScreenshotToTempFile(result);
+        logScreenshotPath(filepath);
         return result;
     },
 };

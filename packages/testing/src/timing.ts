@@ -15,3 +15,19 @@
  * ```
  */
 export const tick = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+/**
+ * Runs an action and yields one tick afterwards so GTK has a chance to flush
+ * pending updates. Lets every event-emitting helper share the same post-action
+ * settle policy without repeating `await tick()` at each call site.
+ *
+ * @example
+ * ```tsx
+ * const click = (el: Gtk.Widget) => withTick(() => el.activate());
+ * ```
+ */
+export const withTick = async <T>(action: () => T | Promise<T>): Promise<T> => {
+    const result = await action();
+    await tick();
+    return result;
+};

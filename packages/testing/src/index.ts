@@ -25,6 +25,12 @@ export { cleanup, render } from "./render.js";
 export { renderHook } from "./render-hook.js";
 export type { RoleInfo } from "./role-helpers.js";
 export { getRoles, logRoles, prettyRoles } from "./role-helpers.js";
+export {
+    logScreenshotPath,
+    resolveWindow,
+    saveScreenshotToTempFile,
+    type WindowSelector,
+} from "./screen-screenshot.js";
 export { screen } from "./screen.js";
 export type { ScreenshotOptions } from "./screenshot.js";
 export { screenshot } from "./screenshot.js";
