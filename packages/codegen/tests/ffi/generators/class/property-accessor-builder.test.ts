@@ -111,20 +111,29 @@ function renderAccessors(builder: PropertyAccessorBuilder): string {
     return stringify(file);
 }
 
+function renderSetupAccessors(
+    classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]> = {},
+    customize?: (ns: ReturnType<typeof buildGtkNamespace>) => void,
+): string {
+    const { builder } = createSetup(classOverrides, customize);
+    return renderAccessors(builder);
+}
+
+function stringProperty(overrides: Partial<Parameters<typeof createNormalizedProperty>[0]> = {}) {
+    return createNormalizedProperty({
+        name: "label",
+        type: createNormalizedType({ name: "utf8" }),
+        getter: undefined,
+        setter: undefined,
+        ...overrides,
+    });
+}
+
 describe("PropertyAccessorBuilder / buildAccessors with a class source (1)", () => {
     it("emits a synthetic get/set accessor for a writable string property", () => {
-        const { builder } = createSetup({
-            properties: [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
-                    getter: undefined,
-                    setter: undefined,
-                }),
-            ],
+        const code = renderSetupAccessors({
+            properties: [stringProperty()],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain("get label(): string {");
         expect(code).toContain('return this.getProperty("label");');
@@ -133,7 +142,7 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (1)", () 
     });
 
     it("emits a getter-only accessor for a construct-only property", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             properties: [
                 createNormalizedProperty({
                     name: "name",
@@ -145,8 +154,6 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (1)", () 
             ],
         });
 
-        const code = renderAccessors(builder);
-
         expect(code).toContain("get name(): string {");
         expect(code).not.toContain("set name(");
     });
@@ -154,7 +161,7 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (1)", () 
 
 describe("PropertyAccessorBuilder / buildAccessors with a class source (2)", () => {
     it("emits no setter for a read-only property", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             properties: [
                 createNormalizedProperty({
                     name: "computed",
@@ -166,14 +173,12 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (2)", () 
             ],
         });
 
-        const code = renderAccessors(builder);
-
         expect(code).toContain("get computed(): string {");
         expect(code).not.toContain("set computed(");
     });
 
     it("delegates the getter to an explicit GIR getter method", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             methods: [
                 createNormalizedMethod({
                     name: "get_text",
@@ -182,16 +187,11 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (2)", () 
                 }),
             ],
             properties: [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
+                stringProperty({
                     getter: "gtk_button_get_text",
-                    setter: undefined,
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain("return this.getText();");
     });
@@ -199,7 +199,7 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (2)", () 
 
 describe("PropertyAccessorBuilder / buildAccessors with a class source (3)", () => {
     it("delegates the setter to an explicit GIR setter method", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             methods: [
                 createNormalizedMethod({
                     name: "assign_text",
@@ -214,16 +214,11 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (3)", () 
                 }),
             ],
             properties: [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
-                    getter: undefined,
+                stringProperty({
                     setter: "gtk_button_assign_text",
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain("this.assignText(value);");
     });
@@ -231,25 +226,19 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (3)", () 
 
 describe("PropertyAccessorBuilder / buildAccessors with a class source (4)", () => {
     it("widens the getter return type to include null for a null-default property", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             properties: [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
+                stringProperty({
                     defaultValue: { kind: "null" },
-                    getter: undefined,
-                    setter: undefined,
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain("get label(): string | null {");
     });
 
     it("emits a synthetic accessor for an enum-typed property", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             properties: [
                 createNormalizedProperty({
                     name: "orientation",
@@ -260,8 +249,6 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (4)", () 
             ],
         });
 
-        const code = renderAccessors(builder);
-
         expect(code).toContain("get orientation()");
         expect(code).toContain('return this.getProperty("orientation");');
         expect(code).toContain('this.setProperty("orientation", value);');
@@ -270,7 +257,7 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (4)", () 
 
 describe("PropertyAccessorBuilder / buildAccessors with a class source (5)", () => {
     it("emits a synthetic accessor for a flags-typed property", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             properties: [
                 createNormalizedProperty({
                     name: "state-flags",
@@ -281,14 +268,12 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (5)", () 
             ],
         });
 
-        const code = renderAccessors(builder);
-
         expect(code).toContain("get stateFlags()");
         expect(code).toContain('return this.getProperty("state-flags");');
     });
 
     it("emits a synthetic accessor for a class-typed property", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             properties: [
                 createNormalizedProperty({
                     name: "child",
@@ -299,8 +284,6 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (5)", () 
             ],
         });
 
-        const code = renderAccessors(builder);
-
         expect(code).toContain("get child()");
         expect(code).toContain('return this.getProperty("child");');
         expect(code).toContain('this.setProperty("child", value);');
@@ -309,7 +292,7 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (5)", () 
 
 describe("PropertyAccessorBuilder / buildAccessors with a class source (6)", () => {
     it("widens a boxed-record getter return type to include null", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             properties: [
                 createNormalizedProperty({
                     name: "border",
@@ -319,14 +302,12 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (6)", () 
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toMatch(/get border\(\): [^\n]*\| null/);
     });
 
     it("emits a synthetic accessor for a boxed record property", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             properties: [
                 createNormalizedProperty({
                     name: "border",
@@ -336,8 +317,6 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (6)", () 
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain("get border()");
         expect(code).toContain('return this.getProperty("border");');
@@ -346,7 +325,7 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (6)", () 
 
 describe("PropertyAccessorBuilder / buildAccessors with a class source (7)", () => {
     it("emits a generic unknown getter for a property with an unmappable type", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             properties: [
                 createNormalizedProperty({
                     name: "user-data",
@@ -356,8 +335,6 @@ describe("PropertyAccessorBuilder / buildAccessors with a class source (7)", () 
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain("get userData(): unknown {");
         expect(code).toContain('return this.getProperty("user-data");');
@@ -391,11 +368,8 @@ describe("PropertyAccessorBuilder / buildAccessors with an interface source", ()
     it("delegates to an interface getter method resolved by C identifier", () => {
         const { builder } = createInterfaceSetup(
             [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
+                stringProperty({
                     getter: "gtk_orientable_get_text",
-                    setter: undefined,
                 }),
             ],
             [
@@ -421,7 +395,7 @@ describe("PropertyAccessorBuilder / buildAccessors with an interface source", ()
 
 describe("PropertyAccessorBuilder / delegate resolution edge cases (1)", () => {
     it("falls back to a synthetic getter when the getter method has parameters", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             methods: [
                 createNormalizedMethod({
                     name: "get_text",
@@ -436,16 +410,11 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (1)", () => {
                 }),
             ],
             properties: [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
+                stringProperty({
                     getter: "gtk_button_get_text",
-                    setter: undefined,
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain('return this.getProperty("label");');
         expect(code).not.toContain("this.getText()");
@@ -454,7 +423,7 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (1)", () => {
 
 describe("PropertyAccessorBuilder / delegate resolution edge cases (2)", () => {
     it("falls back to a synthetic getter when the getter method returns void", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             methods: [
                 createNormalizedMethod({
                     name: "get_text",
@@ -463,16 +432,11 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (2)", () => {
                 }),
             ],
             properties: [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
+                stringProperty({
                     getter: "gtk_button_get_text",
-                    setter: undefined,
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain('return this.getProperty("label");');
     });
@@ -480,7 +444,7 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (2)", () => {
 
 describe("PropertyAccessorBuilder / delegate resolution edge cases (3)", () => {
     it("falls back to a synthetic getter when the getter return type differs from the property type", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             methods: [
                 createNormalizedMethod({
                     name: "get_count",
@@ -489,16 +453,11 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (3)", () => {
                 }),
             ],
             properties: [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
+                stringProperty({
                     getter: "gtk_button_get_count",
-                    setter: undefined,
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain('return this.getProperty("label");');
     });
@@ -506,7 +465,7 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (3)", () => {
 
 describe("PropertyAccessorBuilder / delegate resolution edge cases (4)", () => {
     it("falls back to a synthetic setter when the setter method has the wrong arity", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             methods: [
                 createNormalizedMethod({
                     name: "assign_text",
@@ -525,16 +484,11 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (4)", () => {
                 }),
             ],
             properties: [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
-                    getter: undefined,
+                stringProperty({
                     setter: "gtk_button_assign_text",
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain('this.setProperty("label", value);');
         expect(code).not.toContain("assignText");
@@ -543,7 +497,7 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (4)", () => {
 
 describe("PropertyAccessorBuilder / delegate resolution edge cases (5)", () => {
     it("widens the getter return type to null when the delegate getter method is nullable", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             methods: [
                 createNormalizedMethod({
                     name: "get_text",
@@ -552,22 +506,17 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (5)", () => {
                 }),
             ],
             properties: [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
+                stringProperty({
                     getter: "gtk_button_get_text",
-                    setter: undefined,
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain("get label(): string | null {");
     });
 
     it("emits a generic accessor for a write-only property", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             properties: [
                 createNormalizedProperty({
                     name: "secret",
@@ -580,15 +529,13 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (5)", () => {
             ],
         });
 
-        const code = renderAccessors(builder);
-
         expect(code).toContain("get secret(): unknown {");
     });
 });
 
 describe("PropertyAccessorBuilder / delegate resolution edge cases (6)", () => {
     it("falls back to a synthetic setter when the delegate setter parameter type is unsafe", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             methods: [
                 createNormalizedMethod({
                     name: "assign_cb",
@@ -603,16 +550,11 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (6)", () => {
                 }),
             ],
             properties: [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
-                    getter: undefined,
+                stringProperty({
                     setter: "gtk_button_assign_cb",
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain('this.setProperty("label", value);');
         expect(code).not.toContain("assignCb");
@@ -621,7 +563,7 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (6)", () => {
 
 describe("PropertyAccessorBuilder / delegate resolution edge cases (7)", () => {
     it("ignores a delegate getter whose camelCase name equals the property name", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             methods: [
                 createNormalizedMethod({
                     name: "label",
@@ -630,16 +572,11 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (7)", () => {
                 }),
             ],
             properties: [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
+                stringProperty({
                     getter: "gtk_button_label",
-                    setter: undefined,
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain('return this.getProperty("label");');
     });
@@ -647,7 +584,7 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (7)", () => {
 
 describe("PropertyAccessorBuilder / delegate resolution edge cases (8)", () => {
     it("derives the setter parameter type from a non-nullable delegate setter parameter", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             methods: [
                 createNormalizedMethod({
                     name: "assign_count",
@@ -662,16 +599,11 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (8)", () => {
                 }),
             ],
             properties: [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
-                    getter: undefined,
+                stringProperty({
                     setter: "gtk_button_assign_count",
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain("set label(value: number) {");
     });
@@ -679,7 +611,7 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (8)", () => {
 
 describe("PropertyAccessorBuilder / delegate resolution edge cases (9)", () => {
     it("derives the setter parameter type from a nullable delegate setter parameter", () => {
-        const { builder } = createSetup({
+        const code = renderSetupAccessors({
             methods: [
                 createNormalizedMethod({
                     name: "assign_text",
@@ -695,16 +627,11 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (9)", () => {
                 }),
             ],
             properties: [
-                createNormalizedProperty({
-                    name: "label",
-                    type: createNormalizedType({ name: "utf8" }),
-                    getter: undefined,
+                stringProperty({
                     setter: "gtk_button_assign_text",
                 }),
             ],
         });
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain("set label(value: string | null) {");
         expect(code).toContain("this.assignText(value);");
@@ -713,7 +640,7 @@ describe("PropertyAccessorBuilder / delegate resolution edge cases (9)", () => {
 
 describe("PropertyAccessorBuilder / fundamental and boxed property types (1)", () => {
     it("emits a synthetic accessor for a GVariant-style fundamental class property", () => {
-        const { builder } = createSetup(
+        const code = renderSetupAccessors(
             {
                 properties: [
                     createNormalizedProperty({
@@ -739,8 +666,6 @@ describe("PropertyAccessorBuilder / fundamental and boxed property types (1)", (
             },
         );
 
-        const code = renderAccessors(builder);
-
         expect(code).toContain("get value()");
         expect(code).toContain('return this.getProperty("value");');
     });
@@ -748,7 +673,7 @@ describe("PropertyAccessorBuilder / fundamental and boxed property types (1)", (
 
 describe("PropertyAccessorBuilder / fundamental and boxed property types (2)", () => {
     it("emits a synthetic accessor for a GParamSpec-style fundamental class property", () => {
-        const { builder } = createSetup(
+        const code = renderSetupAccessors(
             {
                 properties: [
                     createNormalizedProperty({
@@ -774,8 +699,6 @@ describe("PropertyAccessorBuilder / fundamental and boxed property types (2)", (
             },
         );
 
-        const code = renderAccessors(builder);
-
         expect(code).toContain("get spec()");
         expect(code).toContain('return this.getProperty("spec");');
     });
@@ -783,7 +706,7 @@ describe("PropertyAccessorBuilder / fundamental and boxed property types (2)", (
 
 describe("PropertyAccessorBuilder / fundamental and boxed property types (3)", () => {
     it("emits a synthetic accessor for a boxed-style fundamental class property", () => {
-        const { builder } = createSetup(
+        const code = renderSetupAccessors(
             {
                 properties: [
                     createNormalizedProperty({
@@ -810,8 +733,6 @@ describe("PropertyAccessorBuilder / fundamental and boxed property types (3)", (
             },
         );
 
-        const code = renderAccessors(builder);
-
         expect(code).toContain("get expr()");
         expect(code).toContain('return this.getProperty("expr");');
         expect(code).toContain('this.setProperty("expr", value);');
@@ -820,7 +741,7 @@ describe("PropertyAccessorBuilder / fundamental and boxed property types (3)", (
 
 describe("PropertyAccessorBuilder / fundamental and boxed property types (4)", () => {
     it("emits a synthetic accessor for a fundamental record property", () => {
-        const { builder } = createSetup(
+        const code = renderSetupAccessors(
             {
                 properties: [
                     createNormalizedProperty({
@@ -847,8 +768,6 @@ describe("PropertyAccessorBuilder / fundamental and boxed property types (4)", (
                 );
             },
         );
-
-        const code = renderAccessors(builder);
 
         expect(code).toContain("get node()");
         expect(code).toContain('return this.getProperty("node");');
