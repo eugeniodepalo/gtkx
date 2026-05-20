@@ -1,4 +1,5 @@
-import { defineConfig, type DefaultTheme } from "vitepress";
+import { type DefaultTheme, defineConfig } from "vitepress";
+import llmstxt from "vitepress-plugin-llms";
 import cssSidebar from "../api/css/typedoc-sidebar.json" with { type: "json" };
 import ffiSidebar from "../api/ffi/typedoc-sidebar.json" with { type: "json" };
 import reactSidebar from "../api/react/typedoc-sidebar.json" with { type: "json" };
@@ -16,6 +17,31 @@ export default defineConfig({
     description: "Linux application development for the modern age powered by GTK4 and React",
     appearance: "force-dark",
     srcExclude: ["GOLD.md"],
+    vite: {
+        plugins: [
+            llmstxt({
+                domain: "https://gtkx.dev",
+                ignoreFiles: ["api/**/*"],
+                customLLMsTxtTemplate: `# {title}
+
+> {description}
+
+{details}
+
+## Table of Contents
+
+{toc}
+
+## Optional
+
+- [GitHub Repository](https://github.com/gtkx-org/gtkx): Source code, examples, issue tracker
+- [GTK4 Documentation](https://docs.gtk.org/gtk4/): Official GTK4 widget reference and concepts
+- [Libadwaita Documentation](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/): Official Libadwaita component reference
+- [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/): Design patterns and UX guidelines for GNOME apps
+`,
+            }),
+        ],
+    },
     head: [["link", { rel: "icon", href: "/favicon.svg" }]],
     themeConfig: {
         logo: "/logo.svg",
