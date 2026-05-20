@@ -1,4 +1,15 @@
-import { defineConfig } from "vitepress";
+import { defineConfig, type DefaultTheme } from "vitepress";
+import cssSidebar from "../api/css/typedoc-sidebar.json" with { type: "json" };
+import ffiSidebar from "../api/ffi/typedoc-sidebar.json" with { type: "json" };
+import reactSidebar from "../api/react/typedoc-sidebar.json" with { type: "json" };
+import testingSidebar from "../api/testing/typedoc-sidebar.json" with { type: "json" };
+
+const prepareTypedocSidebar = (items: DefaultTheme.SidebarItem[]): DefaultTheme.SidebarItem[] =>
+    items.map((item) => {
+        const link = item.link?.replace(/^\/website/, "").replace(/\.md$/, "");
+        const children = item.items ? prepareTypedocSidebar(item.items) : undefined;
+        return { ...item, ...(link ? { link } : {}), ...(children ? { items: children } : {}) };
+    });
 
 export default defineConfig({
     title: "GTKX",
@@ -68,18 +79,26 @@ export default defineConfig({
                 {
                     text: "@gtkx/react",
                     link: "/api/react/",
+                    collapsed: false,
+                    items: prepareTypedocSidebar(reactSidebar as DefaultTheme.SidebarItem[]),
                 },
                 {
                     text: "@gtkx/css",
                     link: "/api/css/",
+                    collapsed: true,
+                    items: prepareTypedocSidebar(cssSidebar as DefaultTheme.SidebarItem[]),
                 },
                 {
                     text: "@gtkx/testing",
                     link: "/api/testing/",
+                    collapsed: true,
+                    items: prepareTypedocSidebar(testingSidebar as DefaultTheme.SidebarItem[]),
                 },
                 {
                     text: "@gtkx/ffi",
                     link: "/api/ffi/",
+                    collapsed: true,
+                    items: prepareTypedocSidebar(ffiSidebar as DefaultTheme.SidebarItem[]),
                 },
             ],
         },
