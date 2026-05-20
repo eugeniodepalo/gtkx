@@ -4,13 +4,13 @@ import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
 const apiDir = resolve(root, "website/api");
+const optionsPath = resolve(root, "website/typedoc.json");
 
 const packages = [
     {
         name: "react",
         entryPoints: [resolve(root, "packages/react/src/index.ts")],
         tsconfig: resolve(root, "packages/react/tsconfig.lib.json"),
-        excludeInternal: true,
         intentionallyNotExported: [
             "ReconcilerInstance",
             "AnimationBaseProps",
@@ -24,21 +24,18 @@ const packages = [
         name: "css",
         entryPoints: [resolve(root, "packages/css/src/index.ts")],
         tsconfig: resolve(root, "packages/css/tsconfig.lib.json"),
-        excludeInternal: true,
         intentionallyNotExported: ["CSSClassName"],
     },
     {
         name: "testing",
         entryPoints: [resolve(root, "packages/testing/src/index.ts")],
         tsconfig: resolve(root, "packages/testing/tsconfig.lib.json"),
-        excludeInternal: true,
         intentionallyNotExported: ["ElementOrCallback"],
     },
     {
         name: "ffi",
         entryPoints: [resolve(root, "packages/ffi/src/index.ts")],
         tsconfig: resolve(root, "packages/ffi/tsconfig.lib.json"),
-        excludeInternal: true,
         intentionallyNotExported: ["GType", "NativeObject", "ParamSpec"],
     },
 ];
@@ -48,32 +45,14 @@ rmSync(apiDir, { recursive: true, force: true });
 for (const pkg of packages) {
     const args = [
         "typedoc",
+        "--options",
+        optionsPath,
         ...pkg.entryPoints.flatMap((e) => ["--entryPoints", e]),
         "--tsconfig",
         pkg.tsconfig,
         "--out",
         resolve(apiDir, pkg.name),
-        "--plugin",
-        "typedoc-plugin-markdown",
-        "--plugin",
-        "typedoc-vitepress-theme",
-        "--readme",
-        "none",
-        "--indexFormat",
-        "table",
-        "--parametersFormat",
-        "table",
-        "--enumMembersFormat",
-        "table",
-        "--typeDeclarationFormat",
-        "table",
-        "--groupOrder",
-        "Functions,Variables,Interfaces,*",
-        "--useHTMLEncodedBrackets",
-        ...(pkg.excludeInternal ? ["--excludeInternal"] : []),
-        ...(pkg.intentionallyNotExported
-            ? pkg.intentionallyNotExported.flatMap((name) => ["--intentionallyNotExported", name])
-            : []),
+        ...pkg.intentionallyNotExported.flatMap((name) => ["--intentionallyNotExported", name]),
     ];
 
     console.log(`Generating API docs for @gtkx/${pkg.name}...`);
