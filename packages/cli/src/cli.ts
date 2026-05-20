@@ -1,5 +1,7 @@
 import { createRequire } from "node:module";
-import { defineCommand } from "citty";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { defineCommand, runMain } from "citty";
 import { buildCmd } from "./commands/build.js";
 import { codegen } from "./commands/codegen.js";
 import { create } from "./commands/create.js";
@@ -10,8 +12,13 @@ const { version } = require("../package.json") as { version: string };
 
 /**
  * Top-level `gtkx` command, assembled from the per-command modules in
- * `src/commands/`. Execution happens at the binary edge in
- * `bin/gtkx.js`.
+ * `src/commands/`.
+ *
+ * The CLI has two execution edges: the shipped `bin/gtkx.js` (which imports
+ * from the compiled `dist/`) and `@gtkx/ffi`'s monorepo `postinstall` script
+ * (which imports this file directly via tsx, before any build has run). The
+ * entry-point check below makes the second path work; the bin handles the
+ * first.
  */
 export const main = defineCommand({
     meta: {
@@ -26,3 +33,7 @@ export const main = defineCommand({
         create,
     },
 });
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+    void runMain(main);
+}
