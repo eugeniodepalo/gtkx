@@ -28,6 +28,14 @@ function render(write: (writer: Writer) => void): string {
     return writer.toString();
 }
 
+function field(name: string, typeName: string, extras: Partial<Parameters<typeof createNormalizedField>[0]> = {}) {
+    return createNormalizedField({
+        name,
+        type: createNormalizedType({ name: typeName }),
+        ...extras,
+    });
+}
+
 describe("FieldBuilder / constructor", () => {
     it("creates builder with dependencies", () => {
         const { builder } = createTestSetup();
@@ -46,12 +54,7 @@ describe("FieldBuilder / calculateLayout (1)", () => {
 
     it("calculates layout for single field", () => {
         const { builder } = createTestSetup();
-        const fields = [
-            createNormalizedField({
-                name: "value",
-                type: createNormalizedType({ name: "gint" }),
-            }),
-        ];
+        const fields = [field("value", "gint")];
 
         const layout = builder.calculateLayout(fields);
 
@@ -62,16 +65,7 @@ describe("FieldBuilder / calculateLayout (1)", () => {
 
     it("calculates layout for multiple fields", () => {
         const { builder } = createTestSetup();
-        const fields = [
-            createNormalizedField({
-                name: "x",
-                type: createNormalizedType({ name: "gint" }),
-            }),
-            createNormalizedField({
-                name: "y",
-                type: createNormalizedType({ name: "gint" }),
-            }),
-        ];
+        const fields = [field("x", "gint"), field("y", "gint")];
 
         const layout = builder.calculateLayout(fields);
 
@@ -85,14 +79,10 @@ describe("FieldBuilder / calculateLayout (2)", () => {
     it("excludes private fields by default", () => {
         const { builder } = createTestSetup();
         const fields = [
-            createNormalizedField({
-                name: "public_field",
-                type: createNormalizedType({ name: "gint" }),
+            field("public_field", "gint", {
                 private: false,
             }),
-            createNormalizedField({
-                name: "private_field",
-                type: createNormalizedType({ name: "gint" }),
+            field("private_field", "gint", {
                 private: true,
             }),
         ];
@@ -106,14 +96,10 @@ describe("FieldBuilder / calculateLayout (2)", () => {
     it("includes private fields when includePrivate is true", () => {
         const { builder } = createTestSetup();
         const fields = [
-            createNormalizedField({
-                name: "public_field",
-                type: createNormalizedType({ name: "gint" }),
+            field("public_field", "gint", {
                 private: false,
             }),
-            createNormalizedField({
-                name: "private_field",
-                type: createNormalizedType({ name: "gint" }),
+            field("private_field", "gint", {
                 private: true,
             }),
         ];
@@ -127,16 +113,7 @@ describe("FieldBuilder / calculateLayout (2)", () => {
 describe("FieldBuilder / calculateLayout (3)", () => {
     it("handles alignment for different sized types", () => {
         const { builder } = createTestSetup();
-        const fields = [
-            createNormalizedField({
-                name: "byte",
-                type: createNormalizedType({ name: "guint8" }),
-            }),
-            createNormalizedField({
-                name: "int",
-                type: createNormalizedType({ name: "gint" }),
-            }),
-        ];
+        const fields = [field("byte", "guint8"), field("int", "gint")];
 
         const layout = builder.calculateLayout(fields);
 
@@ -150,22 +127,10 @@ describe("FieldBuilder / calculateLayout (4)", () => {
     it("calculates correct sizes for various types", () => {
         const { builder } = createTestSetup();
         const fields = [
-            createNormalizedField({
-                name: "byte",
-                type: createNormalizedType({ name: "guint8" }),
-            }),
-            createNormalizedField({
-                name: "short",
-                type: createNormalizedType({ name: "gint16" }),
-            }),
-            createNormalizedField({
-                name: "int",
-                type: createNormalizedType({ name: "gint" }),
-            }),
-            createNormalizedField({
-                name: "long",
-                type: createNormalizedType({ name: "gint64" }),
-            }),
+            field("byte", "guint8"),
+            field("short", "gint16"),
+            field("int", "gint"),
+            field("long", "gint64"),
         ];
 
         const layout = builder.calculateLayout(fields);
@@ -178,14 +143,11 @@ describe("FieldBuilder / calculateLayout (4)", () => {
 
     it("preserves field reference in layout", () => {
         const { builder } = createTestSetup();
-        const field = createNormalizedField({
-            name: "test",
-            type: createNormalizedType({ name: "gint" }),
-        });
+        const target = field("test", "gint");
 
-        const layout = builder.calculateLayout([field]);
+        const layout = builder.calculateLayout([target]);
 
-        expect(layout[0]?.field).toBe(field);
+        expect(layout[0]?.field).toBe(target);
     });
 });
 
@@ -200,12 +162,7 @@ describe("FieldBuilder / calculateStructSize (1)", () => {
 
     it("calculates size for single field", () => {
         const { builder } = createTestSetup();
-        const fields = [
-            createNormalizedField({
-                name: "value",
-                type: createNormalizedType({ name: "gint" }),
-            }),
-        ];
+        const fields = [field("value", "gint")];
 
         const size = builder.calculateStructSize(fields);
 
@@ -214,16 +171,7 @@ describe("FieldBuilder / calculateStructSize (1)", () => {
 
     it("calculates size for multiple fields", () => {
         const { builder } = createTestSetup();
-        const fields = [
-            createNormalizedField({
-                name: "x",
-                type: createNormalizedType({ name: "gint" }),
-            }),
-            createNormalizedField({
-                name: "y",
-                type: createNormalizedType({ name: "gint" }),
-            }),
-        ];
+        const fields = [field("x", "gint"), field("y", "gint")];
 
         const size = builder.calculateStructSize(fields);
 
@@ -234,16 +182,7 @@ describe("FieldBuilder / calculateStructSize (1)", () => {
 describe("FieldBuilder / calculateStructSize (2)", () => {
     it("includes alignment padding in total size", () => {
         const { builder } = createTestSetup();
-        const fields = [
-            createNormalizedField({
-                name: "byte",
-                type: createNormalizedType({ name: "guint8" }),
-            }),
-            createNormalizedField({
-                name: "long",
-                type: createNormalizedType({ name: "gint64" }),
-            }),
-        ];
+        const fields = [field("byte", "guint8"), field("long", "gint64")];
 
         const size = builder.calculateStructSize(fields);
 
@@ -253,14 +192,10 @@ describe("FieldBuilder / calculateStructSize (2)", () => {
     it("includes private fields in size calculation", () => {
         const { builder } = createTestSetup();
         const fields = [
-            createNormalizedField({
-                name: "public",
-                type: createNormalizedType({ name: "gint" }),
+            field("public", "gint", {
                 private: false,
             }),
-            createNormalizedField({
-                name: "private",
-                type: createNormalizedType({ name: "gint" }),
+            field("private", "gint", {
                 private: true,
             }),
         ];
@@ -283,9 +218,7 @@ describe("FieldBuilder / getWritableFields (1)", () => {
     it("includes writable primitive fields", () => {
         const { builder } = createTestSetup();
         const fields = [
-            createNormalizedField({
-                name: "value",
-                type: createNormalizedType({ name: "gint" }),
+            field("value", "gint", {
                 writable: true,
             }),
         ];
@@ -298,15 +231,11 @@ describe("FieldBuilder / getWritableFields (1)", () => {
     it("excludes private fields", () => {
         const { builder } = createTestSetup();
         const fields = [
-            createNormalizedField({
-                name: "public",
-                type: createNormalizedType({ name: "gint" }),
+            field("public", "gint", {
                 writable: true,
                 private: false,
             }),
-            createNormalizedField({
-                name: "private",
-                type: createNormalizedType({ name: "gint" }),
+            field("private", "gint", {
                 writable: true,
                 private: true,
             }),
@@ -323,14 +252,10 @@ describe("FieldBuilder / getWritableFields (2)", () => {
     it("excludes explicitly non-writable fields", () => {
         const { builder } = createTestSetup();
         const fields = [
-            createNormalizedField({
-                name: "writable",
-                type: createNormalizedType({ name: "gint" }),
+            field("writable", "gint", {
                 writable: true,
             }),
-            createNormalizedField({
-                name: "readonly",
-                type: createNormalizedType({ name: "gint" }),
+            field("readonly", "gint", {
                 writable: false,
             }),
         ];
@@ -344,14 +269,10 @@ describe("FieldBuilder / getWritableFields (2)", () => {
     it("excludes non-memory-writable types", () => {
         const { builder } = createTestSetup();
         const fields = [
-            createNormalizedField({
-                name: "primitive",
-                type: createNormalizedType({ name: "gint" }),
+            field("primitive", "gint", {
                 writable: true,
             }),
-            createNormalizedField({
-                name: "object",
-                type: createNormalizedType({ name: "Gtk.Widget" }),
+            field("object", "Gtk.Widget", {
                 writable: true,
             }),
         ];
@@ -410,16 +331,7 @@ describe("FieldBuilder / isWritableType", () => {
 describe("FieldBuilder / alignment (1)", () => {
     it("aligns 2-byte types to 2-byte boundaries", () => {
         const { builder } = createTestSetup();
-        const fields = [
-            createNormalizedField({
-                name: "byte",
-                type: createNormalizedType({ name: "guint8" }),
-            }),
-            createNormalizedField({
-                name: "short",
-                type: createNormalizedType({ name: "gint16" }),
-            }),
-        ];
+        const fields = [field("byte", "guint8"), field("short", "gint16")];
 
         const layout = builder.calculateLayout(fields);
 
@@ -428,16 +340,7 @@ describe("FieldBuilder / alignment (1)", () => {
 
     it("aligns 4-byte types to 4-byte boundaries", () => {
         const { builder } = createTestSetup();
-        const fields = [
-            createNormalizedField({
-                name: "byte",
-                type: createNormalizedType({ name: "guint8" }),
-            }),
-            createNormalizedField({
-                name: "int",
-                type: createNormalizedType({ name: "gint" }),
-            }),
-        ];
+        const fields = [field("byte", "guint8"), field("int", "gint")];
 
         const layout = builder.calculateLayout(fields);
 
@@ -448,16 +351,7 @@ describe("FieldBuilder / alignment (1)", () => {
 describe("FieldBuilder / alignment (2)", () => {
     it("aligns 8-byte types to 8-byte boundaries", () => {
         const { builder } = createTestSetup();
-        const fields = [
-            createNormalizedField({
-                name: "byte",
-                type: createNormalizedType({ name: "guint8" }),
-            }),
-            createNormalizedField({
-                name: "long",
-                type: createNormalizedType({ name: "gint64" }),
-            }),
-        ];
+        const fields = [field("byte", "guint8"), field("long", "gint64")];
 
         const layout = builder.calculateLayout(fields);
 
@@ -469,8 +363,12 @@ describe("FieldBuilder - bitfields and unions (1)", () => {
     it("packs consecutive bitfield members into a shared storage unit", () => {
         const { builder } = createTestSetup();
         const fields = [
-            createNormalizedField({ name: "a", type: createNormalizedType({ name: "guint" }), bits: 3 }),
-            createNormalizedField({ name: "b", type: createNormalizedType({ name: "guint" }), bits: 5 }),
+            field("a", "guint", {
+                bits: 3,
+            }),
+            field("b", "guint", {
+                bits: 5,
+            }),
         ];
 
         const layout = builder.calculateLayout(fields);
@@ -484,8 +382,12 @@ describe("FieldBuilder - bitfields and unions (1)", () => {
     it("opens a fresh storage unit when a bitfield run overflows the current one", () => {
         const { builder } = createTestSetup();
         const fields = [
-            createNormalizedField({ name: "a", type: createNormalizedType({ name: "guint8" }), bits: 6 }),
-            createNormalizedField({ name: "b", type: createNormalizedType({ name: "guint8" }), bits: 6 }),
+            field("a", "guint8", {
+                bits: 6,
+            }),
+            field("b", "guint8", {
+                bits: 6,
+            }),
         ];
 
         const layout = builder.calculateLayout(fields);
@@ -497,10 +399,7 @@ describe("FieldBuilder - bitfields and unions (1)", () => {
 
     it("overlays union members at offset zero", () => {
         const { builder } = createTestSetup();
-        const fields = [
-            createNormalizedField({ name: "asInt", type: createNormalizedType({ name: "gint" }) }),
-            createNormalizedField({ name: "asLong", type: createNormalizedType({ name: "gint64" }) }),
-        ];
+        const fields = [field("asInt", "gint"), field("asLong", "gint64")];
 
         const layout = builder.calculateLayout(fields, false, true);
 
@@ -513,7 +412,9 @@ describe("FieldBuilder - bitfields and unions (2)", () => {
     it("overlays union bitfield members at offset zero", () => {
         const { builder } = createTestSetup();
         const fields = [
-            createNormalizedField({ name: "flag", type: createNormalizedType({ name: "guint" }), bits: 4 }),
+            field("flag", "guint", {
+                bits: 4,
+            }),
         ];
 
         const layout = builder.calculateLayout(fields, false, true);
@@ -525,10 +426,7 @@ describe("FieldBuilder - bitfields and unions (2)", () => {
 
     it("sizes a union as its widest member rounded to alignment", () => {
         const { builder } = createTestSetup();
-        const fields = [
-            createNormalizedField({ name: "asInt", type: createNormalizedType({ name: "gint" }) }),
-            createNormalizedField({ name: "asLong", type: createNormalizedType({ name: "gint64" }) }),
-        ];
+        const fields = [field("asInt", "gint"), field("asLong", "gint64")];
 
         expect(builder.calculateStructSize(fields, true)).toBe(8);
     });
@@ -538,9 +436,7 @@ describe("FieldBuilder - inline composite members", () => {
     it("sizes an inline composite member from its nested fields", () => {
         const { builder } = createTestSetup();
         const fields = [
-            createNormalizedField({
-                name: "inner",
-                type: createNormalizedType({ name: "AnonStruct" }),
+            field("inner", "AnonStruct", {
                 inlineComposite: {
                     isUnion: false,
                     fields: [
@@ -563,10 +459,7 @@ function pointWithRepo() {
         name: "Point",
         qualifiedName: "Gtk.Point",
         isUnion: false,
-        fields: [
-            createNormalizedField({ name: "x", type: createNormalizedType({ name: "gint" }) }),
-            createNormalizedField({ name: "y", type: createNormalizedType({ name: "gint" }) }),
-        ],
+        fields: [field("x", "gint"), field("y", "gint")],
     });
     const ns = createNormalizedNamespace({ name: "Gtk", records: new Map([["Point", point]]) });
     return createRepoBackedSetup(new Map([["Gtk", ns]]));
@@ -610,9 +503,9 @@ describe("FieldBuilder - nested struct resolution (1)", () => {
 
     it("identifies an inline nested struct field with writable sub-fields", () => {
         const { builder } = pointWithRepo();
-        const field = createNormalizedField({ name: "origin", type: createNormalizedType({ name: "Point" }) });
+        const target = field("origin", "Point");
 
-        expect(builder.isInlineNestedStruct(field)).toBe(true);
+        expect(builder.isInlineNestedStruct(target)).toBe(true);
     });
 
     it("rejects a pointer-to-struct field as an inline nested struct", () => {
@@ -633,7 +526,7 @@ describe("FieldBuilder - nested struct resolution (2)", () => {
             qualifiedName: "Gtk.Border",
             isUnion: false,
             glibTypeName: "GtkBorder",
-            fields: [createNormalizedField({ name: "left", type: createNormalizedType({ name: "gint" }) })],
+            fields: [field("left", "gint")],
         });
         const ns = createNormalizedNamespace({ name: "Gtk", records: new Map([["Border", boxed]]) });
         const { builder } = createRepoBackedSetup(new Map([["Gtk", ns]]));
@@ -652,7 +545,7 @@ describe("FieldBuilder - nested struct resolution (2)", () => {
 describe("FieldBuilder - writeFieldWrites (1)", () => {
     it("emits guarded write statements for writable primitive fields", () => {
         const { builder } = createTestSetup();
-        const fields = [createNormalizedField({ name: "value", type: createNormalizedType({ name: "gint" }) })];
+        const fields = [field("value", "gint")];
 
         const code = render(builder.writeFieldWrites(fields));
 
@@ -664,14 +557,11 @@ describe("FieldBuilder - writeFieldWrites (1)", () => {
             name: "Point",
             qualifiedName: "Gtk.Point",
             isUnion: false,
-            fields: [
-                createNormalizedField({ name: "x", type: createNormalizedType({ name: "gint" }) }),
-                createNormalizedField({ name: "y", type: createNormalizedType({ name: "gint" }) }),
-            ],
+            fields: [field("x", "gint"), field("y", "gint")],
         });
         const ns = createNormalizedNamespace({ name: "Gtk", records: new Map([["Point", point]]) });
         const { builder } = createRepoBackedSetup(new Map([["Gtk", ns]]));
-        const fields = [createNormalizedField({ name: "origin", type: createNormalizedType({ name: "Point" }) })];
+        const fields = [field("origin", "Point")];
 
         const code = render(builder.writeFieldWrites(fields));
 
@@ -682,7 +572,7 @@ describe("FieldBuilder - writeFieldWrites (1)", () => {
 
     it("renames an id field to avoid the reserved member name", () => {
         const { builder } = createTestSetup();
-        const fields = [createNormalizedField({ name: "id", type: createNormalizedType({ name: "gint" }) })];
+        const fields = [field("id", "gint")];
 
         const code = render(builder.writeFieldWrites(fields));
 
@@ -696,14 +586,11 @@ describe("FieldBuilder - writeFieldWrites (2)", () => {
             name: "Point",
             qualifiedName: "Gtk.Point",
             isUnion: false,
-            fields: [createNormalizedField({ name: "x", type: createNormalizedType({ name: "gint" }) })],
+            fields: [field("x", "gint")],
         });
         const ns = createNormalizedNamespace({ name: "Gtk", records: new Map([["Point", point]]) });
         const { builder } = createRepoBackedSetup(new Map([["Gtk", ns]]));
-        const fields = [
-            createNormalizedField({ name: "value", type: createNormalizedType({ name: "gint" }) }),
-            createNormalizedField({ name: "origin", type: createNormalizedType({ name: "Point" }) }),
-        ];
+        const fields = [field("value", "gint"), field("origin", "Point")];
 
         const initializable = builder.getInitializableFields(fields);
 
