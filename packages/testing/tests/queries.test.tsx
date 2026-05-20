@@ -9,6 +9,7 @@ import {
     GtkSwitch,
     GtkToggleButton,
 } from "@gtkx/react";
+import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import {
     findAllByLabelText,
@@ -22,6 +23,10 @@ import {
     render,
 } from "../src/index.js";
 
+const VBox = ({ children }: { children: ReactNode }) => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL}>{children}</GtkBox>
+);
+
 describe("findByRole", () => {
     it("finds element by accessible role", async () => {
         const { container } = await render(<GtkButton label="Test" />);
@@ -31,10 +36,10 @@ describe("findByRole", () => {
 
     it("filters by name option", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkButton label="Save" />
                 <GtkButton label="Cancel" />
-            </GtkBox>,
+            </VBox>,
         );
 
         const saveButton = await findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "Save" });
@@ -43,10 +48,10 @@ describe("findByRole", () => {
 
     it("filters by checked state for checkboxes", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkCheckButton label="Unchecked" />
                 <GtkCheckButton label="Checked" active />
-            </GtkBox>,
+            </VBox>,
         );
 
         const checkedBox = await findByRole(container, Gtk.AccessibleRole.CHECKBOX, { checked: true });
@@ -55,10 +60,10 @@ describe("findByRole", () => {
 
     it("filters by checked state for toggle buttons", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkToggleButton label="Inactive" />
                 <GtkToggleButton label="Active" active />
-            </GtkBox>,
+            </VBox>,
         );
 
         const activeToggle = await findByRole(container, Gtk.AccessibleRole.TOGGLE_BUTTON, { checked: true });
@@ -67,10 +72,10 @@ describe("findByRole", () => {
 
     it("filters by checked state for switches", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkSwitch />
                 <GtkSwitch active />
-            </GtkBox>,
+            </VBox>,
         );
 
         const activeSwitch = await findByRole(container, Gtk.AccessibleRole.SWITCH, { checked: true });
@@ -81,12 +86,12 @@ describe("findByRole", () => {
 describe("findByRole matchers", () => {
     it("finds expander by label", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkExpander label="Collapsed">Content</GtkExpander>
                 <GtkExpander label="Expanded" expanded>
                     Content
                 </GtkExpander>
-            </GtkBox>,
+            </VBox>,
         );
 
         const expandedButton = await findByRole(container, Gtk.AccessibleRole.BUTTON, { name: "Expanded" });
@@ -118,10 +123,10 @@ describe("findByRole error handling", () => {
 
     it("throws when multiple elements found", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkButton label="Same" />
                 <GtkButton label="Same" />
-            </GtkBox>,
+            </VBox>,
         );
         await expect(findByText(container, "Same", { timeout: 100 })).rejects.toThrow(
             /Found 2 elements with text 'Same'/,
@@ -132,11 +137,11 @@ describe("findByRole error handling", () => {
 describe("findAllByRole", () => {
     it("finds all elements with matching role", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkButton label="First" />
                 <GtkButton label="Second" />
                 <GtkLabel label="Text" />
-            </GtkBox>,
+            </VBox>,
         );
 
         const buttons = await findAllByRole(container, Gtk.AccessibleRole.BUTTON, { name: /First|Second/ });
@@ -193,11 +198,11 @@ describe("findByText", () => {
 describe("findAllByText", () => {
     it("finds all elements with matching text", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkButton label="Same" />
                 <GtkButton label="Same" />
                 <GtkButton label="Different" />
-            </GtkBox>,
+            </VBox>,
         );
 
         const buttons = await findAllByText(container, "Same");
@@ -213,10 +218,10 @@ describe("findByLabelText", () => {
                 entryRef.current = el;
             };
             return (
-                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <VBox>
                     <GtkLabel label="Username" mnemonicWidget={entryRef.current} />
                     <GtkEntry ref={ref} />
-                </GtkBox>
+                </VBox>
             );
         };
 
@@ -240,7 +245,7 @@ describe("findAllByLabelText", () => {
         const ref1 = { current: null as Gtk.Entry | null };
         const ref2 = { current: null as Gtk.Entry | null };
         const Form = () => (
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkLabel label="Field" mnemonicWidget={ref1.current} />
                 <GtkEntry
                     ref={(el) => {
@@ -253,7 +258,7 @@ describe("findAllByLabelText", () => {
                         ref2.current = el;
                     }}
                 />
-            </GtkBox>
+            </VBox>
         );
 
         const { container, rerender } = await render(<Form />);
@@ -281,10 +286,10 @@ describe("findByName", () => {
 describe("findAllByName", () => {
     it("finds all elements with matching widget name", async () => {
         const { container } = await render(
-            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <VBox>
                 <GtkEntry name="field" />
                 <GtkEntry name="field" />
-            </GtkBox>,
+            </VBox>,
         );
 
         const entries = await findAllByName(container, "field");
