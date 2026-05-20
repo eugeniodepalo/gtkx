@@ -77,6 +77,15 @@ Run codegen with: `turbo codegen`
 - Run specific package typecheck: `turbo typecheck --filter=<package-name>`
 - **Autofix linter issues:** If linter issues are autofixable, use `pnpm biome check --write` instead of fixing them manually
 
+**IMPORTANT — always run tests through `scripts/docker-run`:** Tests that exercise GTK widgets (everything in `@gtkx/e2e`, `@gtkx/native`, `@gtkx/react`, etc.) require Xvfb plus the full GTK/Adwaita runtime. The host distribution may not ship Xvfb (e.g. AlmaLinux 10 has no `xorg-x11-server-Xvfb` package), so running them directly on the host produces failures like `Xvfb exited (code 127): setpriv: failed to execute Xvfb: No such file or directory`. The `gtkx-ci:local` container has every dependency baked in. Prefix the relevant command:
+
+- `scripts/docker-run pnpm test`
+- `scripts/docker-run pnpm lint`
+- `scripts/docker-run pnpm typecheck`
+- `scripts/docker-run turbo test --filter=@gtkx/e2e`
+
+Pure TS-only packages that have no GTK dependency (e.g. `@gtkx/codegen` test suites) run fine on the host without the wrapper.
+
 **CRITICAL:** Any GTK/GLib warning or error in test output (e.g., `Gtk-CRITICAL`, `GLib-GObject-WARNING`, `Adwaita-CRITICAL`) must be treated as a critical issue and fixed immediately, even if tests pass.
 
 **GOTCHA — stale `tsbuildinfo` can hide typecheck errors:** `pnpm typecheck` may report success ("FULL TURBO" or per-package exit 0) while real type errors exist. `tsc -b` reads `*.tsbuildinfo` to skip rechecking files, but the file can carry stale state across input-hash changes (e.g., when codegen regenerates FFI signatures while react source still uses the old shape). Turbo then caches the false success. Symptoms: `pnpm typecheck` passes but `pnpm run docs` (TypeDoc bypasses tsbuildinfo) or CI on a fresh checkout reports type errors. To verify locally before pushing: `find . -name "*.tsbuildinfo" -not -path "*/node_modules/*" -delete && rm -rf .turbo packages/*/.turbo examples/*/.turbo && pnpm typecheck`.

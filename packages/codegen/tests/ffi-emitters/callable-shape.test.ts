@@ -27,6 +27,40 @@ const makeParam = (init: ParamInit): GirParameter =>
         optional: init.optional ?? false,
     });
 
+function buildShape(
+    parameters: readonly GirParameter[],
+    mapper: FakeFfiMapper,
+    overrides: Partial<Omit<Parameters<typeof buildCallableShape>[0], "parameters" | "ffiMapper">> = {},
+): ReturnType<typeof buildCallableShape> {
+    return buildCallableShape({
+        parameters: [...parameters],
+        returnTypeMapping: VOID_RETURN,
+        returnNullable: false,
+        sizeParamOffset: 0,
+        ffiMapper: mapper.asMapper(),
+        ...overrides,
+    });
+}
+
+function buildArrayWithLength(opts: { dataNullable?: boolean } = {}): { array: GirParameter; len: GirParameter } {
+    const array = new GirParameter({
+        name: "items",
+        type: new GirType({
+            name: "gint",
+            isArray: true,
+            elementType: makeType("gint"),
+            nullable: false,
+            sizeParamIndex: 1,
+        }),
+        direction: "in",
+        callerAllocates: false,
+        nullable: opts.dataNullable ?? false,
+        optional: false,
+    });
+    const len = makeParam({ name: "n_items", typeName: "gint" });
+    return { array, len };
+}
+
 class FakeFfiMapper {
     private readonly mappings = new Map<GirParameter, MappedType>();
     private readonly closureTargets = new Set<GirParameter>();
@@ -81,13 +115,7 @@ describe("buildCallableShape — input parameters (1)", () => {
             imports: [],
         });
 
-        const shape = buildCallableShape({
-            parameters: [param],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([param], mapper);
 
         expect(shape.signatureParams).toEqual([{ name: "value", tsType: "number", optional: false }]);
         expect(shape.callArgs).toEqual([
@@ -119,13 +147,7 @@ describe("buildCallableShape — input parameters (2)", () => {
                 imports: [],
             });
 
-        const shape = buildCallableShape({
-            parameters: [required, nullable],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([required, nullable], mapper);
 
         expect(shape.callArgs[0]?.value).toBe("getHandle(widget)");
         expect(shape.callArgs[1]?.value).toBe("tryGetHandle(parent)");
@@ -139,13 +161,7 @@ describe("buildCallableShape — input parameters (2)", () => {
             imports: [],
         });
 
-        const shape = buildCallableShape({
-            parameters: [param],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([param], mapper);
 
         expect(shape.callArgs[0]?.value).toBe("getHandle(anything)");
     });
@@ -160,13 +176,7 @@ describe("buildCallableShape — input parameters (3)", () => {
             imports: [],
         });
 
-        const shape = buildCallableShape({
-            parameters: [param],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([param], mapper);
 
         expect(shape.callArgs[0]?.value).toBe("widgets.map(item => getHandle(item))");
     });
@@ -183,13 +193,7 @@ describe("buildCallableShape — input parameters (3)", () => {
             imports: [],
         });
 
-        const shape = buildCallableShape({
-            parameters: [param],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([param], mapper);
 
         expect(shape.callArgs[0]?.value).toBe(
             "lookup ? globalThis.Array.from(lookup).map(([k, v]) => [k, tryGetHandle(v)]) : null",
@@ -210,38 +214,13 @@ describe("buildCallableShape — input parameters (4)", () => {
             imports: [],
         });
 
-        const shape = buildCallableShape({
-            parameters: [param],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([param], mapper);
 
         expect(shape.callArgs[0]?.value).toBe("dict ? globalThis.Array.from(dict) : null");
     });
 });
 
 describe("buildCallableShape — length parameters (1)", () => {
-    function buildArrayWithLength(opts: { dataNullable?: boolean }): { array: GirParameter; len: GirParameter } {
-        const array = new GirParameter({
-            name: "items",
-            type: new GirType({
-                name: "gint",
-                isArray: true,
-                elementType: makeType("gint"),
-                nullable: false,
-                sizeParamIndex: 1,
-            }),
-            direction: "in",
-            callerAllocates: false,
-            nullable: opts.dataNullable ?? false,
-            optional: false,
-        });
-        const len = makeParam({ name: "n_items", typeName: "gint" });
-        return { array, len };
-    }
-
     it("hides a length parameter and synthesizes its value from the data array length", () => {
         const { array, len } = buildArrayWithLength({});
         const mapper = new FakeFfiMapper()
@@ -257,13 +236,7 @@ describe("buildCallableShape — length parameters (1)", () => {
             })
             .setMapping(len, { ts: "number", ffi: { type: "int32" }, imports: [] });
 
-        const shape = buildCallableShape({
-            parameters: [array, len],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([array, len], mapper);
 
         expect(shape.signatureParams.map((p) => p.name)).toEqual(["items"]);
         expect(shape.callArgs[1]?.value).toBe("items.length");
@@ -271,25 +244,6 @@ describe("buildCallableShape — length parameters (1)", () => {
 });
 
 describe("buildCallableShape — length parameters (2)", () => {
-    function buildArrayWithLength(opts: { dataNullable?: boolean }): { array: GirParameter; len: GirParameter } {
-        const array = new GirParameter({
-            name: "items",
-            type: new GirType({
-                name: "gint",
-                isArray: true,
-                elementType: makeType("gint"),
-                nullable: false,
-                sizeParamIndex: 1,
-            }),
-            direction: "in",
-            callerAllocates: false,
-            nullable: opts.dataNullable ?? false,
-            optional: false,
-        });
-        const len = makeParam({ name: "n_items", typeName: "gint" });
-        return { array, len };
-    }
-
     it("guards length expressions when the data array is nullable", () => {
         const { array, len } = buildArrayWithLength({ dataNullable: true });
         const mapper = new FakeFfiMapper()
@@ -305,13 +259,7 @@ describe("buildCallableShape — length parameters (2)", () => {
             })
             .setMapping(len, { ts: "number", ffi: { type: "int32" }, imports: [] });
 
-        const shape = buildCallableShape({
-            parameters: [array, len],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([array, len], mapper);
 
         expect(shape.callArgs[1]?.value).toBe("(items?.length ?? 0)");
     });
@@ -348,13 +296,7 @@ describe("buildCallableShape — length parameters (3)", () => {
             })
             .setMapping(len, { ts: "number", ffi: { type: "int32" }, imports: [] });
 
-        const shape = buildCallableShape({
-            parameters: [data, len],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([data, len], mapper);
 
         expect(shape.callArgs[1]?.value).toBe("buf.length");
     });
@@ -370,13 +312,7 @@ describe("buildCallableShape — out parameters (1)", () => {
             imports: [],
         });
 
-        const shape = buildCallableShape({
-            parameters: [out],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([out], mapper);
 
         expect(shape.signatureParams).toEqual([]);
         expect(shape.hiddenOuts).toHaveLength(1);
@@ -394,13 +330,7 @@ describe("buildCallableShape — out parameters (1)", () => {
             imports: [],
         });
 
-        const shape = buildCallableShape({
-            parameters: [inout],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([inout], mapper);
 
         expect(shape.signatureParams).toEqual([{ name: "value", tsType: "number", optional: false }]);
         expect(shape.hiddenOuts[0]?.kind).toBe("ref-primitive-inout");
@@ -424,13 +354,7 @@ describe("buildCallableShape — out parameters (2)", () => {
             imports: [],
         });
 
-        const shape = buildCallableShape({
-            parameters: [inout],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([inout], mapper);
 
         expect(shape.hiddenOuts[0]?.initialValue).toBe("value ?? 0");
     });
@@ -449,13 +373,7 @@ describe("buildCallableShape — out parameters (3)", () => {
             imports: [],
         });
 
-        const shape = buildCallableShape({
-            parameters: [inout],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([inout], mapper);
 
         expect(shape.signatureParams).toEqual([{ name: "widget", tsType: "Gtk.Widget", optional: false }]);
         expect(shape.hiddenOuts).toEqual([]);
@@ -477,13 +395,7 @@ describe("buildCallableShape — out parameters (4)", () => {
             imports: [],
         });
 
-        const shape = buildCallableShape({
-            parameters: [out],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([out], mapper);
 
         expect(shape.signatureParams).toEqual([{ name: "ev", tsType: "Gdk.Event", optional: false }]);
         expect(shape.hiddenOuts).toEqual([]);
@@ -506,13 +418,7 @@ describe("buildCallableShape — out parameters (5)", () => {
             imports: [],
         });
 
-        const shape = buildCallableShape({
-            parameters: [out],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([out], mapper);
 
         expect(shape.hiddenOuts).toHaveLength(1);
         expect(shape.hiddenOuts[0]?.kind).toBe("ref-handle");
@@ -536,13 +442,7 @@ describe("buildCallableShape — out parameters (6)", () => {
             imports: [],
         });
 
-        const shape = buildCallableShape({
-            parameters: [out],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([out], mapper);
 
         expect(shape.hiddenOuts[0]?.tsType).toBe("Gtk.Widget | null");
         expect(shape.returnTupleEntries[0]?.nullable).toBe(true);
@@ -565,13 +465,7 @@ describe("buildCallableShape — out parameters (7)", () => {
             })
             .allowLocalAllocation("Graphene.Rect");
 
-        const shape = buildCallableShape({
-            parameters: [out],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([out], mapper);
 
         expect(shape.hiddenOuts).toHaveLength(1);
         expect(shape.hiddenOuts[0]?.kind).toBe("alloc-struct");
@@ -590,12 +484,8 @@ describe("buildCallableShape — return tuple", () => {
             imports: [],
         });
 
-        const shape = buildCallableShape({
-            parameters: [out],
+        const shape = buildShape([out], mapper, {
             returnTypeMapping: { ts: "boolean", ffi: { type: "boolean" }, imports: [] },
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
         });
 
         expect(shape.returnTupleEntries).toEqual([
@@ -611,13 +501,7 @@ describe("buildCallableShape — return tuple", () => {
             .setMapping(required, { ts: "number", ffi: { type: "int32" }, imports: [] })
             .setMapping(opt, { ts: "number", ffi: { type: "int32" }, imports: [] });
 
-        const shape = buildCallableShape({
-            parameters: [opt, required],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([opt, required], mapper);
 
         expect(shape.signatureParams.map((p) => p.name)).toEqual(["second", "first"]);
         expect(shape.signatureParams.find((p) => p.name === "second")?.optional).toBeFalsy();
@@ -637,13 +521,7 @@ describe("buildCallableShape — filtering", () => {
             .setMapping(userData, { ts: "number", ffi: { type: "uint64" }, imports: [] })
             .markClosureTarget(userData);
 
-        const shape = buildCallableShape({
-            parameters: [callback, userData],
-            returnTypeMapping: VOID_RETURN,
-            returnNullable: false,
-            sizeParamOffset: 0,
-            ffiMapper: mapper.asMapper(),
-        });
+        const shape = buildShape([callback, userData], mapper);
 
         expect(shape.signatureParams.map((p) => p.name)).toEqual(["handler"]);
         expect(shape.callArgs).toHaveLength(1);

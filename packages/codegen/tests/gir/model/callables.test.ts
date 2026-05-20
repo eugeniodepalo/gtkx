@@ -1,28 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { GirConstructor, GirFunction, GirMethod } from "../../../src/gir/model/callables.js";
-import { GirParameter } from "../../../src/gir/model/parameter.js";
-import { GirType } from "../../../src/gir/model/type.js";
+import { createNormalizedParameter, createNormalizedType } from "../../fixtures/gir-fixtures.js";
 
-function makeType(name: string): GirType {
-    return new GirType({ name, isArray: false, elementType: null, nullable: false });
-}
-
-function makeParam(overrides: Partial<ConstructorParameters<typeof GirParameter>[0]> = {}): GirParameter {
-    return new GirParameter({
-        name: overrides.name ?? "value",
-        type: overrides.type ?? makeType("gint"),
-        direction: overrides.direction ?? "in",
-        callerAllocates: overrides.callerAllocates ?? false,
-        nullable: overrides.nullable ?? false,
-        optional: overrides.optional ?? false,
-        scope: overrides.scope,
-        closure: overrides.closure,
-        destroy: overrides.destroy,
-        transferOwnership: overrides.transferOwnership,
-        varargs: overrides.varargs,
-        doc: overrides.doc,
-    });
-}
+const makeType = (name: string) => createNormalizedType({ name });
+const makeParam = createNormalizedParameter;
 
 describe("GirCallable (via GirMethod) / getRequiredParameters", () => {
     it("returns only non-optional, non-nullable input params", () => {

@@ -5,7 +5,9 @@ import {
     createNormalizedClass,
     createNormalizedNamespace,
     createWidgetClass,
+    NULL_REPO,
     qualifiedName,
+    singleClassRepo,
 } from "../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../fixtures/mock-repository.js";
 
@@ -23,21 +25,8 @@ describe("isWidgetType (1)", () => {
     });
 
     it("returns true for widget subclass", () => {
-        const nullRepo = {
-            resolveClass: () => null,
-            resolveInterface: () => null,
-            findClasses: () => [],
-        };
-
-        const widgetClass = createWidgetClass({}, nullRepo);
-
-        const buttonRepo = {
-            resolveClass: () => widgetClass,
-            resolveInterface: () => null,
-            findClasses: () => [],
-        };
-
-        const buttonClass = createButtonClass({}, buttonRepo);
+        const widgetClass = createWidgetClass({}, NULL_REPO);
+        const buttonClass = createButtonClass({}, singleClassRepo(widgetClass));
 
         const ns = createNormalizedNamespace({
             name: "Gtk",

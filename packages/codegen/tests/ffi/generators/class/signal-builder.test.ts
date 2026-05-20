@@ -4,6 +4,11 @@ import { Writer } from "../../../../src/builders/text-writer.js";
 import { SignalBuilder, type SignalBuilderOptions } from "../../../../src/ffi/generators/class/signal-builder.js";
 import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
 import {
+    buildGeneratorOptions,
+    GTK_GENERATOR_OPTIONS,
+    setupGtkFfiContext,
+} from "../../../fixtures/generator-fixtures.js";
+import {
     createNormalizedClass,
     createNormalizedEnumeration,
     createNormalizedInterface,
@@ -28,19 +33,7 @@ function createTestSetup(
     classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]> = {},
     namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map(),
 ) {
-    if (!namespaces.has("Gtk")) {
-        namespaces.set("Gtk", createNormalizedNamespace({ name: "Gtk" }));
-    }
-    const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-    const file = fileBuilder();
-    const options = {
-        namespace: "Gtk",
-        sharedLibrary: "libgtk-4.so.1",
-        glibLibrary: "libglib-2.0.so.0",
-        gobjectLibrary: "libgobject-2.0.so.0",
-    };
-
+    const { repo, ffiMapper, file, options } = setupGtkFfiContext(namespaces);
     const cls = createNormalizedClass({
         name: "Button",
         qualifiedName: qualifiedName("Gtk", "Button"),
@@ -48,7 +41,6 @@ function createTestSetup(
         signals: [],
         ...classOverrides,
     });
-
     const builder = new SignalBuilder({
         cls,
         ffiMapper,

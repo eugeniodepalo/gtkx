@@ -24,11 +24,19 @@ function qualifiedName(ns: string, name: string): string {
 
 export type { RepositoryLike };
 
-const NULL_REPO: RepositoryLike = {
+export const NULL_REPO: RepositoryLike = {
     resolveClass: () => null,
     resolveInterface: () => null,
     findClasses: () => [],
 };
+
+export function singleClassRepo(cls: GirClass | null): RepositoryLike {
+    return {
+        resolveClass: () => cls,
+        resolveInterface: () => null,
+        findClasses: () => [],
+    };
+}
 
 type NormalizedTypeData = ConstructorParameters<typeof GirType>[0];
 type NormalizedParameterData = ConstructorParameters<typeof GirParameter>[0];
@@ -288,6 +296,14 @@ export function createNormalizedNamespace(overrides: Partial<NormalizedNamespace
         aliases: new Map(),
         ...overrides,
     });
+}
+
+export function gtkNamespaceWith(cls: GirClass): Map<string, GirNamespace> {
+    const ns = createNormalizedNamespace({
+        name: "Gtk",
+        classes: new Map([[cls.name, cls]]),
+    });
+    return new Map([["Gtk", ns]]);
 }
 
 export function createWidgetClass(

@@ -8,7 +8,10 @@ import {
     createNormalizedSignal,
     createNormalizedType,
     createWidgetClass,
+    gtkNamespaceWith,
+    NULL_REPO,
     qualifiedName,
+    singleClassRepo,
 } from "../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../fixtures/mock-repository.js";
 
@@ -22,11 +25,7 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
 describe("SignalAnalyzer / analyzeWidgetSignals (1)", () => {
     it("returns empty array for class with no signals", () => {
         const cls = createNormalizedClass({ signals: [] });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Button", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetSignals(cls);
 
@@ -39,11 +38,7 @@ describe("SignalAnalyzer / analyzeWidgetSignals (1)", () => {
             parent: null,
             signals: [createNormalizedSignal({ name: "clicked" })],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Button", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetSignals(cls);
 
@@ -65,11 +60,7 @@ describe("SignalAnalyzer / analyzeWidgetSignals (2)", () => {
             parent: null,
             signals: [createNormalizedSignal({ name: "close-request" })],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Window", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetSignals(cls);
 
@@ -99,11 +90,7 @@ describe("SignalAnalyzer / analyzeWidgetSignals (3)", () => {
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Scale", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetSignals(cls);
 
@@ -136,11 +123,7 @@ describe("SignalAnalyzer / analyzeWidgetSignals (4)", () => {
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Widget", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetSignals(cls);
 
@@ -160,11 +143,7 @@ describe("SignalAnalyzer / analyzeWidgetSignals (5)", () => {
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Window", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetSignals(cls);
 
@@ -174,9 +153,7 @@ describe("SignalAnalyzer / analyzeWidgetSignals (5)", () => {
 
 describe("SignalAnalyzer / analyzeWidgetSignals (6)", () => {
     it("excludes signals inherited from parent class", () => {
-        const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
-        const widgetClass = createWidgetClass({}, nullRepo);
-        const buttonRepo = { resolveClass: () => widgetClass, resolveInterface: () => null, findClasses: () => [] };
+        const widgetClass = createWidgetClass({}, NULL_REPO);
         const buttonClass = createNormalizedClass(
             {
                 name: "Button",
@@ -184,7 +161,7 @@ describe("SignalAnalyzer / analyzeWidgetSignals (6)", () => {
                 parent: qualifiedName("Gtk", "Widget"),
                 signals: [createNormalizedSignal({ name: "clicked" }), createNormalizedSignal({ name: "activate" })],
             },
-            buttonRepo,
+            singleClassRepo(widgetClass),
         );
 
         const ns = createNormalizedNamespace({
@@ -217,11 +194,7 @@ describe("SignalAnalyzer / analyzeWidgetSignals (7)", () => {
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Button", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetSignals(cls);
 
@@ -327,11 +300,7 @@ describe("SignalAnalyzer / analyzeWidgetSignals (10)", () => {
                 createNormalizedSignal({ name: "icon-press" }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Entry", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetSignals(cls);
 

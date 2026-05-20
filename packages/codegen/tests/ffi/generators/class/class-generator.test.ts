@@ -5,6 +5,11 @@ import { ClassGenerator } from "../../../../src/ffi/generators/class/index.js";
 import type { GirRepository } from "../../../../src/gir/index.js";
 import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
 import {
+    buildGeneratorOptions,
+    GTK_GENERATOR_OPTIONS,
+    setupGtkFfiContext,
+} from "../../../fixtures/generator-fixtures.js";
+import {
     createNormalizedClass,
     createNormalizedConstructor,
     createNormalizedFunction,
@@ -21,8 +26,8 @@ function createTestSetup(
     classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]> = {},
     namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map(),
 ) {
-    const gtkNs = namespaces.get("Gtk") ?? createNormalizedNamespace({ name: "Gtk" });
-    namespaces.set("Gtk", gtkNs);
+    const { repo, ffiMapper, file, options } = setupGtkFfiContext(namespaces);
+    const gtkNs = namespaces.get("Gtk") as ReturnType<typeof createNormalizedNamespace>;
 
     const widgetClass = createNormalizedClass({
         name: "Widget",
@@ -38,16 +43,6 @@ function createTestSetup(
         ...classOverrides,
     });
     gtkNs.classes.set(cls.name, cls);
-
-    const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-    const file = fileBuilder();
-    const options = {
-        namespace: "Gtk",
-        sharedLibrary: "libgtk-4.so.1",
-        glibLibrary: "libglib-2.0.so.0",
-        gobjectLibrary: "libgobject-2.0.so.0",
-    };
 
     const generator = new ClassGenerator({
         cls,
@@ -410,19 +405,13 @@ describe("ClassGenerator / ParamSpec handling", () => {
         const repo = createMockRepository(namespaces);
         const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "GObject");
         const psFile = fileBuilder();
-        const options = {
-            namespace: "GObject",
-            sharedLibrary: "libgobject-2.0.so.0",
-            glibLibrary: "libglib-2.0.so.0",
-            gobjectLibrary: "libgobject-2.0.so.0",
-        };
 
         const generator = new ClassGenerator({
             cls: paramSpecClass,
             ffiMapper,
             file: psFile,
             repository: repo as unknown as GirRepository,
-            options,
+            options: buildGeneratorOptions("GObject"),
         });
 
         generator.generate();
@@ -526,19 +515,13 @@ function setupClassImplementingInterface(
 
     const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
     const file = fileBuilder();
-    const options = {
-        namespace: "Gtk",
-        sharedLibrary: "libgtk-4.so.1",
-        glibLibrary: "libglib-2.0.so.0",
-        gobjectLibrary: "libgobject-2.0.so.0",
-    };
 
     const generator = new ClassGenerator({
         cls: button,
         ffiMapper,
         file,
         repository: repo as unknown as GirRepository,
-        options,
+        options: GTK_GENERATOR_OPTIONS,
     });
     return { generator, file };
 }
@@ -606,19 +589,13 @@ describe("ClassGenerator / interface methods (2)", () => {
 
         const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
         const file = fileBuilder();
-        const options = {
-            namespace: "Gtk",
-            sharedLibrary: "libgtk-4.so.1",
-            glibLibrary: "libglib-2.0.so.0",
-            gobjectLibrary: "libgobject-2.0.so.0",
-        };
 
         const generator = new ClassGenerator({
             cls: button,
             ffiMapper,
             file,
             repository: repo as unknown as GirRepository,
-            options,
+            options: GTK_GENERATOR_OPTIONS,
         });
         generator.generate();
 
@@ -647,19 +624,13 @@ describe("ClassGenerator / interface methods (3)", () => {
         const repo = createMockRepository(new Map([["Gtk", gtkNs]]));
         const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
         const file = fileBuilder();
-        const options = {
-            namespace: "Gtk",
-            sharedLibrary: "libgtk-4.so.1",
-            glibLibrary: "libglib-2.0.so.0",
-            gobjectLibrary: "libgobject-2.0.so.0",
-        };
 
         const generator = new ClassGenerator({
             cls: button,
             ffiMapper,
             file,
             repository: repo as unknown as GirRepository,
-            options,
+            options: GTK_GENERATOR_OPTIONS,
         });
         const result = generator.generate();
         expect(result).toBeDefined();
@@ -705,12 +676,7 @@ describe("ClassGenerator / name collisions with parent methods (1)", () => {
             ffiMapper,
             file,
             repository: repo as unknown as GirRepository,
-            options: {
-                namespace: "Gtk",
-                sharedLibrary: "libgtk-4.so.1",
-                glibLibrary: "libglib-2.0.so.0",
-                gobjectLibrary: "libgobject-2.0.so.0",
-            },
+            options: GTK_GENERATOR_OPTIONS,
         });
 
         const result = generator.generate();
@@ -751,12 +717,7 @@ describe("ClassGenerator / name collisions with parent methods (2)", () => {
             ffiMapper,
             file,
             repository: repo as unknown as GirRepository,
-            options: {
-                namespace: "Gtk",
-                sharedLibrary: "libgtk-4.so.1",
-                glibLibrary: "libglib-2.0.so.0",
-                gobjectLibrary: "libgobject-2.0.so.0",
-            },
+            options: GTK_GENERATOR_OPTIONS,
         });
 
         generator.generate();

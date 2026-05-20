@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type ClassMetaAnalyzers, ClassMetaBuilder } from "../../../../src/ffi/generators/class/class-meta-builder.js";
 import type { GirRepository } from "../../../../src/gir/index.js";
+import { setupGtkFfiContext } from "../../../fixtures/generator-fixtures.js";
 import {
     createNormalizedClass,
     createNormalizedNamespace,
@@ -29,8 +30,8 @@ function createTestSetup(
     namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map(),
     analyzerOverrides: Partial<ClassMetaAnalyzers> = {},
 ) {
-    const ns = namespaces.get("Gtk") ?? createNormalizedNamespace({ name: "Gtk" });
-    namespaces.set("Gtk", ns);
+    const { repo } = setupGtkFfiContext(namespaces);
+    const ns = namespaces.get("Gtk") as ReturnType<typeof createNormalizedNamespace>;
 
     const widgetClass = createNormalizedClass({
         name: "Widget",
@@ -47,9 +48,7 @@ function createTestSetup(
     });
     ns.classes.set(cls.name, cls);
 
-    const repo = createMockRepository(namespaces);
     const analyzers = { ...createMockAnalyzers(), ...analyzerOverrides };
-
     const builder = new ClassMetaBuilder(cls, repo as unknown as GirRepository, "Gtk", analyzers);
 
     return { cls, builder, analyzers, repo };

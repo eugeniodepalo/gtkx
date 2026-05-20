@@ -8,6 +8,7 @@ import {
 } from "../../../../src/ffi/generators/class/property-accessor-builder.js";
 import type { GirMethod, GirProperty, GirRepository } from "../../../../src/gir/index.js";
 import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
+import { GTK_GENERATOR_OPTIONS } from "../../../fixtures/generator-fixtures.js";
 import {
     createNormalizedClass,
     createNormalizedEnumeration,
@@ -21,13 +22,6 @@ import {
     qualifiedName,
 } from "../../../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../../../fixtures/mock-repository.js";
-
-const OPTIONS = {
-    namespace: "Gtk",
-    sharedLibrary: "libgtk-4.so.1",
-    glibLibrary: "libglib-2.0.so.0",
-    gobjectLibrary: "libgobject-2.0.so.0",
-};
 
 function buildGtkNamespace() {
     const ns = createNormalizedNamespace({ name: "Gtk" });
@@ -70,7 +64,7 @@ function createSetup(
         ffiMapper,
         imports: file,
         repository: repo as unknown as GirRepository,
-        options: OPTIONS,
+        options: GTK_GENERATOR_OPTIONS,
         selfNames: new Set(["Button"]),
     });
     return { builder, cls, file };
@@ -100,7 +94,7 @@ function createInterfaceSetup(
         ffiMapper,
         imports: file,
         repository: repo as unknown as GirRepository,
-        options: OPTIONS,
+        options: GTK_GENERATOR_OPTIONS,
         selfNames: new Set(["Orientable"]),
         interfaceSource: source,
     });

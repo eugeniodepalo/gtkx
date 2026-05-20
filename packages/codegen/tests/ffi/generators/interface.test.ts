@@ -3,6 +3,7 @@ import { fileBuilder } from "../../../src/builders/file-builder.js";
 import { stringify } from "../../../src/builders/stringify.js";
 import { InterfaceGenerator } from "../../../src/ffi/generators/interface.js";
 import { FfiMapper } from "../../../src/type-system/ffi-mapper.js";
+import { buildGeneratorOptions } from "../../fixtures/generator-fixtures.js";
 import {
     createNormalizedClass,
     createNormalizedFunction,
@@ -26,17 +27,11 @@ function createTestSetup(
     const repo = createMockRepository(namespaces);
     const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], namespace);
     const file = fileBuilder();
-    const options = {
-        namespace,
-        sharedLibrary: namespace === "GObject" ? "libgobject-2.0.so.0" : "libgtk-4.so.1",
-        glibLibrary: "libglib-2.0.so.0",
-        gobjectLibrary: "libgobject-2.0.so.0",
-    };
     const generator = new InterfaceGenerator(
         ffiMapper,
         file,
         repo as ConstructorParameters<typeof FfiMapper>[0],
-        options,
+        buildGeneratorOptions(namespace),
     );
     return { generator, file, repo };
 }

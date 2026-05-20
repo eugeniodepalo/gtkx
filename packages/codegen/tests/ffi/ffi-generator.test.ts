@@ -38,6 +38,18 @@ const namespaceFile = (
     return files.find((f) => f.path === `${lower}/${lower}.js`);
 };
 
+const generateNamespaceFor = (
+    ns: GirNamespace,
+    namespace = "Gtk",
+): { files: Array<{ path: string; content: string }>; file: { path: string; content: string } | undefined } => {
+    const repo = createMockRepository(baseNamespaces({ [namespace]: ns }));
+    const { files } = new FfiGenerator({
+        repository: repo as unknown as GirRepository,
+        namespace,
+    }).generateNamespace(namespace);
+    return { files, file: namespaceFile(files, namespace) };
+};
+
 describe("FfiGenerator constructor", () => {
     it("constructs with the supplied repository and namespace", () => {
         const repo = createMockRepository(baseNamespaces());
@@ -99,15 +111,9 @@ describe("FfiGenerator.generateNamespace (2)", () => {
             name: "Gtk",
             enumerations: new Map([[enumeration.name, enumeration]]),
         });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
+        const { files, file } = generateNamespaceFor(ns);
 
         expect(files).toHaveLength(1);
-        const file = namespaceFile(files, "Gtk");
         expect(file?.path).toBe("gtk/gtk.js");
         expect(file?.content).toContain("export const Orientation");
     });
@@ -123,14 +129,7 @@ describe("FfiGenerator.generateNamespace (2)", () => {
             enumerations: new Map([[enumeration.name, enumeration]]),
             bitfields: new Map([[flags.name, flags]]),
         });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
-
-        const file = namespaceFile(files, "Gtk");
+        const { file } = generateNamespaceFor(ns);
         expect(file?.content).toContain("export const Orientation");
         expect(file?.content).toContain("export const DebugFlags");
     });
@@ -142,14 +141,7 @@ describe("FfiGenerator.generateNamespace (3)", () => {
             name: "Gtk",
             functions: new Map([["init", createNormalizedFunction({ name: "init" })]]),
         });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
-
-        const file = namespaceFile(files, "Gtk");
+        const { file } = generateNamespaceFor(ns);
         expect(file?.content).toContain("export const init");
     });
 
@@ -158,27 +150,14 @@ describe("FfiGenerator.generateNamespace (3)", () => {
             name: "Gtk",
             constants: new Map([["MAJOR_VERSION", createNormalizedConstant({ qualifiedName: "Gtk.MAJOR_VERSION" })]]),
         });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
-
-        const file = namespaceFile(files, "Gtk");
+        const { file } = generateNamespaceFor(ns);
         expect(file?.content).toContain("export const MAJOR_VERSION");
     });
 
     it("emits only the gobject augmentation side-effect imports when there is nothing to declare", () => {
         const ns = createNormalizedNamespace({ name: "Pango", sharedLibrary: "libpango-1.0.so.0" });
-        const repo = createMockRepository(baseNamespaces({ Pango: ns }));
+        const { file } = generateNamespaceFor(ns, "Pango");
 
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Pango",
-        }).generateNamespace("Pango");
-
-        const file = namespaceFile(files, "Pango");
         expect(file?.path).toBe("pango/pango.js");
         expect(file?.content).toBe('import "../../gobject/object.js";\nimport "../../gobject/value.js";\n\n');
     });
@@ -195,14 +174,7 @@ describe("FfiGenerator.generateNamespace (4)", () => {
                 [widget.name, widget],
             ]),
         });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
-
-        const file = namespaceFile(files, "Gtk");
+        const { file } = generateNamespaceFor(ns);
         expect(file?.content).toContain("export class Widget");
         expect(file?.content).toContain("export class Button");
     });
@@ -213,14 +185,7 @@ describe("FfiGenerator.generateNamespace (4)", () => {
             name: "Gtk",
             interfaces: new Map([[orientable.name, orientable]]),
         });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
-
-        const file = namespaceFile(files, "Gtk");
+        const { file } = generateNamespaceFor(ns);
         expect(file?.content).toContain("export class Orientable");
     });
 });
@@ -237,14 +202,7 @@ describe("FfiGenerator.generateNamespace (5)", () => {
             name: "Gtk",
             records: new Map([[privateRec.name, privateRec]]),
         });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
-
-        const file = namespaceFile(files, "Gtk");
+        const { file } = generateNamespaceFor(ns);
         expect(file?.content).toContain("export class WidgetPrivate");
     });
 });
@@ -270,14 +228,7 @@ describe("FfiGenerator.generateNamespace (6)", () => {
             name: "Gtk",
             records: new Map([[klass.name, klass]]),
         });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
-
-        const file = namespaceFile(files, "Gtk");
+        const { file } = generateNamespaceFor(ns);
         expect(file?.content).toContain("const WidgetClass");
     });
 });
@@ -303,14 +254,7 @@ describe("FfiGenerator.generateNamespace (7)", () => {
             name: "Gtk",
             records: new Map([[iface.name, iface]]),
         });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
-
-        const file = namespaceFile(files, "Gtk");
+        const { file } = generateNamespaceFor(ns);
         expect(file?.content).toContain("const OrientableIface");
     });
 });
@@ -329,19 +273,7 @@ describe("FfiGenerator.generateNamespace (8)", () => {
             sharedLibrary: "libglib-2.0.so.0",
             records: new Map([[opaqueRecord.name, opaqueRecord]]),
         });
-        const repo = createMockRepository(
-            baseNamespaces({
-                GLib: ns,
-                Gtk: createNormalizedNamespace({ name: "Gtk" }),
-            }),
-        );
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "GLib",
-        }).generateNamespace("GLib");
-
-        const file = namespaceFile(files, "GLib");
+        const { file } = generateNamespaceFor(ns, "GLib");
         expect(file?.content).toContain("export class Bytes");
     });
 });
@@ -367,14 +299,7 @@ describe("FfiGenerator.generateNamespace (9)", () => {
                 [inner.name, inner],
             ]),
         });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
-
-        const file = namespaceFile(files, "Gtk");
+        const { file } = generateNamespaceFor(ns);
         expect(file?.content).toContain("export class Outer");
         expect(file?.content).toContain("export class Inner");
     });
@@ -401,14 +326,7 @@ describe("FfiGenerator.generateNamespace (10)", () => {
                 [inner.name, inner],
             ]),
         });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
-
-        const file = namespaceFile(files, "Gtk");
+        const { file } = generateNamespaceFor(ns);
         expect(file?.content).toContain("export class Outer");
         expect(file?.content).toContain("export class Inner");
     });
@@ -436,19 +354,7 @@ describe("FfiGenerator.generateNamespace (11)", () => {
             sharedLibrary: "libglib-2.0.so.0",
             records: new Map([[opaqueRecord.name, opaqueRecord]]),
         });
-        const repo = createMockRepository(
-            baseNamespaces({
-                GLib: ns,
-                Gtk: createNormalizedNamespace({ name: "Gtk" }),
-            }),
-        );
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "GLib",
-        }).generateNamespace("GLib");
-
-        const file = namespaceFile(files, "GLib");
+        const { file } = generateNamespaceFor(ns, "GLib");
         expect(file?.content).toContain("getSize");
     });
 });
@@ -470,18 +376,7 @@ describe("FfiGenerator.generateNamespace (12)", () => {
             sharedLibrary: "libgdk-4.so.1",
             records: new Map([[record.name, record]]),
         });
-        const repo = createMockRepository(
-            baseNamespaces({
-                Gdk: ns,
-            }),
-        );
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gdk",
-        }).generateNamespace("Gdk");
-
-        const file = namespaceFile(files, "Gdk");
+        const { file } = generateNamespaceFor(ns, "Gdk");
         expect(file?.content).toContain("export class Rectangle");
     });
 });
@@ -498,18 +393,7 @@ describe("FfiGenerator.generateNamespace (13)", () => {
             sharedLibrary: "libgobject-2.0.so.0",
             records: new Map([[typeClass.name, typeClass]]),
         });
-        const repo = createMockRepository(
-            baseNamespaces({
-                GObject: ns,
-            }),
-        );
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "GObject",
-        }).generateNamespace("GObject");
-
-        const file = namespaceFile(files, "GObject");
+        const { file } = generateNamespaceFor(ns, "GObject");
         expect(file?.content).not.toContain("const TypeClass");
     });
 });
@@ -534,14 +418,7 @@ describe("FfiGenerator.generateNamespace (14)", () => {
                 [widget.name, widget],
             ]),
         });
-        const repo = createMockRepository(baseNamespaces({ Gtk: ns }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gtk",
-        }).generateNamespace("Gtk");
-
-        const file = namespaceFile(files, "Gtk");
+        const { file } = generateNamespaceFor(ns);
         const content = file?.content ?? "";
         const widgetIdx = content.indexOf("export class Widget ");
         const buttonIdx = content.indexOf("export class Button ");
@@ -641,14 +518,7 @@ const buildGioNamespace = (className: string): GirNamespace => {
 
 describe("FfiGenerator async wrappers", () => {
     it("emits a promisify-delegating wrapper for an async method", () => {
-        const repo = createMockRepository(baseNamespaces({ Gio: buildGioNamespace("InputStream") }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gio",
-        }).generateNamespace("Gio");
-
-        const file = namespaceFile(files, "gio");
+        const { file } = generateNamespaceFor(buildGioNamespace("InputStream"), "Gio");
         const content = file?.content ?? "";
 
         expect(content).toContain("readAsync(ioPriority) {");
@@ -661,14 +531,8 @@ describe("FfiGenerator async wrappers", () => {
     });
 
     it("keeps the companion finish method on the class", () => {
-        const repo = createMockRepository(baseNamespaces({ Gio: buildGioNamespace("InputStream") }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gio",
-        }).generateNamespace("Gio");
-
-        const content = namespaceFile(files, "gio")?.content ?? "";
+        const { file } = generateNamespaceFor(buildGioNamespace("InputStream"), "Gio");
+        const content = file?.content ?? "";
         expect(content).toContain("readFinish(res) {");
         expect(content).toContain("g_input_stream_read_finish(");
     });
@@ -745,14 +609,8 @@ const buildCancellableGioNamespace = (): GirNamespace => {
 
 describe("FfiGenerator async wrappers cancellable", () => {
     it("passes the cancellable as its own promisify argument", () => {
-        const repo = createMockRepository(baseNamespaces({ Gio: buildCancellableGioNamespace() }));
-
-        const { files } = new FfiGenerator({
-            repository: repo as unknown as GirRepository,
-            namespace: "Gio",
-        }).generateNamespace("Gio");
-
-        const content = namespaceFile(files, "gio")?.content ?? "";
+        const { file } = generateNamespaceFor(buildCancellableGioNamespace(), "Gio");
+        const content = file?.content ?? "";
 
         expect(content).toContain("readAsync(ioPriority, cancellable) {");
         expect(content).toContain(

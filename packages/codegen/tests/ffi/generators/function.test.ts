@@ -1,28 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { fileBuilder } from "../../../src/builders/file-builder.js";
+import type { fileBuilder } from "../../../src/builders/file-builder.js";
 import { stringify } from "../../../src/builders/stringify.js";
 import { FunctionGenerator } from "../../../src/ffi/generators/function.js";
-import { FfiMapper } from "../../../src/type-system/ffi-mapper.js";
+import { setupGtkFfiContext } from "../../fixtures/generator-fixtures.js";
 import {
     createNormalizedFunction,
-    createNormalizedNamespace,
+    type createNormalizedNamespace,
     createNormalizedParameter,
     createNormalizedType,
 } from "../../fixtures/gir-fixtures.js";
-import { createMockRepository } from "../../fixtures/mock-repository.js";
 
 function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map()) {
-    const ns = createNormalizedNamespace({ name: "Gtk" });
-    namespaces.set("Gtk", ns);
-    const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-    const file = fileBuilder();
-    const options = {
-        namespace: "Gtk",
-        sharedLibrary: "libgtk-4.so.1",
-        glibLibrary: "libglib-2.0.so.0",
-        gobjectLibrary: "libgobject-2.0.so.0",
-    };
+    const { ffiMapper, file, options } = setupGtkFfiContext(namespaces);
     const generator = new FunctionGenerator(ffiMapper, file, options);
     return { generator, file };
 }

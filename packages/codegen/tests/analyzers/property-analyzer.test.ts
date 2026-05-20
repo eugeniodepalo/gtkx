@@ -12,7 +12,10 @@ import {
     createNormalizedProperty,
     createNormalizedType,
     createWidgetClass,
+    gtkNamespaceWith,
+    NULL_REPO,
     qualifiedName,
+    singleClassRepo,
 } from "../fixtures/gir-fixtures.js";
 import { createMockRepository } from "../fixtures/mock-repository.js";
 
@@ -26,11 +29,7 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
 describe("PropertyAnalyzer / analyzeWidgetProperties (1)", () => {
     it("returns empty array for class with no properties", () => {
         const cls = createNormalizedClass({ properties: [] });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Button", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -43,11 +42,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (1)", () => {
             parent: null,
             properties: [createNormalizedProperty({ name: "label", type: createNormalizedType({ name: "utf8" }) })],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Button", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -73,11 +68,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (2)", () => {
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Button", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -120,11 +111,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (3)", () => {
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Box", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -157,11 +144,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (4)", () => {
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Button", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -183,11 +166,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (5)", () => {
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Widget", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -204,11 +183,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (5)", () => {
                 createNormalizedProperty({ name: "internal-prop" }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Widget", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const hiddenProps = new Set(["internalProp"]);
         const result = analyzer.analyzeWidgetProperties(cls, hiddenProps);
@@ -220,9 +195,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (5)", () => {
 
 describe("PropertyAnalyzer / analyzeWidgetProperties (6)", () => {
     it("excludes properties inherited from parent class", () => {
-        const nullRepo = { resolveClass: () => null, resolveInterface: () => null, findClasses: () => [] };
-        const widgetClass = createWidgetClass({}, nullRepo);
-        const buttonRepo = { resolveClass: () => widgetClass, resolveInterface: () => null, findClasses: () => [] };
+        const widgetClass = createWidgetClass({}, NULL_REPO);
         const buttonClass = createNormalizedClass(
             {
                 name: "Button",
@@ -233,7 +206,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (6)", () => {
                     createNormalizedProperty({ name: "icon-name" }),
                 ],
             },
-            buttonRepo,
+            singleClassRepo(widgetClass),
         );
 
         const ns = createNormalizedNamespace({
@@ -300,11 +273,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (8)", () => {
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Button", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -343,11 +312,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (9)", () => {
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Image", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -417,11 +382,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (11)", () => {
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["ApplicationWindow", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -441,11 +402,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (12)", () => {
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Button", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -508,11 +465,7 @@ describe("PropertyAnalyzer - Extended Coverage / construct-only properties", () 
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["ApplicationWindow", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -533,11 +486,7 @@ describe("PropertyAnalyzer - Extended Coverage / construct-only properties", () 
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Button", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -649,11 +598,7 @@ describe("PropertyAnalyzer - Extended Coverage / synthetic setter generation for
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Scale", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -681,11 +626,7 @@ describe("PropertyAnalyzer - Extended Coverage / synthetic setter generation for
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Entry", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -715,11 +656,7 @@ describe("PropertyAnalyzer - Extended Coverage / nullability inference (1)", () 
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Image", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -753,11 +690,7 @@ describe("PropertyAnalyzer - Extended Coverage / nullability inference (2)", () 
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Image", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -777,11 +710,7 @@ describe("PropertyAnalyzer - Extended Coverage / nullability inference (3)", () 
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Button", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 
@@ -810,11 +739,7 @@ describe("PropertyAnalyzer - Extended Coverage / nullability inference (4)", () 
                 }),
             ],
         });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            classes: new Map([["Button", cls]]),
-        });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
+        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
 
         const result = analyzer.analyzeWidgetProperties(cls);
 

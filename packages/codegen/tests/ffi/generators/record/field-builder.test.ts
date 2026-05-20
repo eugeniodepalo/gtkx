@@ -1,34 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { fileBuilder } from "../../../../src/builders/file-builder.js";
 import { Writer } from "../../../../src/builders/text-writer.js";
 import { FieldBuilder } from "../../../../src/ffi/generators/record/field-builder.js";
 import type { GirRepository } from "../../../../src/gir/index.js";
-import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
+import { setupGtkFfiContext } from "../../../fixtures/generator-fixtures.js";
 import {
     createNormalizedField,
     createNormalizedNamespace,
     createNormalizedRecord,
     createNormalizedType,
 } from "../../../fixtures/gir-fixtures.js";
-import { createMockRepository } from "../../../fixtures/mock-repository.js";
 
 function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map()) {
-    const ns = createNormalizedNamespace({ name: "Gtk" });
-    namespaces.set("Gtk", ns);
-    const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-    const imports = fileBuilder();
+    const { ffiMapper, file: imports } = setupGtkFfiContext(namespaces);
     const builder = new FieldBuilder(ffiMapper, imports);
     return { builder, imports, ffiMapper };
 }
 
 function createRepoBackedSetup(namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>>) {
-    if (!namespaces.has("Gtk")) {
-        namespaces.set("Gtk", createNormalizedNamespace({ name: "Gtk" }));
-    }
-    const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-    const imports = fileBuilder();
+    const { repo, ffiMapper, file: imports } = setupGtkFfiContext(namespaces);
     const builder = new FieldBuilder(ffiMapper, imports, repo as unknown as GirRepository, "Gtk");
     return { builder, imports, ffiMapper, repo };
 }

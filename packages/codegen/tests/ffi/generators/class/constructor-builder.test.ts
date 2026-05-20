@@ -1,34 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { fileBuilder } from "../../../../src/builders/file-builder.js";
 import { Writer } from "../../../../src/builders/text-writer.js";
 import { ConstructorBuilder } from "../../../../src/ffi/generators/class/constructor-builder.js";
-import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
+import { setupGtkFfiContext } from "../../../fixtures/generator-fixtures.js";
 import {
     createNormalizedClass,
     createNormalizedConstructor,
-    createNormalizedNamespace,
+    type createNormalizedNamespace,
     createNormalizedParameter,
     createNormalizedType,
     qualifiedName,
 } from "../../../fixtures/gir-fixtures.js";
-import { createMockRepository } from "../../../fixtures/mock-repository.js";
 
 function createTestSetup(
     classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]> = {},
     namespaces: Map<string, ReturnType<typeof createNormalizedNamespace>> = new Map(),
 ) {
-    const ns = createNormalizedNamespace({ name: "Gtk" });
-    namespaces.set("Gtk", ns);
-    const repo = createMockRepository(namespaces);
-    const ffiMapper = new FfiMapper(repo as ConstructorParameters<typeof FfiMapper>[0], "Gtk");
-    const imports = fileBuilder();
-    const options = {
-        namespace: "Gtk",
-        sharedLibrary: "libgtk-4.so.1",
-        glibLibrary: "libglib-2.0.so.0",
-        gobjectLibrary: "libgobject-2.0.so.0",
-    };
-
+    const { repo, ffiMapper, file: imports, options } = setupGtkFfiContext(namespaces);
     const cls = createNormalizedClass({
         name: "Button",
         qualifiedName: qualifiedName("Gtk", "Button"),
@@ -36,7 +23,6 @@ function createTestSetup(
         constructors: [],
         ...classOverrides,
     });
-
     const builder = new ConstructorBuilder({ cls, ffiMapper, imports, repository: repo, options });
     return { cls, builder, imports, ffiMapper };
 }
