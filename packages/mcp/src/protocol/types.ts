@@ -19,14 +19,6 @@ export type IpcRequest = z.infer<typeof IpcRequestSchema>;
 /**
  * An IPC error object.
  */
-export type IpcError = {
-    /** Error code */
-    code: number;
-    /** Error message */
-    message: string;
-    /** Additional error data */
-    data?: unknown;
-};
 
 /**
  * Zod schema for validating IPC errors.
@@ -97,18 +89,6 @@ export type AppInfo = {
         id: string;
         title: string | null;
     }>;
-};
-
-/**
- * Options for widget queries.
- */
-export type QueryOptions = {
-    /** Widget name to match */
-    name?: string;
-    /** Require exact match */
-    exact?: boolean;
-    /** Query timeout in milliseconds */
-    timeout?: number;
 };
 
 /**

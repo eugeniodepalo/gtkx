@@ -1,15 +1,7 @@
 import * as net from "node:net";
 import * as Gio from "@gtkx/ffi/gio";
 import * as Gtk from "@gtkx/ffi/gtk";
-import {
-    DEFAULT_SOCKET_PATH,
-    type IpcRequest,
-    IpcRequestSchema,
-    type IpcResponse,
-    IpcResponseSchema,
-    McpError,
-    McpErrorCode,
-} from "@gtkx/mcp";
+import { DEFAULT_SOCKET_PATH, type IpcRequest, JsonStreamTransport, McpError, McpErrorCode } from "@gtkx/mcp";
 import { dispatch } from "./handlers.js";
 import { WidgetRegistry } from "./widget-registry.js";
 
@@ -23,34 +15,25 @@ export type McpClientOptions = {
     appId: string;
 };
 
-type PendingRequest = {
-    resolve: (result: unknown) => void;
-    reject: (error: Error) => void;
-    timeout: NodeJS.Timeout;
-};
-
 const RECONNECT_DELAY_MS = 2000;
-const REQUEST_TIMEOUT_MS = 30000;
 
 /**
- * Newline-delimited JSON transport that connects a GTKX app to the MCP
- * socket server.
+ * Connects a GTKX app to the MCP socket server.
  *
- * Responsibilities are limited to the socket lifecycle (connect, reconnect,
- * disconnect), the wire framing (newline-delimited JSON), request/response
- * correlation (UUID-keyed pending map), and handing incoming requests off
- * to {@link dispatch}. Domain behavior — widget identity, handler
- * implementations — lives in sibling modules.
+ * Owns the socket lifecycle (connect, reconnect, disconnect) and routes
+ * inbound requests through {@link dispatch}. Wire framing and pending-request
+ * correlation are delegated to {@link JsonStreamTransport}, the same class
+ * the MCP server uses on its end — so both sides agree exactly on how a
+ * frame is bounded, parsed, and resolved.
  */
 export class McpClient {
     private socket: net.Socket | null = null;
-    private buffer = "";
+    private transport: JsonStreamTransport | null = null;
     private readonly socketPath: string;
     private readonly appId: string;
     private reconnectTimer: NodeJS.Timeout | null = null;
     private hasConnected = false;
     private isStopping = false;
-    private readonly pendingRequests = new Map<string, PendingRequest>();
     private readonly registry = new WidgetRegistry();
 
     constructor(options: McpClientOptions) {
@@ -78,12 +61,13 @@ export class McpClient {
             clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;
         }
-        this.rejectPendingRequests(new Error("Client disconnected"));
+        this.transport?.rejectPending(new Error("Client disconnected"));
         if (this.socket) {
-            this.send({ id: crypto.randomUUID(), method: "app.unregister" });
+            this.transport?.send({ id: crypto.randomUUID(), method: "app.unregister" });
             this.socket.destroy();
             this.socket = null;
         }
+        this.transport = null;
         this.hasConnected = false;
     }
 
@@ -96,7 +80,7 @@ export class McpClient {
             callback?.(...args);
         };
 
-        this.socket = net.createConnection(this.socketPath, () => {
+        const socket = net.createConnection(this.socketPath, () => {
             console.log(`[gtkx] Connected to MCP server at ${this.socketPath}`);
             this.hasConnected = true;
             this.register()
@@ -110,19 +94,33 @@ export class McpClient {
                 });
         });
 
-        this.socket.on("data", (data: Buffer) => this.handleData(data));
+        const transport = new JsonStreamTransport(socket);
+        transport.on("request", (request) => {
+            this.handleRequest(request).catch((error) => {
+                console.error("[gtkx] Error handling request:", error);
+            });
+        });
+        transport.on("invalid", ({ error }) => {
+            console.warn(`[gtkx] Received invalid JSON from MCP server: ${error.message}`);
+        });
 
-        this.socket.on("close", () => {
+        this.socket = socket;
+        this.transport = transport;
+
+        socket.on("data", (data: Buffer) => transport.feed(data));
+
+        socket.on("close", () => {
             if (this.hasConnected) {
                 console.log("[gtkx] Disconnected from MCP server");
                 this.hasConnected = false;
             }
             this.socket = null;
-            this.rejectPendingRequests(new Error("Connection closed"));
+            transport.rejectPending(new Error("Connection closed"));
+            this.transport = null;
             this.scheduleReconnect();
         });
 
-        this.socket.on("error", (error) => {
+        socket.on("error", (error) => {
             const code = (error as NodeJS.ErrnoException).code;
             const isDisconnectError =
                 code === "ENOENT" || code === "ECONNREFUSED" || code === "EPIPE" || code === "ECONNRESET";
@@ -143,96 +141,20 @@ export class McpClient {
         }, RECONNECT_DELAY_MS);
     }
 
-    private rejectPendingRequests(error: Error): void {
-        for (const pending of this.pendingRequests.values()) {
-            clearTimeout(pending.timeout);
-            pending.reject(error);
+    private register(): Promise<unknown> {
+        if (!this.transport) {
+            return Promise.reject(new Error("Transport not initialized"));
         }
-        this.pendingRequests.clear();
-    }
-
-    private async register(): Promise<void> {
-        await this.sendRequest("app.register", {
+        return this.transport.sendRequest("app.register", {
             appId: this.appId,
             pid: process.pid,
         });
     }
 
-    private send(message: IpcRequest | IpcResponse): void {
-        if (!this.socket?.writable) return;
-        this.socket.write(`${JSON.stringify(message)}\n`);
-    }
-
-    private sendRequest(method: string, params?: unknown): Promise<unknown> {
-        return new Promise((resolve, reject) => {
-            if (!this.socket?.writable) {
-                reject(new Error("Socket not connected"));
-                return;
-            }
-
-            const id = crypto.randomUUID();
-            const timeout = setTimeout(() => {
-                this.pendingRequests.delete(id);
-                reject(new Error(`Request timed out: ${method}`));
-            }, REQUEST_TIMEOUT_MS);
-
-            this.pendingRequests.set(id, { resolve, reject, timeout });
-            this.send({ id, method, params });
-        });
-    }
-
-    private handleData(data: Buffer): void {
-        this.buffer += data.toString();
-
-        let newlineIndex = this.buffer.indexOf("\n");
-        while (newlineIndex !== -1) {
-            const line = this.buffer.slice(0, newlineIndex);
-            this.buffer = this.buffer.slice(newlineIndex + 1);
-
-            if (line.trim()) {
-                this.processMessage(line);
-            }
-            newlineIndex = this.buffer.indexOf("\n");
-        }
-    }
-
-    private processMessage(line: string): void {
-        let parsed: unknown;
-        try {
-            parsed = JSON.parse(line);
-        } catch {
-            console.warn("[gtkx] Received invalid JSON from MCP server");
-            return;
-        }
-
-        const responseResult = IpcResponseSchema.safeParse(parsed);
-        if (responseResult.success) {
-            const response = responseResult.data;
-            const pending = this.pendingRequests.get(response.id);
-            if (pending) {
-                clearTimeout(pending.timeout);
-                this.pendingRequests.delete(response.id);
-                if (response.error) {
-                    pending.reject(new Error(response.error.message));
-                } else {
-                    pending.resolve(response.result);
-                }
-                return;
-            }
-        }
-
-        const requestResult = IpcRequestSchema.safeParse(parsed);
-        if (!requestResult.success) {
-            return;
-        }
-
-        this.handleRequest(requestResult.data).catch((error) => {
-            console.error("[gtkx] Error handling request:", error);
-        });
-    }
-
     private async handleRequest(request: IpcRequest): Promise<void> {
         const { id, method, params } = request;
+        const transport = this.transport;
+        if (!transport) return;
 
         try {
             const defaultApp = Gio.Application.getDefault();
@@ -241,13 +163,13 @@ export class McpClient {
             }
             this.registry.refresh();
             const result = await dispatch(method, params, { app: defaultApp, registry: this.registry });
-            this.send({ id, result });
+            transport.send({ id, result });
         } catch (error) {
             if (error instanceof McpError) {
-                this.send({ id, error: error.toIpcError() });
+                transport.send({ id, error: error.toIpcError() });
             } else {
                 const message = error instanceof Error ? error.message : String(error);
-                this.send({
+                transport.send({
                     id,
                     error: {
                         code: McpErrorCode.INTERNAL_ERROR,

@@ -3,17 +3,34 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConnectionManager } from "../src/connection-manager.js";
 import { McpError, McpErrorCode } from "../src/protocol/errors.js";
 import type { IpcMessage, IpcRequest, IpcResponse } from "../src/protocol/types.js";
-import type { AppConnection, SocketServer } from "../src/socket-server.js";
+import {
+    type AppConnection,
+    type AppTransport,
+    type AppTransportEvents,
+    type FrameWriter,
+    JsonStreamTransport,
+} from "../src/transport.js";
 
-type SocketServerEventMap = {
-    connection: [AppConnection];
-    disconnection: [AppConnection];
-    request: [AppConnection, IpcRequest];
-    response: [AppConnection, IpcResponse];
-    error: [Error];
+type TestConnection = AppConnection & {
+    capture: { lines: string[]; writable: boolean };
 };
 
-class FakeSocketServer extends EventEmitter<SocketServerEventMap> {
+function makeConnection(id: string): TestConnection {
+    const capture = { lines: [] as string[], writable: true };
+    const writer: FrameWriter = {
+        write(line) {
+            capture.lines.push(line);
+            return true;
+        },
+        get writable() {
+            return capture.writable;
+        },
+    };
+    const transport = new JsonStreamTransport(writer);
+    return { id, transport, capture };
+}
+
+class FakeAppTransport extends EventEmitter<AppTransportEvents> implements AppTransport {
     readonly sent: Array<{ connectionId: string; message: IpcMessage }> = [];
     sendReturn = true;
 
@@ -23,17 +40,19 @@ class FakeSocketServer extends EventEmitter<SocketServerEventMap> {
     }
 }
 
-function makeConnection(id: string): AppConnection {
-    return { id, socket: {} as never, buffer: "" };
-}
-
-function lastResponse(server: FakeSocketServer): IpcResponse | undefined {
-    const entry = server.sent[server.sent.length - 1];
+function lastResponse(transport: FakeAppTransport): IpcResponse | undefined {
+    const entry = transport.sent[transport.sent.length - 1];
     return entry?.message as IpcResponse | undefined;
 }
 
+function lastOutgoingRequest(conn: TestConnection): IpcRequest {
+    const line = conn.capture.lines[conn.capture.lines.length - 1];
+    if (!line) throw new Error("No outgoing request captured");
+    return JSON.parse(line) as IpcRequest;
+}
+
 interface ManagerCtx {
-    server: FakeSocketServer;
+    transport: FakeAppTransport;
     manager: ConnectionManager;
 }
 
@@ -42,8 +61,8 @@ const ctx = {} as ManagerCtx;
 function setupManagerCtx(): void {
     beforeEach(() => {
         vi.useFakeTimers();
-        ctx.server = new FakeSocketServer();
-        ctx.manager = new ConnectionManager(ctx.server as unknown as SocketServer);
+        ctx.transport = new FakeAppTransport();
+        ctx.manager = new ConnectionManager(ctx.transport);
     });
     afterEach(() => {
         ctx.manager.cleanup();
@@ -54,12 +73,12 @@ function setupManagerCtx(): void {
 describe("ConnectionManager registration — basics", () => {
     setupManagerCtx();
     it("registers an app and emits appRegistered with its info", () => {
-        const { server, manager } = ctx;
+        const { transport, manager } = ctx;
         const conn = makeConnection("c1");
         const onRegister = vi.fn();
         manager.on("appRegistered", onRegister);
 
-        server.emit("request", conn, {
+        transport.emit("request", conn, {
             id: "req-1",
             method: "app.register",
             params: { appId: "app-a", pid: 1234 },
@@ -67,18 +86,17 @@ describe("ConnectionManager registration — basics", () => {
 
         expect(onRegister).toHaveBeenCalledWith({ appId: "app-a", pid: 1234, windows: [] });
         expect(manager.hasConnectedApps()).toBe(true);
-        expect(manager.getApp("app-a")).toEqual({ appId: "app-a", pid: 1234, windows: [] });
-        expect(manager.getApps()).toHaveLength(1);
-        expect(lastResponse(server)).toEqual({ id: "req-1", result: { success: true } });
+        expect(manager.getApps()).toEqual([{ appId: "app-a", pid: 1234, windows: [] }]);
+        expect(lastResponse(transport)).toEqual({ id: "req-1", result: { success: true } });
     });
 
     it("rejects registration with invalid params", () => {
-        const { server, manager } = ctx;
+        const { transport, manager } = ctx;
         const conn = makeConnection("c1");
         const onRegister = vi.fn();
         manager.on("appRegistered", onRegister);
 
-        server.emit("request", conn, {
+        transport.emit("request", conn, {
             id: "req-1",
             method: "app.register",
             params: { appId: "app-a" },
@@ -86,77 +104,77 @@ describe("ConnectionManager registration — basics", () => {
 
         expect(onRegister).not.toHaveBeenCalled();
         expect(manager.hasConnectedApps()).toBe(false);
-        const response = lastResponse(server);
+        const response = lastResponse(transport);
         expect(response?.error?.code).toBe(McpErrorCode.INVALID_REQUEST);
     });
 
     it("ignores unknown request methods on the manager event channel", () => {
-        const { server } = ctx;
+        const { transport } = ctx;
         const conn = makeConnection("c1");
-        server.emit("request", conn, { id: "req-1", method: "something.else" });
-        expect(server.sent).toEqual([]);
+        transport.emit("request", conn, { id: "req-1", method: "something.else" });
+        expect(transport.sent).toEqual([]);
     });
 });
 
 describe("ConnectionManager registration — explicit unregister", () => {
     setupManagerCtx();
     it("unregisters an app via app.unregister and emits appUnregistered", () => {
-        const { server, manager } = ctx;
+        const { transport, manager } = ctx;
         const conn = makeConnection("c1");
         const onUnregister = vi.fn();
         manager.on("appUnregistered", onUnregister);
 
-        server.emit("request", conn, {
+        transport.emit("request", conn, {
             id: "req-1",
             method: "app.register",
             params: { appId: "app-a", pid: 1 },
         });
-        server.emit("request", conn, { id: "req-2", method: "app.unregister" });
+        transport.emit("request", conn, { id: "req-2", method: "app.unregister" });
 
         expect(onUnregister).toHaveBeenCalledWith("app-a");
         expect(manager.hasConnectedApps()).toBe(false);
-        expect(lastResponse(server)).toEqual({ id: "req-2", result: { success: true } });
+        expect(lastResponse(transport)).toEqual({ id: "req-2", result: { success: true } });
     });
 
     it("ignores app.unregister from a connection that never registered", () => {
-        const { server, manager } = ctx;
+        const { transport, manager } = ctx;
         const conn = makeConnection("c1");
         const onUnregister = vi.fn();
         manager.on("appUnregistered", onUnregister);
 
-        server.emit("request", conn, { id: "req-1", method: "app.unregister" });
+        transport.emit("request", conn, { id: "req-1", method: "app.unregister" });
 
         expect(onUnregister).not.toHaveBeenCalled();
-        expect(lastResponse(server)).toEqual({ id: "req-1", result: { success: true } });
+        expect(lastResponse(transport)).toEqual({ id: "req-1", result: { success: true } });
     });
 });
 
 describe("ConnectionManager registration — disconnect", () => {
     setupManagerCtx();
     it("removes the app when its connection disconnects", () => {
-        const { server, manager } = ctx;
+        const { transport, manager } = ctx;
         const conn = makeConnection("c1");
         const onUnregister = vi.fn();
         manager.on("appUnregistered", onUnregister);
 
-        server.emit("request", conn, {
+        transport.emit("request", conn, {
             id: "req-1",
             method: "app.register",
             params: { appId: "app-a", pid: 1 },
         });
-        server.emit("disconnection", conn);
+        transport.emit("disconnection", conn);
 
         expect(onUnregister).toHaveBeenCalledWith("app-a");
         expect(manager.hasConnectedApps()).toBe(false);
     });
 
     it("ignores disconnection from a connection without a registered app", () => {
-        const { server, manager } = ctx;
+        const { transport, manager } = ctx;
         const conn = makeConnection("c1");
         const onUnregister = vi.fn();
         manager.on("appUnregistered", onUnregister);
 
-        server.emit("disconnection", conn);
+        transport.emit("disconnection", conn);
 
         expect(onUnregister).not.toHaveBeenCalled();
     });
@@ -169,9 +187,9 @@ describe("ConnectionManager getDefaultApp", () => {
     });
 
     it("returns the first registered app", () => {
-        const { server, manager } = ctx;
+        const { transport, manager } = ctx;
         const conn = makeConnection("c1");
-        server.emit("request", conn, {
+        transport.emit("request", conn, {
             id: "req-1",
             method: "app.register",
             params: { appId: "app-a", pid: 1 },
@@ -184,9 +202,9 @@ describe("ConnectionManager getDefaultApp", () => {
 describe("ConnectionManager waitForApp", () => {
     setupManagerCtx();
     it("resolves immediately when an app is already registered", async () => {
-        const { server, manager } = ctx;
+        const { transport, manager } = ctx;
         const conn = makeConnection("c1");
-        server.emit("request", conn, {
+        transport.emit("request", conn, {
             id: "req-1",
             method: "app.register",
             params: { appId: "app-a", pid: 1 },
@@ -200,11 +218,11 @@ describe("ConnectionManager waitForApp", () => {
     });
 
     it("resolves once an app registers later", async () => {
-        const { server, manager } = ctx;
+        const { transport, manager } = ctx;
         const promise = manager.waitForApp(5000);
         const conn = makeConnection("c1");
 
-        server.emit("request", conn, {
+        transport.emit("request", conn, {
             id: "req-1",
             method: "app.register",
             params: { appId: "app-late", pid: 99 },
@@ -220,52 +238,52 @@ describe("ConnectionManager waitForApp", () => {
     });
 });
 
-function registerAppForCtx(appId: string, connectionId = "c1"): AppConnection {
+function registerAppForCtx(appId: string, connectionId = "c1"): TestConnection {
     const conn = makeConnection(connectionId);
-    ctx.server.emit("request", conn, {
+    ctx.transport.emit("request", conn, {
         id: "reg",
         method: "app.register",
         params: { appId, pid: 1 },
     });
-    ctx.server.sent.length = 0;
+    ctx.transport.sent.length = 0;
     return conn;
 }
 
 describe("ConnectionManager sendToApp — happy paths", () => {
     setupManagerCtx();
     it("sends a request to the named app and resolves with the response result", async () => {
-        registerAppForCtx("app-a");
+        const conn = registerAppForCtx("app-a");
         const promise = ctx.manager.sendToApp("app-a", "ping", { hello: "world" });
-        const sent = ctx.server.sent[0]?.message as IpcRequest;
+        const sent = lastOutgoingRequest(conn);
 
-        ctx.server.emit("response", makeConnection("c1"), { id: sent.id, result: { ok: true } });
+        conn.transport.feed(`${JSON.stringify({ id: sent.id, result: { ok: true } })}\n`);
 
         await expect(promise).resolves.toEqual({ ok: true });
     });
 
     it("sends to the default app when appId is undefined", async () => {
-        registerAppForCtx("app-a");
+        const conn = registerAppForCtx("app-a");
         const promise = ctx.manager.sendToApp(undefined, "ping");
-        const sent = ctx.server.sent[0]?.message as IpcRequest;
+        const sent = lastOutgoingRequest(conn);
 
-        ctx.server.emit("response", makeConnection("c1"), { id: sent.id, result: 42 });
+        conn.transport.feed(`${JSON.stringify({ id: sent.id, result: 42 })}\n`);
 
         await expect(promise).resolves.toBe(42);
     });
 
     it("ignores responses for unknown request ids", async () => {
-        registerAppForCtx("app-a");
+        const conn = registerAppForCtx("app-a");
         const promise = ctx.manager.sendToApp("app-a", "ping");
-        const sent = ctx.server.sent[0]?.message as IpcRequest;
+        const sent = lastOutgoingRequest(conn);
 
-        ctx.server.emit("response", makeConnection("c1"), { id: "unknown", result: 1 });
-        ctx.server.emit("response", makeConnection("c1"), { id: sent.id, result: 2 });
+        conn.transport.feed(`${JSON.stringify({ id: "unknown", result: 1 })}\n`);
+        conn.transport.feed(`${JSON.stringify({ id: sent.id, result: 2 })}\n`);
 
         await expect(promise).resolves.toBe(2);
     });
 });
 
-describe("ConnectionManager sendToApp — errors", () => {
+describe("ConnectionManager sendToApp — lookup errors", () => {
     setupManagerCtx();
     it("rejects with appNotFound when the named app is unknown", async () => {
         await expect(ctx.manager.sendToApp("missing", "ping")).rejects.toMatchObject({
@@ -278,22 +296,28 @@ describe("ConnectionManager sendToApp — errors", () => {
             code: McpErrorCode.NO_APP_CONNECTED,
         });
     });
+});
 
-    it("rejects with appNotFound when the underlying send fails", async () => {
-        registerAppForCtx("app-a");
-        ctx.server.sendReturn = false;
+describe("ConnectionManager sendToApp — transport errors", () => {
+    setupManagerCtx();
+    it("rejects with connectionWriteFailed and removes the app when the underlying send fails", async () => {
+        const conn = registerAppForCtx("app-a");
+        const onUnregister = vi.fn();
+        ctx.manager.on("appUnregistered", onUnregister);
+        conn.capture.writable = false;
 
         await expect(ctx.manager.sendToApp("app-a", "ping")).rejects.toMatchObject({
-            code: McpErrorCode.APP_NOT_FOUND,
+            code: McpErrorCode.CONNECTION_WRITE_FAILED,
         });
+
+        expect(onUnregister).toHaveBeenCalledWith("app-a");
+        expect(ctx.manager.hasConnectedApps()).toBe(false);
     });
 
     it("rejects with ipcTimeout when no response arrives within the configured window", async () => {
-        const customManager = new ConnectionManager(ctx.server as unknown as SocketServer, {
-            requestTimeout: 5000,
-        });
+        const customManager = new ConnectionManager(ctx.transport, { requestTimeout: 5000 });
         const conn = makeConnection("c2");
-        ctx.server.emit("request", conn, {
+        ctx.transport.emit("request", conn, {
             id: "reg",
             method: "app.register",
             params: { appId: "app-x", pid: 1 },
@@ -307,14 +331,16 @@ describe("ConnectionManager sendToApp — errors", () => {
     });
 
     it("rejects with the McpError described by an error response", async () => {
-        registerAppForCtx("app-a");
+        const conn = registerAppForCtx("app-a");
         const promise = ctx.manager.sendToApp("app-a", "ping");
-        const sent = ctx.server.sent[0]?.message as IpcRequest;
+        const sent = lastOutgoingRequest(conn);
 
-        ctx.server.emit("response", makeConnection("c1"), {
-            id: sent.id,
-            error: { code: McpErrorCode.INTERNAL_ERROR, message: "boom", data: { reason: "x" } },
-        });
+        conn.transport.feed(
+            `${JSON.stringify({
+                id: sent.id,
+                error: { code: McpErrorCode.INTERNAL_ERROR, message: "boom", data: { reason: "x" } },
+            })}\n`,
+        );
 
         await expect(promise).rejects.toBeInstanceOf(McpError);
         await expect(promise).rejects.toMatchObject({
@@ -328,16 +354,11 @@ describe("ConnectionManager sendToApp — errors", () => {
 describe("ConnectionManager cleanup", () => {
     setupManagerCtx();
     it("rejects all pending requests with a shutdown error", async () => {
-        const { server, manager } = ctx;
-        const conn = makeConnection("c1");
-        server.emit("request", conn, {
-            id: "reg",
-            method: "app.register",
-            params: { appId: "app-a", pid: 1 },
-        });
+        const conn = registerAppForCtx("app-a");
 
-        const promise = manager.sendToApp("app-a", "ping");
-        manager.cleanup();
+        const promise = ctx.manager.sendToApp("app-a", "ping");
+        expect(conn.capture.lines.length).toBeGreaterThan(0);
+        ctx.manager.cleanup();
 
         await expect(promise).rejects.toThrow("Connection manager shutting down");
     });

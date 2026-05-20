@@ -5,12 +5,23 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { IpcMessage, IpcRequest, IpcResponse } from "../src/protocol/types.js";
 import { SocketServer } from "../src/socket-server.js";
+import type { AppConnection } from "../src/transport.js";
 
 const connectClient = (path: string): Promise<net.Socket> =>
     new Promise((resolve, reject) => {
         const socket = net.createConnection(path);
         socket.once("connect", () => resolve(socket));
         socket.once("error", reject);
+    });
+
+const tryConnect = (path: string): Promise<Error | null> =>
+    new Promise((resolve) => {
+        const socket = net.createConnection(path);
+        socket.once("connect", () => {
+            socket.destroy();
+            resolve(null);
+        });
+        socket.once("error", (error) => resolve(error));
     });
 
 const collectLines = (socket: net.Socket): { lines: string[]; promise: Promise<void> } => {
@@ -31,11 +42,9 @@ const collectLines = (socket: net.Socket): { lines: string[]; promise: Promise<v
     return { lines, promise };
 };
 
-const waitForEvent = <T>(server: SocketServer, event: Parameters<SocketServer["once"]>[0]): Promise<T> =>
+const waitForConnection = (server: SocketServer): Promise<AppConnection> =>
     new Promise((resolve) => {
-        server.once(event, ((...args: unknown[]) => {
-            resolve(args.length === 1 ? (args[0] as T) : (args as unknown as T));
-        }) as never);
+        server.once("connection", (connection) => resolve(connection));
     });
 
 interface SocketServerCtx {
@@ -61,26 +70,26 @@ function setupSocketServer(): void {
 
 describe("SocketServer lifecycle", () => {
     setupSocketServer();
-    it("exposes the configured socket path", () => {
-        expect(socketCtx.server.path).toBe(socketCtx.socketPath);
+    it("does not accept connections before start", async () => {
+        const error = await tryConnect(socketCtx.socketPath);
+        expect(error).not.toBeNull();
     });
 
-    it("reports not listening before start", () => {
-        expect(socketCtx.server.isListening).toBe(false);
-    });
-
-    it("listens after start and stops cleanly", async () => {
+    it("accepts connections after start and refuses them after stop", async () => {
         await socketCtx.server.start();
-        expect(socketCtx.server.isListening).toBe(true);
+        const client = await connectClient(socketCtx.socketPath);
+        client.destroy();
 
         await socketCtx.server.stop();
-        expect(socketCtx.server.isListening).toBe(false);
+        const error = await tryConnect(socketCtx.socketPath);
+        expect(error).not.toBeNull();
     });
 
     it("is idempotent when start is called twice", async () => {
         await socketCtx.server.start();
         await socketCtx.server.start();
-        expect(socketCtx.server.isListening).toBe(true);
+        const client = await connectClient(socketCtx.socketPath);
+        client.destroy();
     });
 
     it("is idempotent when stop is called without a prior start", async () => {
@@ -90,7 +99,8 @@ describe("SocketServer lifecycle", () => {
     it("removes a stale socket file on start", async () => {
         writeFileSync(socketCtx.socketPath, "");
         await socketCtx.server.start();
-        expect(socketCtx.server.isListening).toBe(true);
+        const client = await connectClient(socketCtx.socketPath);
+        client.destroy();
     });
 });
 
@@ -100,26 +110,21 @@ describe("SocketServer connections", () => {
         const { server, socketPath } = socketCtx;
         await server.start();
 
-        const connectionPromise = waitForEvent(server, "connection");
+        const connectionPromise = waitForConnection(server);
         const client = await connectClient(socketPath);
-        await connectionPromise;
+        const connection = await connectionPromise;
+        expect(connection.id).toBeTruthy();
 
-        expect(server.getConnections().length).toBe(1);
-
-        const disconnectionPromise = waitForEvent(server, "disconnection");
+        const disconnectionPromise = new Promise<AppConnection>((resolve) => {
+            server.once("disconnection", (conn) => resolve(conn));
+        });
         client.end();
-        await disconnectionPromise;
-
-        expect(server.getConnections().length).toBe(0);
-    });
-
-    it("getConnection returns undefined for an unknown id", async () => {
-        await socketCtx.server.start();
-        expect(socketCtx.server.getConnection("nope")).toBeUndefined();
+        const disconnected = await disconnectionPromise;
+        expect(disconnected.id).toBe(connection.id);
     });
 });
 
-describe("SocketServer framing — request/response events", () => {
+describe("SocketServer framing — request events", () => {
     setupSocketServer();
     it("emits a request event for valid request frames", async () => {
         const { server, socketPath } = socketCtx;
@@ -136,24 +141,6 @@ describe("SocketServer framing — request/response events", () => {
         const got = await received;
         expect(got.id).toBe("r-1");
         expect(got.method).toBe("ping");
-
-        client.destroy();
-    });
-
-    it("emits a response event for valid response frames (no method field)", async () => {
-        const { server, socketPath } = socketCtx;
-        await server.start();
-        const client = await connectClient(socketPath);
-
-        const received = new Promise<IpcResponse>((resolve) => {
-            server.once("response", (_conn, res) => resolve(res));
-        });
-
-        const response: IpcResponse = { id: "r-2", result: { ok: true } };
-        client.write(`${JSON.stringify(response)}\n`);
-
-        const got = await received;
-        expect(got.id).toBe("r-2");
 
         client.destroy();
     });
@@ -269,14 +256,12 @@ describe("SocketServer send", () => {
         const { server, socketPath } = socketCtx;
         await server.start();
 
-        const connectionPromise = waitForEvent(server, "connection");
+        const connectionPromise = waitForConnection(server);
         const client = await connectClient(socketPath);
-        await connectionPromise;
+        const connection = await connectionPromise;
 
         const collector = collectLines(client);
-        const conn = server.getConnections()[0];
-        if (!conn) throw new Error("expected one connection");
-        const ok = server.send(conn.id, { id: "out-1", result: 42 } as IpcMessage);
+        const ok = server.send(connection.id, { id: "out-1", result: 42 } as IpcMessage);
         expect(ok).toBe(true);
 
         await new Promise((resolve) => setTimeout(resolve, 20));
@@ -291,27 +276,6 @@ describe("SocketServer send", () => {
 
 describe("SocketServer errors", () => {
     setupSocketServer();
-    it("emits an error event when a connected socket errors", async () => {
-        const { server, socketPath } = socketCtx;
-        await server.start();
-
-        const connectionPromise = waitForEvent(server, "connection");
-        const client = await connectClient(socketPath);
-        await connectionPromise;
-
-        const errorReceived = new Promise<Error>((resolve) => {
-            server.once("error", (err) => resolve(err));
-        });
-
-        const conn = server.getConnections()[0];
-        if (!conn) throw new Error("expected one connection");
-        conn.socket.emit("error", new Error("boom"));
-
-        const got = await errorReceived;
-        expect(got.message).toBe("boom");
-        client.destroy();
-    });
-
     it("rejects start and emits error when binding to an unreachable path", async () => {
         const bad = new SocketServer(join(socketCtx.tmpDir, "no-such-dir", "ipc.sock"));
         const errorReceived = new Promise<Error>((resolve) => {

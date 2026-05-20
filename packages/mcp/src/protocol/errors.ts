@@ -10,6 +10,8 @@ export enum McpErrorCode {
     APP_NOT_FOUND = 1002,
     /** Widget with specified ID was not found */
     WIDGET_NOT_FOUND = 1003,
+    /** Connection write failed (socket not writable) */
+    CONNECTION_WRITE_FAILED = 1004,
     /** IPC request timed out */
     IPC_TIMEOUT = 1008,
     /** Request format is invalid */
@@ -34,10 +36,6 @@ export class McpError extends Error {
         this.code = code;
         this.data = data;
         this.name = "McpError";
-
-        if (Error.captureStackTrace) {
-            Error.captureStackTrace(this, McpError);
-        }
     }
 
     /**
@@ -75,6 +73,22 @@ export function noAppConnectedError(): McpError {
  */
 export function appNotFoundError(appId: string): McpError {
     return new McpError(McpErrorCode.APP_NOT_FOUND, `Application '${appId}' not found`, { appId });
+}
+
+/**
+ * Creates an error for when the underlying socket for a registered app
+ * is not writable (typically because the app disconnected between routing
+ * the request and writing the frame).
+ *
+ * @param appId - The application ID whose connection failed.
+ * @returns McpError with CONNECTION_WRITE_FAILED code.
+ */
+export function connectionWriteFailedError(appId: string): McpError {
+    return new McpError(
+        McpErrorCode.CONNECTION_WRITE_FAILED,
+        `Connection to application '${appId}' is no longer writable`,
+        { appId },
+    );
 }
 
 /**
