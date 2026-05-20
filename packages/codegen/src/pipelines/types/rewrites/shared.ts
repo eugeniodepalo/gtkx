@@ -180,3 +180,72 @@ export const rewriteOwnerBlockBodies = (
     }
     return result;
 };
+
+/**
+ * Removes the ranges `[start, end)` from `source` and returns the spliced
+ * result. The ranges must be sorted in increasing order and non-overlapping.
+ */
+export const spliceOutRanges = (source: string, ranges: ReadonlyArray<{ start: number; end: number }>): string => {
+    if (ranges.length === 0) return source;
+    const parts: string[] = [];
+    let cursor = 0;
+    for (const { start, end } of ranges) {
+        parts.push(source.slice(cursor, start));
+        cursor = end;
+    }
+    parts.push(source.slice(cursor));
+    return parts.join("");
+};
+
+/**
+ * Scans `source` for every match of `pattern` that opens a `{` block, walks
+ * to its matching `}` via {@link findMatchingBrace}, and returns the
+ * `[start, end)` ranges of the full declarations (including leading newline
+ * and trailing line terminator).
+ *
+ * The pattern must capture the leading newline (or start anchor) in its first
+ * group so the strip preserves boundary whitespace. Matches for which
+ * `accept` returns `false` are excluded from the result.
+ */
+export const scanBracedDeclarations = (
+    source: string,
+    pattern: RegExp,
+    accept: (match: RegExpExecArray) => boolean = () => true,
+): Array<{ start: number; end: number }> => {
+    const ranges: Array<{ start: number; end: number }> = [];
+    pattern.lastIndex = 0;
+    for (;;) {
+        const match = pattern.exec(source);
+        if (match === null) break;
+        if (!accept(match)) continue;
+        const bodyEnd = findMatchingBrace(source, match.index + match[0].length);
+        if (bodyEnd < 0) continue;
+        const start = match.index + (match[1] ?? "").length;
+        let end = bodyEnd + 1;
+        if (source[end] === "\n") end += 1;
+        ranges.push({ start, end });
+    }
+    return ranges;
+};
+
+/**
+ * Removes every member line in `body` whose first non-newline character is
+ * `name` followed by `nameSuffix`. The optional leading JSDoc block preceding
+ * the member is stripped along with the member line.
+ *
+ * @param body - The block body to mutate.
+ * @param name - The member identifier to match.
+ * @param nameSuffix - The regex fragment that follows the identifier
+ *   (e.g. `[<(]` for methods, `(\?)?:[ \t]` for fields).
+ */
+export const stripNamedMember = (body: string, name: string, nameSuffix: string): string => {
+    const memberLine = new RegExp(String.raw`(^|\n)([ \t]*)${OPTIONAL_LEADING_JSDOC}${name}${nameSuffix}[^\n]*`);
+    const match = memberLine.exec(body);
+    if (match?.index === undefined) return body;
+    const start = match.index + (match[1] ?? "").length;
+    let end = match.index + match[0].length;
+    if (body[end] === "\n") end += 1;
+    return body.slice(0, start) + body.slice(end);
+};
+
+const OPTIONAL_LEADING_JSDOC = String.raw`(?:\/\*\*(?:(?!\*\/)[\s\S])*?\*\/[ \t\n]*)?`;

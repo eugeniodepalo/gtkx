@@ -6,7 +6,7 @@
  * exports no GObject-introspection runtime provides.
  */
 
-import { findMatchingBrace } from "./shared.js";
+import { scanBracedDeclarations, spliceOutRanges } from "./shared.js";
 
 /**
  * Gtype-struct record names for every namespace, keyed lowercase namespace
@@ -34,32 +34,13 @@ const GTYPE_STRUCT_CLASS_PATTERN = /(^|\n)([ \t]*)export[ \t]+(?:abstract[ \t]+)
  */
 export function stripGtypeStructClasses(source: string, gtypeStructNames?: ReadonlySet<string>): string {
     if (gtypeStructNames === undefined || gtypeStructNames.size === 0) return source;
-
-    const matches: Array<{ start: number; end: number }> = [];
-    GTYPE_STRUCT_CLASS_PATTERN.lastIndex = 0;
-    for (;;) {
-        const result = GTYPE_STRUCT_CLASS_PATTERN.exec(source);
-        if (result === null) break;
-        const name = result[3];
-        if (name === undefined || !gtypeStructNames.has(name)) continue;
-        const bodyEnd = findMatchingBrace(source, result.index + result[0].length);
-        if (bodyEnd < 0) continue;
-        const start = result.index + (result[1] ?? "").length;
-        let end = bodyEnd + 1;
-        if (source[end] === "\n") end += 1;
-        matches.push({ start, end });
-    }
-
-    if (matches.length === 0) return source;
-
-    const parts: string[] = [];
-    let cursor = 0;
-    for (const { start, end } of matches) {
-        parts.push(source.slice(cursor, start));
-        cursor = end;
-    }
-    parts.push(source.slice(cursor));
-    return parts.join("");
+    return spliceOutRanges(
+        source,
+        scanBracedDeclarations(source, GTYPE_STRUCT_CLASS_PATTERN, (match) => {
+            const name = match[3];
+            return name !== undefined && gtypeStructNames.has(name);
+        }),
+    );
 }
 
 const ANONYMOUS_COMPOSITE_CLASS_PATTERN =
@@ -82,27 +63,5 @@ const ANONYMOUS_COMPOSITE_CLASS_PATTERN =
  * @returns The source with synthetic anonymous-composite classes removed.
  */
 export function stripAnonymousCompositeClasses(source: string): string {
-    const matches: Array<{ start: number; end: number }> = [];
-    ANONYMOUS_COMPOSITE_CLASS_PATTERN.lastIndex = 0;
-    for (;;) {
-        const result = ANONYMOUS_COMPOSITE_CLASS_PATTERN.exec(source);
-        if (result === null) break;
-        const bodyEnd = findMatchingBrace(source, result.index + result[0].length);
-        if (bodyEnd < 0) continue;
-        const start = result.index + (result[1] ?? "").length;
-        let end = bodyEnd + 1;
-        if (source[end] === "\n") end += 1;
-        matches.push({ start, end });
-    }
-
-    if (matches.length === 0) return source;
-
-    const parts: string[] = [];
-    let cursor = 0;
-    for (const { start, end } of matches) {
-        parts.push(source.slice(cursor, start));
-        cursor = end;
-    }
-    parts.push(source.slice(cursor));
-    return parts.join("");
+    return spliceOutRanges(source, scanBracedDeclarations(source, ANONYMOUS_COMPOSITE_CLASS_PATTERN));
 }

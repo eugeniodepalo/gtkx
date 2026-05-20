@@ -6,7 +6,7 @@
  * bodies — members no GObject-introspection runtime exposes.
  */
 
-import { findMatchingBrace } from "./shared.js";
+import { findMatchingBrace, stripNamedMember } from "./shared.js";
 
 /**
  * Field-name sets keyed by class or interface name for one namespace.
@@ -19,23 +19,10 @@ export type NamespaceFieldNames = ReadonlyMap<string, ReadonlySet<string>>;
  */
 export type FieldNameMap = ReadonlyMap<string, NamespaceFieldNames>;
 
-/**
- * Regex fragment matching an optional JSDoc block immediately preceding a
- * member. The inner `(?!\*\/)` guard keeps the lazy body from spanning past
- * the block's own `*\/` into later declarations.
- */
-const OPTIONAL_LEADING_JSDOC = String.raw`(?:\/\*\*(?:(?!\*\/)[\s\S])*?\*\/[ \t\n]*)?`;
-
 const stripMethodsFromBody = (body: string, methodNames: ReadonlySet<string>): string => {
     let result = body;
     for (const name of methodNames) {
-        const memberLine = new RegExp(String.raw`(^|\n)([ \t]*)${OPTIONAL_LEADING_JSDOC}${name}[<(][^\n]*`);
-        const match = memberLine.exec(result);
-        if (match?.index === undefined) continue;
-        const start = match.index + (match[1] ?? "").length;
-        let end = match.index + match[0].length;
-        if (result[end] === "\n") end += 1;
-        result = result.slice(0, start) + result.slice(end);
+        result = stripNamedMember(result, name, "[<(]");
     }
     return result;
 };
@@ -97,13 +84,7 @@ export function stripSignalActionMethods(
 const stripFieldsFromBody = (body: string, fieldNames: ReadonlySet<string>): string => {
     let result = body;
     for (const name of fieldNames) {
-        const memberLine = new RegExp(String.raw`(^|\n)([ \t]*)${OPTIONAL_LEADING_JSDOC}${name}(\?)?:[ \t][^\n]*`);
-        const match = memberLine.exec(result);
-        if (match?.index === undefined) continue;
-        const start = match.index + (match[1] ?? "").length;
-        let end = match.index + match[0].length;
-        if (result[end] === "\n") end += 1;
-        result = result.slice(0, start) + result.slice(end);
+        result = stripNamedMember(result, name, String.raw`(\?)?:[ \t]`);
     }
     return result;
 };
