@@ -3,6 +3,7 @@ import { GtkColumnView, GtkLabel } from "@gtkx/react";
 import { render, tick } from "@gtkx/testing";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { filterableIds } from "../helpers/filterable-items.js";
 import { type ColumnDef, renderColumnView } from "../helpers/list-fixtures.js";
 import { ScrollWrapper } from "../helpers/scroll-wrapper.js";
 import { getChildTexts } from "../helpers/widget-text.js";
@@ -560,30 +561,16 @@ describe("render - ColumnView (11)", () => {
 describe("render - ColumnView (12)", () => {
     describe("item reordering (3)", () => {
         it("handles filtered view reordering", async () => {
-            type Item = { id: string; active: boolean };
-
-            const items: Item[] = [
-                { id: "1", active: true },
-                { id: "2", active: false },
-                { id: "3", active: true },
-                { id: "4", active: false },
-                { id: "5", active: true },
-            ];
-            const idsFor = (filter: "all" | "active" | "inactive"): string[] =>
-                items
-                    .filter((item) => (filter === "all" ? true : filter === "active" ? item.active : !item.active))
-                    .map((item) => item.id);
-
-            const { ref, rerender } = await renderColumnView(idsFor("all"));
+            const { ref, rerender } = await renderColumnView(filterableIds("all"));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["1", "2", "3", "4", "5"]);
 
-            await rerender(idsFor("active"));
+            await rerender(filterableIds("active"));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["1", "3", "5"]);
 
-            await rerender(idsFor("inactive"));
+            await rerender(filterableIds("inactive"));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["2", "4"]);
 
-            await rerender(idsFor("all"));
+            await rerender(filterableIds("all"));
             expect(getColumnViewItemTexts(ref.current)).toEqual(["1", "2", "3", "4", "5"]);
         });
     });

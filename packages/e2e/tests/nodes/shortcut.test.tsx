@@ -21,27 +21,17 @@ describe("render - Shortcut (1)", () => {
         expect(controller?.getNItems() ?? 0).toBeGreaterThan(0);
     });
 
-    it("supports an array of triggers (alternative trigger)", async () => {
+    it.each([
+        { label: "supports an array of triggers (alternative trigger)", trigger: ["<Control>s", "F2"], disabled: false },
+        { label: "uses NeverTrigger when disabled", trigger: "<Control>s", disabled: true },
+        { label: "uses NeverTrigger for an empty trigger array", trigger: [], disabled: false },
+    ])("$label", async ({ trigger, disabled }) => {
         const controllerRef = createRef<Gtk.ShortcutController>();
 
         await render(
             <GtkBox>
                 <GtkShortcutController ref={controllerRef}>
-                    <GtkShortcutController.Shortcut trigger={["<Control>s", "F2"]} onActivate={() => true} />
-                </GtkShortcutController>
-            </GtkBox>,
-        );
-
-        expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
-    });
-
-    it("uses NeverTrigger when disabled", async () => {
-        const controllerRef = createRef<Gtk.ShortcutController>();
-
-        await render(
-            <GtkBox>
-                <GtkShortcutController ref={controllerRef}>
-                    <GtkShortcutController.Shortcut trigger="<Control>s" onActivate={() => true} disabled={true} />
+                    <GtkShortcutController.Shortcut trigger={trigger} onActivate={() => true} disabled={disabled} />
                 </GtkShortcutController>
             </GtkBox>,
         );
@@ -51,20 +41,6 @@ describe("render - Shortcut (1)", () => {
 });
 
 describe("render - Shortcut (2)", () => {
-    it("uses NeverTrigger for an empty trigger array", async () => {
-        const controllerRef = createRef<Gtk.ShortcutController>();
-
-        await render(
-            <GtkBox>
-                <GtkShortcutController ref={controllerRef}>
-                    <GtkShortcutController.Shortcut trigger={[]} onActivate={() => true} />
-                </GtkShortcutController>
-            </GtkBox>,
-        );
-
-        expect(controllerRef.current?.getNItems() ?? 0).toBe(1);
-    });
-
     it("removes the shortcut from the controller when unmounted", async () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
 

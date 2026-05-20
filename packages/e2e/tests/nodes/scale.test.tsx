@@ -12,6 +12,17 @@ const expectDefaultRange = (scale: Gtk.Scale | null): void => {
     expect(adjustment?.getValue()).toBe(0);
 };
 
+const MIN_MAX_MARKS = [
+    { value: 0, label: "Min" },
+    { value: 100, label: "Max" },
+];
+
+const MIN_MID_MAX_MARKS = [
+    { value: 0, label: "Min" },
+    { value: 50, label: "Mid" },
+    { value: 100, label: "Max" },
+];
+
 describe("render - Scale > ScaleNode (1)", () => {
     it("creates Scale widget without marks", async () => {
         const ref = createRef<Gtk.Scale>();
@@ -94,17 +105,7 @@ describe("render - Scale > ScaleNode (3)", () => {
         const ref = createRef<Gtk.Scale>();
 
         function App({ showExtra }: { showExtra: boolean }) {
-            const marks = showExtra
-                ? [
-                      { value: 0, label: "Min" },
-                      { value: 50, label: "Mid" },
-                      { value: 100, label: "Max" },
-                  ]
-                : [
-                      { value: 0, label: "Min" },
-                      { value: 100, label: "Max" },
-                  ];
-            return <GtkScale ref={ref} marks={marks} />;
+            return <GtkScale ref={ref} marks={showExtra ? MIN_MID_MAX_MARKS : MIN_MAX_MARKS} />;
         }
 
         await render(<App showExtra={true} />);
@@ -118,17 +119,7 @@ describe("render - Scale > ScaleNode (3)", () => {
         const ref = createRef<Gtk.Scale>();
 
         function App({ showMid }: { showMid: boolean }) {
-            const marks = showMid
-                ? [
-                      { value: 0, label: "Min" },
-                      { value: 50, label: "Mid" },
-                      { value: 100, label: "Max" },
-                  ]
-                : [
-                      { value: 0, label: "Min" },
-                      { value: 100, label: "Max" },
-                  ];
-            return <GtkScale ref={ref} marks={marks} />;
+            return <GtkScale ref={ref} marks={showMid ? MIN_MID_MAX_MARKS : MIN_MAX_MARKS} />;
         }
 
         await render(<App showMid={false} />);

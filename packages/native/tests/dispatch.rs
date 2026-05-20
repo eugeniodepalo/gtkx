@@ -12,6 +12,19 @@ fn drain_pending() {
     while mailbox.dispatch_pending() {}
 }
 
+/// Drains pending work, schedules a glib task that increments the returned
+/// counter, and returns the counter so the test can observe whether the task
+/// has run.
+fn schedule_incrementing_task() -> Arc<AtomicUsize> {
+    drain_pending();
+    let counter = Arc::new(AtomicUsize::new(0));
+    let counter_clone = counter.clone();
+    Mailbox::global().schedule_glib(Box::new(move || {
+        counter_clone.fetch_add(1, Ordering::SeqCst);
+    }));
+    counter
+}
+
 #[test]
 fn dispatch_pending_returns_false_when_empty() {
     common::run(|| {
@@ -24,14 +37,7 @@ fn dispatch_pending_returns_false_when_empty() {
 #[test]
 fn schedule_glib_then_dispatch_pending_runs_task() {
     common::run(|| {
-        drain_pending();
-        let counter = Arc::new(AtomicUsize::new(0));
-        let counter_clone = counter.clone();
-
-        Mailbox::global().schedule_glib(Box::new(move || {
-            counter_clone.fetch_add(1, Ordering::SeqCst);
-        }));
-
+        let counter = schedule_incrementing_task();
         assert_eq!(counter.load(Ordering::SeqCst), 0);
 
         let dispatched = Mailbox::global().dispatch_pending();
@@ -87,13 +93,7 @@ fn freeze_returns_true_only_for_outermost_call() {
 #[test]
 fn a_schedule_glib_idle_source_dispatches_through_global_main_context() {
     common::run(|| {
-        drain_pending();
-        let counter = Arc::new(AtomicUsize::new(0));
-        let counter_clone = counter.clone();
-
-        Mailbox::global().schedule_glib(Box::new(move || {
-            counter_clone.fetch_add(1, Ordering::SeqCst);
-        }));
+        let counter = schedule_incrementing_task();
 
         let context = gtk4::glib::MainContext::default();
         for _ in 0..1000 {

@@ -214,10 +214,9 @@ fn append_libffi_args_scalar_pushes_one() {
     assert_eq!(args.len(), 1);
 }
 
-#[test]
-fn append_libffi_args_handles_every_scalar_variant() {
+fn scalar_value_samples() -> Vec<FfiValue> {
     let storage: FfiStorage = vec![1u8].into();
-    let values = [
+    vec![
         FfiValue::U8(1),
         FfiValue::I8(1),
         FfiValue::U16(1),
@@ -231,8 +230,12 @@ fn append_libffi_args_handles_every_scalar_variant() {
         FfiValue::Ptr(std::ptr::null_mut()),
         FfiValue::Storage(storage),
         FfiValue::Void,
-    ];
-    for v in &values {
+    ]
+}
+
+#[test]
+fn append_libffi_args_handles_every_scalar_variant() {
+    for v in &scalar_value_samples() {
         let mut args = Vec::new();
         v.append_libffi_args(&mut args);
         assert_eq!(args.len(), 1);
@@ -241,23 +244,7 @@ fn append_libffi_args_handles_every_scalar_variant() {
 
 #[test]
 fn libffi_arg_conversion_covers_every_scalar_variant() {
-    let storage: FfiStorage = vec![1u8].into();
-    let values = [
-        FfiValue::U8(1),
-        FfiValue::I8(1),
-        FfiValue::U16(1),
-        FfiValue::I16(1),
-        FfiValue::U32(1),
-        FfiValue::I32(1),
-        FfiValue::U64(1),
-        FfiValue::I64(1),
-        FfiValue::F32(1.0),
-        FfiValue::F64(1.0),
-        FfiValue::Ptr(std::ptr::null_mut()),
-        FfiValue::Storage(storage),
-        FfiValue::Void,
-    ];
-    for v in &values {
+    for v in &scalar_value_samples() {
         let _arg: libffi::middle::Arg = v.into();
     }
 }
