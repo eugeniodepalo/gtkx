@@ -20,8 +20,6 @@ export interface GTypeStamped {
  * their own constructor that delegates to `constructNativeObject`. Also the
  * wrapper type threaded through the identity registry. Not exported from the
  * public `@gtkx/ffi` surface.
- *
- * @internal
  */
 export abstract class NativeObject implements GTypeStamped {
     /** Runtime GType of the underlying GObject or boxed instance. */
@@ -57,10 +55,6 @@ const handleMap = new WeakMap<object, NativeHandle>();
  * Returns the native handle associated with `obj`. Throws when the object
  * has not been linked to a handle.
  *
- * @internal Module-private accessor used by `@gtkx/ffi` and its generated
- *     bindings to retrieve the opaque native pointer of a wrapped instance.
- *     End consumers should never call this — it is not part of the public
- *     `@gtkx/ffi` surface.
  */
 export function getHandle(obj: object): NativeHandle {
     const handle = handleMap.get(obj);
@@ -76,7 +70,6 @@ export function getHandle(obj: object): NativeHandle {
  * object is nullish or has not been linked to a handle. Use this when a
  * caller cannot guarantee that the object has been fully constructed.
  *
- * @internal Module-private accessor.
  */
 export function tryGetHandle(obj: object | null | undefined): NativeHandle | undefined {
     return obj == null ? undefined : handleMap.get(obj);
@@ -85,7 +78,6 @@ export function tryGetHandle(obj: object | null | undefined): NativeHandle | und
 /**
  * Associates a native handle with `obj`.
  *
- * @internal Module-private setter used by construction and `wrapHandle`.
  */
 export function setHandle(obj: object, handle: NativeHandle): void {
     handleMap.set(obj, handle);
@@ -105,8 +97,6 @@ const classStructMap = new WeakMap<object, ClassStructDescriptors>();
  * Associates a class-struct vfunc registry with a generated class so that
  * `registerClass` can resolve vfunc overrides by method name on subclasses.
  *
- * @internal Module-private setter invoked once per generated class by the
- *     codegen-emitted bootstrap at the bottom of each namespace file.
  */
 export function setClassStruct(cls: object, descriptors: ClassStructDescriptors): void {
     classStructMap.set(cls, descriptors);
@@ -115,8 +105,6 @@ export function setClassStruct(cls: object, descriptors: ClassStructDescriptors)
 /**
  * Resolves the class-struct vfunc descriptor map associated with `cls`, or
  * `undefined` when no descriptors have been registered for it.
- *
- * @internal
  */
 export function getClassStruct(cls: object): ClassStructDescriptors | undefined {
     return classStructMap.get(cls);

@@ -1,5 +1,5 @@
 export * from "../generated/gobject/gobject.js";
-export { G_TYPE_INVALID } from "../gtype.js";
+export { G_TYPE_INVALID, isInvalidGType } from "../gtype.js";
 export {
     TYPE_BOOLEAN,
     TYPE_BOXED,

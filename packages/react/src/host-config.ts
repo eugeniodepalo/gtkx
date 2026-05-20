@@ -3,6 +3,7 @@ import { typeName } from "@gtkx/ffi/gobject";
 import type * as Gtk from "@gtkx/ffi/gtk";
 import React from "react";
 import type ReactReconciler from "react-reconciler";
+import { DiscreteEventPriority } from "react-reconciler/constants.js";
 import { createNode, resolveContainerClass } from "./factory.js";
 import type { Node } from "./node.js";
 import { isBuffered } from "./nodes/internal/predicates.js";
@@ -115,9 +116,9 @@ const createSchedulingConfig = (): SchedulingConfig => ({
     cancelTimeout: (id) => {
         clearTimeout(id);
     },
-    getCurrentUpdatePriority: () => 2,
+    getCurrentUpdatePriority: () => DiscreteEventPriority,
     setCurrentUpdatePriority: () => {},
-    resolveUpdatePriority: () => 2,
+    resolveUpdatePriority: () => DiscreteEventPriority,
 });
 
 type HostContextConfig = Pick<HostConfig, "getRootHostContext" | "getChildHostContext" | "shouldSetTextContent">;

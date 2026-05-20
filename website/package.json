@@ -10,15 +10,13 @@
         "preview": "vitepress preview",
         "screenshots": "vitest run --config screenshots/vitest.config.ts"
     },
-    "dependencies": {
+    "devDependencies": {
         "@gtkx/css": "workspace:*",
         "@gtkx/ffi": "workspace:*",
         "@gtkx/react": "workspace:*",
-        "react": "^19.2.6"
-    },
-    "devDependencies": {
         "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",
+        "react": "^19.2.6",
         "typedoc": "^0.28.19",
         "typedoc-plugin-markdown": "^4.11.0",
         "typedoc-vitepress-theme": "^1.1.2",

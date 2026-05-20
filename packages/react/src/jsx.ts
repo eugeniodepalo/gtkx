@@ -115,9 +115,7 @@ export type AdwSpringAnimationProps = AnimationBaseProps & {
     delay?: number;
 };
 
-/**
- * @internal Union type used by the AnimationNode internally.
- */
+/** Union of the animation prop shapes accepted by the AnimationNode reconciler. */
 export type AnimationProps = AdwTimedAnimationProps | AdwSpringAnimationProps;
 
 /**

@@ -231,8 +231,6 @@ function findInterfaceClassStruct(gtype: GType): Readonly<Record<string, unknown
  * class-struct descriptor map so that {@link registerClass} can auto-discover
  * interface vfunc overrides on a subclass. Codegen calls this once per
  * interface at module load.
- *
- * @internal
  */
 export function registerInterfaceClassStruct(gtype: GType, struct: Readonly<Record<string, unknown>>): void {
     if (gtype === G_TYPE_INVALID) return;

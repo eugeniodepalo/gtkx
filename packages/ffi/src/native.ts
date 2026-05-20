@@ -11,30 +11,14 @@
 export type { ArrayKind, ArrayOptions, Ownership, TrampolineOptions, TrampolineScope } from "./helpers.js";
 export { alloc, call, freeze, getNativeId, read, t, unfreeze, write } from "./helpers.js";
 
-import { getInstanceGType, type NativeHandle, type Ref } from "@gtkx/native";
+import type { NativeHandle, Ref } from "@gtkx/native";
 import type { Error as GError } from "./generated/glib/glib.js";
-import type { GType } from "./generated/gobject/gobject.js";
-import { G_TYPE_INVALID, typeIsA } from "./gtype.js";
 import type { NativeClass } from "./handles.js";
 import { getNativeObject } from "./registry.js";
 
-export { getInstanceGType } from "@gtkx/native";
-export type { NativeClass, NativeHandle } from "./handles.js";
-
-/**
- * Tests whether a `GTypeInstance`-compatible handle is an instance of `gtype`.
- *
- * Composes {@link getInstanceGType} with `g_type_is_a`, so the check covers
- * both class inheritance and interface implementation in a single call.
- *
- * @param handle - Handle to a live GObject-compatible instance
- * @param gtype - GType identifier of the target type
- */
-export function instanceIsA(handle: NativeHandle, gtype: GType): boolean {
-    const instanceGtype: GType = getInstanceGType(handle);
-    if (instanceGtype === G_TYPE_INVALID) return false;
-    return typeIsA(instanceGtype, gtype);
-}
+export type { NativeHandle, Type } from "@gtkx/native";
+export { findObjectProperty, getInstanceGType } from "@gtkx/native";
+export type { NativeClass } from "./handles.js";
 
 /**
  * Error thrown by generated bindings when a throwing GTK/GLib callable fails.
@@ -42,8 +26,6 @@ export function instanceIsA(handle: NativeHandle, gtype: GType): boolean {
  * Carries the failing `GError`'s domain quark and code. Discriminate it at the
  * catch site with `instanceof` against a generated error-domain enum rather
  * than referencing this class directly.
- *
- * @internal Thrown by generated bindings; not part of the public API.
  */
 export class NativeError extends Error {
     /** Quark of the GLib error domain the failure belongs to. */
@@ -75,8 +57,6 @@ export class NativeError extends Error {
  *
  * @param error - Out-parameter ref populated by the FFI call
  * @param errorClass - The GLib `Error` wrapper class
- *
- * @internal Module-private helper invoked by generated bindings.
  */
 export function checkError(error: Ref<NativeHandle | null>, errorClass: NativeClass<GError>): void {
     if (error.value !== null) {
@@ -111,8 +91,6 @@ export type ErrorDomain<T extends Record<string, number>> = Readonly<T> & {
  * @param resolveDomain - Resolves the quark of the GLib error domain.
  * @param members - The enum's member-name to numeric-value map.
  * @returns A frozen enum object usable as an `instanceof` right-hand side.
- *
- * @internal Invoked by generated bindings.
  */
 export function makeErrorDomain<const T extends Record<string, number>>(
     resolveDomain: () => number,
@@ -140,8 +118,6 @@ export function makeErrorDomain<const T extends Record<string, number>>(
  *
  * @param message - Description of the unsupported callable.
  * @returns Never returns; always throws.
- *
- * @internal Module-private helper invoked by generated bindings.
  */
 export function throwUnsupported(message: string): never {
     throw new Error(message);

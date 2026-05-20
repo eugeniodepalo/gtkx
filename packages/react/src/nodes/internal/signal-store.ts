@@ -116,6 +116,13 @@ export class SignalStore {
         this.blockDepth++;
     }
 
+    /**
+     * Decrements the block depth, but absorbs the underflow that occurs when
+     * an error-recovery path has reset the depth to zero between the matching
+     * `blockAll` and this call — see `render.tsx`, which calls
+     * {@link forceUnblockAll} on commit failure to release stuck signals
+     * before any pending `unblockAll` runs.
+     */
     public unblockAll(): void {
         if (this.blockDepth > 0) {
             this.blockDepth--;

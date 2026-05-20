@@ -4,63 +4,73 @@
     "ignoreExportsUsedInFile": true,
     "workspaces": {
         ".": {
-            "entry": ["gtkx.config.ts"]
+            "entry": ["gtkx.config.ts", "scripts/copy-readme.ts!"]
         },
         "packages/cli": {
-            "entry": ["src/global.d.ts"],
-            "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
+            "entry": ["src/global.d.ts!"],
+            "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/codegen": {
-            "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]
+            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/css": {
-            "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
+            "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/e2e": {
             "project": ["tests/**/*.{ts,tsx}"]
         },
         "packages/ffi": {
-            "entry": ["src/generated/*/*.js"],
-            "project": ["src/**/*.{ts,js}", "tests/**/*.{ts,tsx}"]
+            "entry": [
+                "src/generated/*/*.js!",
+                "scripts/postinstall.ts!",
+                "scripts/copy-generated-dts.ts!",
+                "scripts/conformance.ts!"
+            ],
+            "project": ["src/**/*.{ts,js}!", "scripts/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/mcp": {
-            "entry": ["src/cli.ts"],
-            "project": ["src/**/*.ts", "tests/**/*.{ts,tsx}"]
+            "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/native": {
-            "entry": ["types.ts"],
-            "project": ["*.ts", "tests/**/*.{ts,tsx}"]
+            "entry": ["types.ts!"],
+            "project": ["*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/react": {
-            "project": ["src/**/*.{ts,tsx}"]
+            "entry": ["scripts/copy-generated-dts.ts!"],
+            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts!"]
         },
         "packages/testing": {
-            "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"]
+            "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
         },
         "packages/vitest": {
-            "entry": ["src/setup.ts"],
-            "project": ["src/**/*.ts"]
+            "entry": ["src/setup.ts!"],
+            "project": ["src/**/*.ts!"]
         },
         "examples/browser": {
-            "entry": ["src/index.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
-            "project": ["src/**/*.{ts,tsx}"]
+            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
+            "project": ["src/**/*.{ts,tsx}!"]
         },
         "examples/gtk-demo": {
-            "entry": ["src/index.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
-            "project": ["src/**/*.{ts,tsx}"]
+            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
+            "project": ["src/**/*.{ts,tsx}!"]
         },
         "examples/hello-world": {
-            "entry": ["src/index.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
-            "project": ["src/**/*.{ts,tsx}"]
+            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
+            "project": ["src/**/*.{ts,tsx}!"]
         },
         "examples/tutorial": {
-            "entry": ["src/index.tsx", "src/gtkx-env.d.ts", "gtkx.config.ts"],
-            "project": ["src/**/*.{ts,tsx}", "scripts/**/*.ts"]
+            "entry": [
+                "src/index.tsx!",
+                "src/gtkx-env.d.ts!",
+                "gtkx.config.ts!",
+                "scripts/bundle.ts!",
+                "scripts/bundle-postject.ts!"
+            ],
+            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts!"]
         },
         "website": {
             "entry": ["screenshots/**/*.test.{ts,tsx}"],
-            "project": [".vitepress/**/*.{ts,tsx,js}", "scripts/**/*.{ts,js}", "screenshots/**/*.{ts,tsx}"],
-            "ignoreDependencies": ["typedoc", "typedoc-plugin-markdown", "typedoc-vitepress-theme"]
+            "project": [".vitepress/**/*.{ts,tsx,js}", "scripts/**/*.{ts,js}", "screenshots/**/*.{ts,tsx}"]
         }
     }
 }

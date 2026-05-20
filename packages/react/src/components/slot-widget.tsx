@@ -13,8 +13,7 @@ type SlotPropValue = ReactNode | null | undefined;
  * @param slotNames - Array of camelCase slot prop names (e.g., ["titlebar", "startChild"])
  * @public
  */
-// biome-ignore lint/suspicious/noExplicitAny: Props interfaces don't satisfy Record<string, unknown>
-export function createSlotWidget<P = any>(
+export function createSlotWidget<P = unknown>(
     intrinsicName: string,
     slotNames: readonly string[],
 ): (props: P & { children?: ReactNode }) => ReactNode {

@@ -20,8 +20,6 @@ import { getClassGType, registerNativeObject } from "./registry.js";
  * @param names - GIR property names, paired by index with `values`
  * @param values - Borrowed `GValue` handles, one per name
  * @returns The owned handle of the new instance
- *
- * @internal Module-private construction primitive invoked by generated bindings.
  */
 export function objectNewWithProperties(gtype: number, names: string[], values: NativeHandle[]): NativeHandle {
     return call(
@@ -49,8 +47,6 @@ export function objectNewWithProperties(gtype: number, names: string[], values: 
  *     the same JS wrapper.
  *   - `"boxed"`: dispatches `g_malloc0` and writes each provided field into
  *     the struct.
- *
- * @internal Module-private constructor helper invoked by generated bindings.
  */
 export function constructNativeObject(instance: object, props: object = {}): void {
     const ctor = instance.constructor as NativeClass;

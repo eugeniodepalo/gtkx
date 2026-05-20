@@ -27,7 +27,7 @@ const saveAndLogScreenshot = (result: ScreenshotResult): void => {
 
 let currentRoot: Gtk.Application | null = null;
 
-/** @internal */
+/** Sets the application the `screen` queries operate against; called by `render`. */
 export const setScreenRoot = (root: Gtk.Application | null): void => {
     currentRoot = root;
 };

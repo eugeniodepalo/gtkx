@@ -233,7 +233,7 @@ importers:
         version: 4.2.7
 
   packages/e2e:
-    dependencies:
+    devDependencies:
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
@@ -243,7 +243,6 @@ importers:
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../testing
-    devDependencies:
       '@gtkx/vitest':
         specifier: workspace:*
         version: link:../vitest
@@ -332,7 +331,7 @@ importers:
         version: 4.1.6(@types/node@25.9.1)(@vitest/coverage-v8@4.1.6)(vite@8.0.13(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))
 
   website:
-    dependencies:
+    devDependencies:
       '@gtkx/css':
         specifier: workspace:*
         version: link:../packages/css
@@ -342,16 +341,15 @@ importers:
       '@gtkx/react':
         specifier: workspace:*
         version: link:../packages/react
-      react:
-        specifier: ^19.2.6
-        version: 19.2.6
-    devDependencies:
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../packages/testing
       '@gtkx/vitest':
         specifier: workspace:*
         version: link:../packages/vitest
+      react:
+        specifier: ^19.2.6
+        version: 19.2.6
       typedoc:
         specifier: ^0.28.19
         version: 0.28.19(typescript@6.0.3)

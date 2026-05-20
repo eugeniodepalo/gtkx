@@ -13,8 +13,6 @@ const resolveContainer = (containerOrGetter: ContainerOrGetter): Container =>
  *
  * @param containerOrGetter - The container to bind queries to, or a function that returns it
  * @returns Object with all query methods bound to the container
- *
- * @internal
  */
 export const bindQueries = (containerOrGetter: ContainerOrGetter): BoundQueries => ({
     queryByRole: (role: Gtk.AccessibleRole, options?: ByRoleOptions) =>

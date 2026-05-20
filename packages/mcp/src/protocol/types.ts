@@ -91,10 +91,7 @@ export type AppInfo = {
     }>;
 };
 
-/**
- * Zod schema for app registration parameters.
- * @internal
- */
+/** Zod schema for app registration parameters. */
 export const RegisterParamsSchema = z.object({
     appId: z.string(),
     pid: z.number(),

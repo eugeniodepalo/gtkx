@@ -1,11 +1,10 @@
-import { type Type as FfiType, getInstanceGType, type NativeHandle } from "@gtkx/native";
 import type { GObjectPropMeta } from "../construction-meta.js";
 import type * as GLib from "../generated/glib/glib.js";
 import type { Object as GObject, GType, ParamSpec } from "../generated/gobject/gobject.js";
 import { typeFromName, typeFundamental, typeName, Value } from "../generated/gobject/gobject.js";
 import { G_TYPE_INVALID, GVALUE_BORROWED, gtypeFromFfi, LIBGOBJECT } from "../gtype.js";
 import { getHandle, type NativeObject } from "../handles.js";
-import { call, read, t } from "../native.js";
+import { call, type Type as FfiType, getInstanceGType, type NativeHandle, read, t } from "../native.js";
 import { findNativeClass, getNativeObject } from "../registry.js";
 import { Type } from "./types.js";
 
@@ -326,8 +325,6 @@ let fundamentalMarshallers: Map<GType, FundamentalMarshaller> | undefined;
  *
  * Built lazily because every key is a {@link Type} member whose GType is
  * itself resolved on first access.
- *
- * @internal Shared by the read path in `../value-marshal.js`.
  */
 export function getFundamentalMarshallers(): Map<GType, FundamentalMarshaller> {
     fundamentalMarshallers ??= new Map<GType, FundamentalMarshaller>([
@@ -376,8 +373,6 @@ export function fromJS(gtype: GType, value: unknown): Value {
  * Converts a JavaScript prop value into a `GValue` handle suitable for
  * `g_object_new_with_properties`, using the FFI type descriptor recorded in
  * the property's {@link GObjectPropMeta}.
- *
- * @internal Consumed by the GObject construction path in `../object.js`.
  */
 export function gvalueFromProp(meta: GObjectPropMeta, value: unknown): NativeHandle {
     return getHandle(newFrom(meta.ffiType, value));

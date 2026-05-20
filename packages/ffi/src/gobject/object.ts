@@ -1,9 +1,8 @@
-import { findObjectProperty, getInstanceGType, type NativeHandle } from "@gtkx/native";
 import type { GType, ParamSpec } from "../generated/gobject/gobject.js";
 import { Object as GObject, signalEmitv, signalParseName, Value } from "../generated/gobject/gobject.js";
 import { GVALUE_BORROWED, gtypeFromFfi, LIBGOBJECT } from "../gtype.js";
 import { getHandle } from "../handles.js";
-import { alloc, call, read, t } from "../native.js";
+import { alloc, call, findObjectProperty, getInstanceGType, type NativeHandle, read, t } from "../native.js";
 import { getNativeObject } from "../registry.js";
 import { valueFromJS, valueFromObject, valueGetType, valueToJS } from "../value-marshal.js";
 

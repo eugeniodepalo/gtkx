@@ -4,7 +4,8 @@ import type { GType } from "../src/generated/gobject/gobject.js";
 import { typeFromName } from "../src/generated/gobject/gobject.js";
 import * as Gtk from "../src/generated/gtk/gtk.js";
 import { getHandle } from "../src/handles.js";
-import { instanceIsA, makeErrorDomain, NativeError } from "../src/native.js";
+import { makeErrorDomain, NativeError } from "../src/native.js";
+import { instanceIsA } from "./helpers.js";
 
 const orientableGType = (): GType => typeFromName("GtkOrientable");
 

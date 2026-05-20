@@ -1,5 +1,5 @@
 import { findNativeClass, type NativeClass } from "@gtkx/ffi";
-import { typeFromName } from "@gtkx/ffi/gobject";
+import { isInvalidGType, typeFromName } from "@gtkx/ffi/gobject";
 import type { Container, Props } from "../../types.js";
 import { camelToSnake } from "./naming.js";
 
@@ -15,7 +15,7 @@ import { camelToSnake } from "./naming.js";
  */
 export function resolveNativeClass(typeName: string): NativeClass | null {
     const gtype = typeFromName(typeName);
-    if ((gtype as unknown) === 0) {
+    if (isInvalidGType(gtype)) {
         return null;
     }
     return findNativeClass(gtype);

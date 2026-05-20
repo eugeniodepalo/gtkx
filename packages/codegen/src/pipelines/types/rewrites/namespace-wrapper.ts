@@ -59,6 +59,11 @@ export function rewriteDefaultImportsToNamespace(source: string): string {
  * emits for per-class signal/constructor companion blocks with the modern
  * `namespace <Name> { ... }` form. The former is rejected under strict TS
  * 6+ as a stylistic legacy of internal modules.
+ *
+ * Still required against ts-for-gir 3.3.0: at least the
+ * `templates/granite-*.d.ts` companion blocks emit `export module ... { ... }`
+ * literally, so removing this rewrite would let the legacy keyword leak into
+ * the generated output and fail downstream typechecks.
  */
 export function rewriteModuleKeywordToNamespace(source: string): string {
     return source.replace(

@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, type ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ConnectionManager } from "./connection-manager.js";
 import { DEFAULT_SOCKET_PATH } from "./protocol/types.js";
@@ -59,15 +60,15 @@ const screenshotShape = {
     windowId: z.string().optional().describe("Window ID to capture. If not specified, captures the first window."),
 };
 
-const textContent = (text: string) => ({ content: [{ type: "text" as const, text }] });
+const textContent = (text: string): CallToolResult => ({ content: [{ type: "text", text }] });
 
-const textError = (text: string) => ({
-    content: [{ type: "text" as const, text }],
+const textError = (text: string): CallToolResult => ({
+    content: [{ type: "text", text }],
     isError: true,
 });
 
-const imageContent = (data: string, mimeType: string) => ({
-    content: [{ type: "image" as const, data, mimeType }],
+const imageContent = (data: string, mimeType: string): CallToolResult => ({
+    content: [{ type: "image", data, mimeType }],
 });
 
 /**
@@ -78,44 +79,73 @@ const imageContent = (data: string, mimeType: string) => ({
 export type AppQueryClient = Pick<ConnectionManager, "getApps" | "hasConnectedApps" | "waitForApp" | "sendToApp">;
 
 /**
- * Result envelope every tool handler returns to the MCP SDK.
+ * Result envelope every tool handler returns to the MCP SDK. Aliased to the
+ * SDK's `CallToolResult` so any drift between local handlers and the SDK's
+ * structural contract is caught at compile time.
  */
-type ToolHandlerResult = {
-    content: Array<{ type: "text"; text: string } | { type: "image"; data: string; mimeType: string }>;
-    isError?: boolean;
-};
+type ToolHandlerResult = CallToolResult;
 
 /**
- * Maps a Zod raw shape to the inferred argument record consumed by a tool
- * handler.
+ * The argument record received by a typed tool handler — mirrors the SDK's
+ * `ShapeOutput<Shape>` (which is not part of the SDK's published exports) so
+ * the resolved shape matches what the MCP server actually delivers.
  *
  * @typeParam Shape - The Zod raw shape used as the tool's `inputSchema`.
  */
-export type ToolArgs<Shape extends z.ZodRawShape> = { [K in keyof Shape]: z.infer<Shape[K]> };
+type ToolArgs<Shape extends Record<string, z.ZodType>> = { [K in keyof Shape]: z.output<Shape[K]> };
 
 /**
- * A registered MCP tool — name, MCP config, and a Zod-typed handler.
+ * Internal, per-tool typed view used while a tool is being constructed: the
+ * `Shape` parameter ties `inputSchema` to the `handler`'s argument record so
+ * the SDK's structural contract is enforced inside {@link defineTool}.
  *
  * @typeParam Shape - The Zod raw shape used as the tool's `inputSchema`.
  */
-export type ToolDefinition<Shape extends z.ZodRawShape = z.ZodRawShape> = {
+type TypedTool<Shape extends Record<string, z.ZodType>> = {
     name: string;
     config: { description: string; inputSchema: Shape };
     handler: (args: ToolArgs<Shape>) => Promise<ToolHandlerResult>;
 };
 
 /**
- * Identity wrapper that lets the handler signature be inferred from
- * `inputSchema` instead of redeclared at the call site.
+ * A registered MCP tool as exposed to consumers (tests and the registration
+ * loop in {@link main}). The per-tool `Shape` parameter is hidden behind the
+ * `register` closure so heterogeneous tools can be stored in a single array
+ * without type-erasing casts; the closure preserves the typed link between
+ * `inputSchema` and `handler` at the point where it actually matters — the
+ * call to {@link McpServer.registerTool}.
+ */
+export type ToolDefinition = {
+    name: string;
+    config: { description: string; inputSchema: z.ZodRawShape };
+    handler: (args: never) => Promise<ToolHandlerResult>;
+    register: (server: McpServer) => void;
+};
+
+/**
+ * Builds a {@link ToolDefinition} from a typed tool spec. The SDK's
+ * `registerTool` is called inside the returned closure with the original
+ * `Shape` in scope; the only cast is a localized assertion to the SDK's
+ * `ToolCallback<Shape>` (made necessary by the SDK's optional
+ * `inputSchema?: InputArgs` widening to `undefined` during inference) that
+ * still names the SDK type so renames in `ToolCallback` itself fail
+ * compilation.
  *
  * @typeParam Shape - The Zod raw shape used as the tool's `inputSchema`.
- * @param tool - The tool definition.
- * @returns The same `tool` value, but with the handler argument type pinned to
- *   the inferred shape.
+ * @param tool - The typed tool spec (without `register`; it is added here).
+ * @returns A shape-erased {@link ToolDefinition}.
  */
-const defineTool = <Shape extends z.ZodRawShape>(tool: ToolDefinition<Shape>): ToolDefinition<Shape> => tool;
+const defineTool = <Shape extends Record<string, z.ZodType>>(tool: TypedTool<Shape>): ToolDefinition => ({
+    name: tool.name,
+    config: tool.config,
+    handler: tool.handler,
+    register: (server) => {
+        const callback = tool.handler as unknown as ToolCallback<Shape>;
+        server.registerTool(tool.name, tool.config, callback);
+    },
+});
 
-type ForwardSpec<Shape extends z.ZodRawShape> = {
+type ForwardSpec<Shape extends Record<string, z.ZodType>> = {
     name: string;
     description: string;
     inputSchema: Shape;
@@ -124,7 +154,7 @@ type ForwardSpec<Shape extends z.ZodRawShape> = {
     params?: (args: ToolArgs<Shape>) => unknown;
 };
 
-const buildForwardParams = <Shape extends z.ZodRawShape>(
+const buildForwardParams = <Shape extends Record<string, z.ZodType>>(
     args: ToolArgs<Shape>,
     custom: ForwardSpec<Shape>["params"],
 ): { appId: string | undefined; params: unknown } => {
@@ -132,8 +162,8 @@ const buildForwardParams = <Shape extends z.ZodRawShape>(
     return { appId, params: custom ? custom(args) : rest };
 };
 
-const forwardJson = <Shape extends z.ZodRawShape>(spec: ForwardSpec<Shape>): ToolDefinition<Shape> =>
-    defineTool({
+const forwardJson = <Shape extends Record<string, z.ZodType>>(spec: ForwardSpec<Shape>): ToolDefinition =>
+    defineTool<Shape>({
         name: spec.name,
         config: { description: spec.description, inputSchema: spec.inputSchema },
         handler: async (args) => {
@@ -143,8 +173,10 @@ const forwardJson = <Shape extends z.ZodRawShape>(spec: ForwardSpec<Shape>): Too
         },
     });
 
-const forwardAck = <Shape extends z.ZodRawShape>(spec: ForwardSpec<Shape> & { ack: string }): ToolDefinition<Shape> =>
-    defineTool({
+const forwardAck = <Shape extends Record<string, z.ZodType>>(
+    spec: ForwardSpec<Shape> & { ack: string },
+): ToolDefinition =>
+    defineTool<Shape>({
         name: spec.name,
         config: { description: spec.description, inputSchema: spec.inputSchema },
         handler: async (args) => {
@@ -154,8 +186,8 @@ const forwardAck = <Shape extends z.ZodRawShape>(spec: ForwardSpec<Shape> & { ac
         },
     });
 
-const forwardImage = <Shape extends z.ZodRawShape>(spec: ForwardSpec<Shape>): ToolDefinition<Shape> =>
-    defineTool({
+const forwardImage = <Shape extends Record<string, z.ZodType>>(spec: ForwardSpec<Shape>): ToolDefinition =>
+    defineTool<Shape>({
         name: spec.name,
         config: { description: spec.description, inputSchema: spec.inputSchema },
         handler: async (args) => {
@@ -273,7 +305,7 @@ export function buildTools(cm: AppQueryClient): ToolDefinition[] {
             cm,
             method: "widget.screenshot",
         }),
-    ] as unknown as ToolDefinition[];
+    ];
 }
 
 /**
@@ -311,7 +343,7 @@ export async function main() {
     });
 
     for (const tool of buildTools(connectionManager)) {
-        mcpServer.registerTool(tool.name, tool.config, tool.handler as never);
+        tool.register(mcpServer);
     }
 
     const transport = new StdioServerTransport();

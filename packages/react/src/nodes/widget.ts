@@ -89,11 +89,6 @@ export class WidgetNode<
 
     public override commitUpdate(oldProps: P | null, newProps: P): void {
         super.commitUpdate(oldProps, newProps);
-
-        if (!this.container) {
-            throw new Error(`Container is undefined for '${this.typeName}'`);
-        }
-
         applyAccessibleProps(this.container, oldProps, newProps);
         applyProps(this, oldProps, newProps, { table: this.getPropTable(), exclude: isAccessibleProp });
     }
