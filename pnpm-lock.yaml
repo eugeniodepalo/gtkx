@@ -221,10 +221,16 @@ importers:
       '@gtkx/ffi':
         specifier: workspace:*
         version: link:../ffi
+      stylis:
+        specifier: ^4.2.0
+        version: 4.2.0
     devDependencies:
       '@gtkx/vitest':
         specifier: workspace:*
         version: link:../vitest
+      '@types/stylis':
+        specifier: ^4.2.7
+        version: 4.2.7
 
   packages/e2e:
     dependencies:
@@ -2308,6 +2314,9 @@ packages:
 
   '@types/react@19.2.14':
     resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
+
+  '@types/stylis@4.2.7':
+    resolution: {integrity: sha512-VgDNokpBoKF+wrdvhAAfS55OMQpL6QRglwTwNC3kIgBrzZxA4WsFj+2eLfEA/uMUDzBcEhYmjSbwQakn/i3ajA==}
 
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
@@ -5762,6 +5771,8 @@ snapshots:
   '@types/react@19.2.14':
     dependencies:
       csstype: 3.2.3
+
+  '@types/stylis@4.2.7': {}
 
   '@types/unist@3.0.3': {}
 

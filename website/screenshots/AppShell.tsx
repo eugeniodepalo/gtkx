@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/react";
+import type { ReactNode } from "react";
 import { noop } from "./data";
 
 export interface AppShellProps {

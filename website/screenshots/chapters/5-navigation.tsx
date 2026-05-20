@@ -8,7 +8,7 @@ import {
     GtkMenuButton,
     GtkScrolledWindow,
 } from "@gtkx/react";
-import { type Note, NoteCardComponent, noop, NotesSidebarPage, sampleNotes } from "../data";
+import { type Note, NoteCardComponent, NotesSidebarPage, noop, sampleNotes } from "../data";
 
 export const Chapter5 = () => (
     <AdwApplicationWindow title="Notes" defaultWidth={900} defaultHeight={600} onClose={noop}>

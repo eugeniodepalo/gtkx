@@ -3,10 +3,6 @@ import * as Gtk from "@gtkx/ffi/gtk";
 
 type StyleSheetOptions = {
     key: string;
-    container?: unknown;
-    nonce?: string;
-    speedy?: boolean;
-    prepend?: boolean;
 };
 
 const STYLE_PROVIDER_PRIORITY_APPLICATION = 600;

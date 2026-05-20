@@ -1,10 +1,4 @@
-import {
-    AdwPreferencesGroup,
-    AdwPreferencesPage,
-    AdwPreferencesWindow,
-    AdwSpinRow,
-    AdwSwitchRow,
-} from "@gtkx/react";
+import { AdwPreferencesGroup, AdwPreferencesPage, AdwPreferencesWindow, AdwSpinRow, AdwSwitchRow } from "@gtkx/react";
 import { noop } from "../data";
 
 export const Chapter7 = () => (

@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
+import type { MockInstance } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { css, cx, injectGlobal } from "../src/index.js";
+import { StyleSheet } from "../src/style-sheet.js";
 
 describe("css", () => {
     it("creates a class name from template literal styles", () => {
@@ -218,5 +220,58 @@ describe("injectGlobal", () => {
                 }
             `;
         }).not.toThrow();
+    });
+});
+
+describe("stylis pipeline correctness", () => {
+    let insertSpy: MockInstance<StyleSheet["insert"]>;
+
+    beforeEach(() => {
+        insertSpy = vi.spyOn(StyleSheet.prototype, "insert");
+    });
+
+    afterEach(() => {
+        insertSpy.mockRestore();
+    });
+
+    it("scopes @media at-rules around the generated class selector", () => {
+        const className = css`
+            color: red;
+            @media (prefers-color-scheme: dark) {
+                color: blue;
+            }
+        `;
+
+        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const mediaRule = rules.find((rule) => rule.startsWith("@media"));
+        expect(mediaRule).toBeDefined();
+        expect(mediaRule).toContain(`.${className}{color:blue;}`);
+    });
+
+    it("preserves & characters inside string literals", () => {
+        const className = css`
+            font-family: "Helvetica & Arial";
+        `;
+
+        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const rule = rules.find((r) => r.startsWith(`.${className}`));
+        expect(rule).toBeDefined();
+        expect(rule).toContain('font-family:"Helvetica & Arial"');
+    });
+
+    it("compounds nested & selectors instead of producing descendant combinators", () => {
+        const className = css`
+            &:hover {
+                &:focus {
+                    color: red;
+                }
+            }
+        `;
+
+        const rules = insertSpy.mock.calls.map((call) => call[0] as string);
+        const compound = rules.find((rule) => rule.includes(":hover") && rule.includes(":focus"));
+        expect(compound).toBeDefined();
+        expect(compound).toMatch(new RegExp(`^\\.${className}:hover:focus`));
+        expect(compound).not.toMatch(/:hover\s+\..*:focus/);
     });
 });

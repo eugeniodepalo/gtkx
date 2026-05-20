@@ -1,10 +1,10 @@
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { ReactElement } from "react";
 import * as Adw from "@gtkx/ffi/adw";
-import * as Gtk from "@gtkx/ffi/gtk";
+import type * as Gtk from "@gtkx/ffi/gtk";
 import { cleanup, render, screen } from "@gtkx/testing";
+import type { ReactElement } from "react";
 import { afterEach, describe, it } from "vitest";
 import { Chapter1 } from "./chapters/1-window-and-header-bar";
 import { Chapter2 } from "./chapters/2-styling";
