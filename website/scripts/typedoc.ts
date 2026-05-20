@@ -1,10 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { rmSync } from "node:fs";
+import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "../..");
-const website = resolve(root, "website");
-const apiDir = resolve(website, "api");
+const apiDir = resolve(root, "website/api");
 
 const packages = [
     {
@@ -70,6 +69,7 @@ for (const pkg of packages) {
         "table",
         "--groupOrder",
         "Functions,Variables,Interfaces,*",
+        "--useHTMLEncodedBrackets",
         ...(pkg.excludeInternal ? ["--excludeInternal"] : []),
         ...(pkg.intentionallyNotExported
             ? pkg.intentionallyNotExported.flatMap((name) => ["--intentionallyNotExported", name])
@@ -80,22 +80,4 @@ for (const pkg of packages) {
     execFileSync("npx", args, { cwd: root, stdio: "inherit" });
 }
 
-function escapeJsxTags(dir: string): void {
-    for (const entry of readdirSync(dir)) {
-        const fullPath = join(dir, entry);
-        if (statSync(fullPath).isDirectory()) {
-            escapeJsxTags(fullPath);
-            continue;
-        }
-        if (!entry.endsWith(".md")) continue;
-
-        let content = readFileSync(fullPath, "utf-8");
-        content = content.replace(/<(\/?)(Gtk|Adw|Gdk|Gio|GLib|GObject|Pango|x\.)/g, "&lt;$1$2");
-        content = content.replace(/\{\{/g, "&#123;&#123;");
-        content = content.replace(/\}\}/g, "&#125;&#125;");
-        writeFileSync(fullPath, content);
-    }
-}
-
-escapeJsxTags(apiDir);
 console.log("API docs generated.");
