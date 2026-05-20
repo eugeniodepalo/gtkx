@@ -2,8 +2,13 @@ import type * as Gtk from "@gtkx/ffi/gtk";
 import { bindQueries } from "./bind-queries.js";
 import { prettyWidget } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
-import { logScreenshotPath, resolveWindow, saveScreenshotToTempFile, type WindowSelector } from "./screen-screenshot.js";
-import { type ScreenshotOptions, screenshot as captureScreenshot } from "./screenshot.js";
+import {
+    logScreenshotPath,
+    resolveWindow,
+    saveScreenshotToTempFile,
+    type WindowSelector,
+} from "./screen-screenshot.js";
+import { screenshot as captureScreenshot, type ScreenshotOptions } from "./screenshot.js";
 import type { ScreenshotResult } from "./types.js";
 
 let currentRoot: Gtk.Application | null = null;

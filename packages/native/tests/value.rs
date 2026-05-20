@@ -782,7 +782,8 @@ fn from_cif_value_ref_gobject() {
 
         let ptr_storage: Box<*mut c_void> = Box::new(obj_ptr);
         let storage_ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
-        let storage = ffi::FfiStorage::new(storage_ptr, ffi::FfiStorageKind::PtrStorage(ptr_storage));
+        let storage =
+            ffi::FfiStorage::new(storage_ptr, ffi::FfiStorageKind::PtrStorage(ptr_storage));
         let cif_value = ffi::FfiValue::Storage(storage);
 
         let ref_type = native::types::RefType::new(Type::GObject(GObjectType {
@@ -806,7 +807,8 @@ fn from_cif_value_ref_gobject_null_inner() {
     common::run(|| {
         let ptr_storage: Box<*mut c_void> = Box::new(std::ptr::null_mut());
         let storage_ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
-        let storage = ffi::FfiStorage::new(storage_ptr, ffi::FfiStorageKind::PtrStorage(ptr_storage));
+        let storage =
+            ffi::FfiStorage::new(storage_ptr, ffi::FfiStorageKind::PtrStorage(ptr_storage));
         let cif_value = ffi::FfiValue::Storage(storage);
 
         let ref_type = native::types::RefType::new(Type::GObject(GObjectType {
@@ -829,7 +831,8 @@ fn from_cif_value_ref_boxed() {
 
         let ptr_storage: Box<*mut c_void> = Box::new(boxed_ptr);
         let storage_ptr = ptr_storage.as_ref() as *const *mut c_void as *mut c_void;
-        let storage = ffi::FfiStorage::new(storage_ptr, ffi::FfiStorageKind::PtrStorage(ptr_storage));
+        let storage =
+            ffi::FfiStorage::new(storage_ptr, ffi::FfiStorageKind::PtrStorage(ptr_storage));
         let cif_value = ffi::FfiValue::Storage(storage);
 
         let ref_type = native::types::RefType::new(Type::Boxed(BoxedType {
@@ -1203,7 +1206,8 @@ fn into_glib_value_with_default_undefined_string_uses_null() {
             ownership: Ownership::Borrowed,
             length: None,
         };
-        let result = Value::Undefined.into_glib_value_with_default(Some(&Type::String(string_type)));
+        let result =
+            Value::Undefined.into_glib_value_with_default(Some(&Type::String(string_type)));
         assert!(result.is_some());
     });
 }
@@ -1214,7 +1218,8 @@ fn into_glib_value_with_default_undefined_gobject_uses_null() {
         let gobject_type = GObjectType {
             ownership: Ownership::Borrowed,
         };
-        let result = Value::Undefined.into_glib_value_with_default(Some(&Type::GObject(gobject_type)));
+        let result =
+            Value::Undefined.into_glib_value_with_default(Some(&Type::GObject(gobject_type)));
         assert!(result.is_some());
     });
 }

@@ -6,19 +6,15 @@ const getLabelText = (widget: Gtk.Widget): string | null => {
     return asLabel.getLabel?.() ?? asInscription.getText?.() ?? null;
 };
 
+const DEFAULT_TEXT_GETTERS = ["getLabel", "getText", "getTitle"] as const;
+
 const getDefaultText = (widget: Gtk.Widget): string | null => {
-    if ("getLabel" in widget && typeof widget.getLabel === "function") {
-        return (widget.getLabel() as string) || null;
+    for (const getter of DEFAULT_TEXT_GETTERS) {
+        const fn: unknown = Reflect.get(widget, getter);
+        if (typeof fn !== "function") continue;
+        const value = (fn as () => string).call(widget);
+        if (value) return value;
     }
-
-    if ("getText" in widget && typeof widget.getText === "function") {
-        return (widget.getText() as string) || null;
-    }
-
-    if ("getTitle" in widget && typeof widget.getTitle === "function") {
-        return (widget.getTitle() as string) || null;
-    }
-
     return null;
 };
 

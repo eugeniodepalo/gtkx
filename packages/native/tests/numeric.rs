@@ -517,7 +517,8 @@ fn tagged_call_cif_invokes_native_function() {
         let tagged = common::enum_tagged();
         let cif = middle::Cif::new(Vec::new(), IntegerKind::I32.ffi_type());
         let result =
-            FfiEncoder::call_cif(&tagged, &cif, middle::CodePtr(ret_i32 as *mut c_void), &[]).unwrap();
+            FfiEncoder::call_cif(&tagged, &cif, middle::CodePtr(ret_i32 as *mut c_void), &[])
+                .unwrap();
         assert!(matches!(result, ffi::FfiValue::I32(-32)));
     });
 }

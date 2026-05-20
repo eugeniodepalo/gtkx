@@ -1,8 +1,8 @@
 export type { Config } from "./config.js";
 export { configure, getConfig } from "./config.js";
 export { fireEvent } from "./fire-event.js";
-export type { PrettyWidgetOptions } from "./pretty-widget.js";
-export { prettyWidget } from "./pretty-widget.js";
+export type { PrettyWidgetOptions, WidgetEvent, WidgetNode, WidgetSerializer } from "./pretty-widget.js";
+export { createAnsiSerializer, iterateWidgets, prettyWidget } from "./pretty-widget.js";
 export {
     findAllByLabelText,
     findAllByName,
@@ -25,13 +25,13 @@ export { cleanup, render } from "./render.js";
 export { renderHook } from "./render-hook.js";
 export type { RoleInfo } from "./role-helpers.js";
 export { getRoles, logRoles, prettyRoles } from "./role-helpers.js";
+export { screen } from "./screen.js";
 export {
     logScreenshotPath,
     resolveWindow,
     saveScreenshotToTempFile,
     type WindowSelector,
 } from "./screen-screenshot.js";
-export { screen } from "./screen.js";
 export type { ScreenshotOptions } from "./screenshot.js";
 export { screenshot } from "./screenshot.js";
 export { tick } from "./timing.js";
@@ -51,7 +51,7 @@ export type {
     WaitForOptions,
     WrapperComponent,
 } from "./types.js";
-export type { PointerInput, TabOptions } from "./user-event.js";
+export type { PointerInput, TabOptions, UserEventInstance } from "./user-event.js";
 export { userEvent } from "./user-event.js";
 export { waitFor, waitForElementToBeRemoved } from "./wait-for.js";
 export { within } from "./within.js";

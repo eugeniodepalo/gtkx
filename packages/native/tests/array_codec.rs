@@ -825,7 +825,8 @@ fn decode_gptrarray_from_ptr() {
         let ty = array_type(struct_item_type(), ArrayKind::GPtrArray, Ownership::Full);
         let ptr_array = unsafe { glib::ffi::g_ptr_array_new() };
         unsafe { glib::ffi::g_ptr_array_add(ptr_array, boxed_handle().ptr()) };
-        let Value::Array(items) = ty.decode(&FfiValue::Ptr(ptr_array as *mut c_void)).unwrap() else {
+        let Value::Array(items) = ty.decode(&FfiValue::Ptr(ptr_array as *mut c_void)).unwrap()
+        else {
             panic!("expected array")
         };
         assert_eq!(items.len(), 1);
@@ -1185,7 +1186,9 @@ fn ptr_to_value_garray() {
         );
         let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
         let value: i32 = 1;
-        unsafe { glib::ffi::g_array_append_vals(g_array, &value as *const i32 as *const c_void, 1) };
+        unsafe {
+            glib::ffi::g_array_append_vals(g_array, &value as *const i32 as *const c_void, 1)
+        };
         let decoded = unsafe { ty.ptr_to_value(g_array as *mut c_void) }.unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
         unsafe { glib::ffi::g_array_unref(g_array) };
@@ -1370,7 +1373,8 @@ fn trait_methods_delegate_to_inherent_implementations() {
             Ownership::Borrowed,
         );
 
-        let encoded = FfiEncoder::encode(&ty, &Value::Array(vec![Value::Number(1.0)]), false).unwrap();
+        let encoded =
+            FfiEncoder::encode(&ty, &Value::Array(vec![Value::Number(1.0)]), false).unwrap();
         let decoded = FfiDecoder::decode(&ty, &encoded).unwrap();
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
 

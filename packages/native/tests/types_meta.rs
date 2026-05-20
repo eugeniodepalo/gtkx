@@ -11,8 +11,7 @@ use libffi::middle;
 use native::types::{
     ArrayKind, ArrayType, BooleanType, BoxedType, CallbackType, FfiDecoder, FfiEncoder, FloatKind,
     FundamentalType, GObjectType, GlibValueCodec, HashTableType, IntegerKind, Ownership,
-    RawPtrCodec, RefType, StringType, StructType, TrampolineType, Type,
-    UnicharType, VoidType,
+    RawPtrCodec, RefType, StringType, StructType, TrampolineType, Type, UnicharType, VoidType,
 };
 use native::value::Value;
 use native::{ffi, value};

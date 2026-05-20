@@ -16,7 +16,6 @@ import {
     INT16,
     INT32,
     INT64,
-    STRING,
     UINT8,
     UINT16,
     UINT32,

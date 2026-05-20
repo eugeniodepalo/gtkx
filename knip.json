@@ -4,7 +4,8 @@
     "ignoreExportsUsedInFile": true,
     "workspaces": {
         ".": {
-            "entry": ["gtkx.config.ts", "scripts/copy-readme.ts!"]
+            "entry": ["gtkx.config.ts"],
+            "project": ["scripts/**/*.ts"]
         },
         "packages/cli": {
             "entry": ["src/global.d.ts!"],
@@ -20,13 +21,8 @@
             "project": ["tests/**/*.{ts,tsx}"]
         },
         "packages/ffi": {
-            "entry": [
-                "src/generated/*/*.js!",
-                "scripts/postinstall.ts!",
-                "scripts/copy-generated-dts.ts!",
-                "scripts/conformance.ts!"
-            ],
-            "project": ["src/**/*.{ts,js}!", "scripts/**/*.ts!", "tests/**/*.{ts,tsx}"]
+            "entry": ["src/generated/*/*.js!"],
+            "project": ["src/**/*.{ts,js}!", "scripts/**/*.ts", "tests/**/*.{ts,tsx}"]
         },
         "packages/mcp": {
             "project": ["src/**/*.ts!", "tests/**/*.{ts,tsx}"]
@@ -36,8 +32,7 @@
             "project": ["*.ts!", "tests/**/*.{ts,tsx}"]
         },
         "packages/react": {
-            "entry": ["scripts/copy-generated-dts.ts!"],
-            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts!"]
+            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts"]
         },
         "packages/testing": {
             "project": ["src/**/*.{ts,tsx}!", "tests/**/*.{ts,tsx}"]
@@ -59,14 +54,8 @@
             "project": ["src/**/*.{ts,tsx}!"]
         },
         "examples/tutorial": {
-            "entry": [
-                "src/index.tsx!",
-                "src/gtkx-env.d.ts!",
-                "gtkx.config.ts!",
-                "scripts/bundle.ts!",
-                "scripts/bundle-postject.ts!"
-            ],
-            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts!"]
+            "entry": ["src/index.tsx!", "src/gtkx-env.d.ts!", "gtkx.config.ts!"],
+            "project": ["src/**/*.{ts,tsx}!", "scripts/**/*.ts"]
         },
         "website": {
             "entry": ["screenshots/**/*.test.{ts,tsx}"],

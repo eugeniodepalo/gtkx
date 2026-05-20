@@ -54,8 +54,9 @@ fn get_library_returns_error_for_nonexistent() {
 #[test]
 fn get_library_tries_comma_separated_names() {
     common::run(|| {
-        let success =
-            GtkThreadState::with(|state| state.library("libnonexistent.so,libglib-2.0.so.0").is_ok());
+        let success = GtkThreadState::with(|state| {
+            state.library("libnonexistent.so,libglib-2.0.so.0").is_ok()
+        });
 
         assert!(success);
     });
@@ -91,8 +92,9 @@ fn library_cache_load_total_failure_reports_error() {
 #[test]
 fn gtype_from_lib_resolves_known_get_type_function() {
     common::run(|| {
-        let gtype =
-            GtkThreadState::with(|state| state.gtype_from_lib("libgtk-4.so.1", "gtk_widget_get_type"));
+        let gtype = GtkThreadState::with(|state| {
+            state.gtype_from_lib("libgtk-4.so.1", "gtk_widget_get_type")
+        });
 
         let gtype = gtype.expect("gtk_widget_get_type should resolve");
         assert_ne!(gtype, gtk4::glib::Type::INVALID);

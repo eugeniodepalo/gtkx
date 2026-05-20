@@ -93,11 +93,7 @@ const matchByRoleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolea
  * @param options - Query options including name and state filters
  * @returns Array of matching widgets (empty if none found)
  */
-export const queryAllByRole = (
-    container: Container,
-    role: Gtk.AccessibleRole,
-    options?: ByRoleOptions,
-): Gtk.Widget[] =>
+export const queryAllByRole = (container: Container, role: Gtk.AccessibleRole, options?: ByRoleOptions): Gtk.Widget[] =>
     findAll(container, (node) => {
         if (node.getAccessibleRole() !== role) return false;
         return matchByRoleOptions(node, options);
