@@ -36,6 +36,38 @@ fn boxed_handle() -> NativeHandle {
     NativeHandle::borrowed(ptr)
 }
 
+fn ht_type(key: Type, value: Type, ownership: Ownership) -> HashTableType {
+    HashTableType {
+        key_type: Box::new(key),
+        value_type: Box::new(value),
+        ownership,
+    }
+}
+
+fn roundtrip(ht: &HashTableType, input: &Value) -> Value {
+    let encoded = ht
+        .encode(input, false)
+        .expect("encoding should succeed");
+    ht.decode(&encoded).expect("decoding should succeed")
+}
+
+fn assert_kv_pairs<F>(decoded: Value, expected_len: usize, check_kv: F)
+where
+    F: Fn(&Value, &Value),
+{
+    let Value::Array(decoded_pairs) = decoded else {
+        panic!("Expected array")
+    };
+    assert_eq!(decoded_pairs.len(), expected_len);
+    for pair in decoded_pairs {
+        let Value::Array(kv) = pair else {
+            panic!("Expected array pair")
+        };
+        assert_eq!(kv.len(), 2);
+        check_kv(&kv[0], &kv[1]);
+    }
+}
+
 #[test]
 fn encoder_from_type_boolean() {
     let ty = Type::Boolean(BooleanType);
@@ -271,53 +303,26 @@ fn ptr_to_value_struct_non_null() {
 #[test]
 fn hashtable_encode_decode_booleans() {
     common::run(|| {
-        let key_type = Type::Boolean(BooleanType);
-        let value_type = Type::Boolean(BooleanType);
-        let ht_type = HashTableType {
-            key_type: Box::new(key_type),
-            value_type: Box::new(value_type),
-            ownership: Ownership::Full,
-        };
+        let ht_type = ht_type(Type::Boolean(BooleanType), Type::Boolean(BooleanType), Ownership::Full);
 
         let input = Value::Array(vec![
             Value::Array(vec![Value::Boolean(true), Value::Boolean(false)]),
             Value::Array(vec![Value::Boolean(false), Value::Boolean(true)]),
         ]);
 
-        let encoded = ht_type
-            .encode(&input, false)
-            .expect("encoding should succeed");
-        let decoded = ht_type.decode(&encoded).expect("decoding should succeed");
+        let decoded = roundtrip(&ht_type, &input);
 
-        match decoded {
-            Value::Array(pairs) => {
-                assert_eq!(pairs.len(), 2);
-                for pair in pairs {
-                    match pair {
-                        Value::Array(kv) => {
-                            assert_eq!(kv.len(), 2);
-                            assert!(matches!(kv[0], Value::Boolean(_)));
-                            assert!(matches!(kv[1], Value::Boolean(_)));
-                        }
-                        _ => panic!("Expected array pair"),
-                    }
-                }
-            }
-            _ => panic!("Expected array"),
-        }
+        assert_kv_pairs(decoded, 2, |k, v| {
+            assert!(matches!(k, Value::Boolean(_)));
+            assert!(matches!(v, Value::Boolean(_)));
+        })
     });
 }
 
 #[test]
 fn hashtable_encode_decode_floats() {
     common::run(|| {
-        let key_type = Type::Integer(IntegerKind::I32);
-        let value_type = Type::Float(FloatKind::F64);
-        let ht_type = HashTableType {
-            key_type: Box::new(key_type),
-            value_type: Box::new(value_type),
-            ownership: Ownership::Full,
-        };
+        let ht_type = ht_type(Type::Integer(IntegerKind::I32), Type::Float(FloatKind::F64), Ownership::Full);
 
         let input = Value::Array(vec![
             Value::Array(vec![
@@ -327,43 +332,22 @@ fn hashtable_encode_decode_floats() {
             Value::Array(vec![Value::Number(2.0), Value::Number(std::f64::consts::E)]),
         ]);
 
-        let encoded = ht_type
-            .encode(&input, false)
-            .expect("encoding should succeed");
-        let decoded = ht_type.decode(&encoded).expect("decoding should succeed");
+        let decoded = roundtrip(&ht_type, &input);
 
-        match decoded {
-            Value::Array(pairs) => {
-                assert_eq!(pairs.len(), 2);
-                for pair in pairs {
-                    match pair {
-                        Value::Array(kv) => {
-                            assert_eq!(kv.len(), 2);
-                            assert!(matches!(kv[0], Value::Number(_)));
-                            assert!(matches!(kv[1], Value::Number(_)));
-                        }
-                        _ => panic!("Expected array pair"),
-                    }
-                }
-            }
-            _ => panic!("Expected array"),
-        }
+        assert_kv_pairs(decoded, 2, |k, v| {
+            assert!(matches!(k, Value::Number(_)));
+            assert!(matches!(v, Value::Number(_)));
+        })
     });
 }
 
 #[test]
 fn hashtable_encode_decode_string_to_boolean() {
     common::run(|| {
-        let key_type = Type::String(StringType {
+        let ht_type = ht_type(Type::String(StringType {
             ownership: Ownership::Borrowed,
             length: None,
-        });
-        let value_type = Type::Boolean(BooleanType);
-        let ht_type = HashTableType {
-            key_type: Box::new(key_type),
-            value_type: Box::new(value_type),
-            ownership: Ownership::Full,
-        };
+        }), Type::Boolean(BooleanType), Ownership::Full);
 
         let input = Value::Array(vec![
             Value::Array(vec![
@@ -376,50 +360,26 @@ fn hashtable_encode_decode_string_to_boolean() {
             ]),
         ]);
 
-        let encoded = ht_type
-            .encode(&input, false)
-            .expect("encoding should succeed");
-        let decoded = ht_type.decode(&encoded).expect("decoding should succeed");
+        let decoded = roundtrip(&ht_type, &input);
 
-        match decoded {
-            Value::Array(pairs) => {
-                assert_eq!(pairs.len(), 2);
-                for pair in pairs {
-                    match pair {
-                        Value::Array(kv) => {
-                            assert_eq!(kv.len(), 2);
-                            assert!(matches!(kv[0], Value::String(_)));
-                            assert!(matches!(kv[1], Value::Boolean(_)));
-                        }
-                        _ => panic!("Expected array pair"),
-                    }
-                }
-            }
-            _ => panic!("Expected array"),
-        }
+        assert_kv_pairs(decoded, 2, |k, v| {
+            assert!(matches!(k, Value::String(_)));
+            assert!(matches!(v, Value::Boolean(_)));
+        })
     });
 }
 
 #[test]
 fn hashtable_encode_decode_float_keys() {
     common::run(|| {
-        let key_type = Type::Float(FloatKind::F64);
-        let value_type = Type::Integer(IntegerKind::I32);
-        let ht_type = HashTableType {
-            key_type: Box::new(key_type),
-            value_type: Box::new(value_type),
-            ownership: Ownership::Full,
-        };
+        let ht_type = ht_type(Type::Float(FloatKind::F64), Type::Integer(IntegerKind::I32), Ownership::Full);
 
         let input = Value::Array(vec![
             Value::Array(vec![Value::Number(1.5), Value::Number(100.0)]),
             Value::Array(vec![Value::Number(2.5), Value::Number(200.0)]),
         ]);
 
-        let encoded = ht_type
-            .encode(&input, false)
-            .expect("encoding should succeed");
-        let decoded = ht_type.decode(&encoded).expect("decoding should succeed");
+        let decoded = roundtrip(&ht_type, &input);
 
         match decoded {
             Value::Array(pairs) => {
@@ -433,20 +393,11 @@ fn hashtable_encode_decode_float_keys() {
 #[test]
 fn hashtable_empty() {
     common::run(|| {
-        let key_type = Type::Boolean(BooleanType);
-        let value_type = Type::Boolean(BooleanType);
-        let ht_type = HashTableType {
-            key_type: Box::new(key_type),
-            value_type: Box::new(value_type),
-            ownership: Ownership::Full,
-        };
+        let ht_type = ht_type(Type::Boolean(BooleanType), Type::Boolean(BooleanType), Ownership::Full);
 
         let input = Value::Array(vec![]);
 
-        let encoded = ht_type
-            .encode(&input, false)
-            .expect("encoding should succeed");
-        let decoded = ht_type.decode(&encoded).expect("decoding should succeed");
+        let decoded = roundtrip(&ht_type, &input);
 
         match decoded {
             Value::Array(pairs) => assert!(pairs.is_empty()),
@@ -458,13 +409,7 @@ fn hashtable_empty() {
 #[test]
 fn hashtable_null_optional() {
     common::run(|| {
-        let key_type = Type::Boolean(BooleanType);
-        let value_type = Type::Boolean(BooleanType);
-        let ht_type = HashTableType {
-            key_type: Box::new(key_type),
-            value_type: Box::new(value_type),
-            ownership: Ownership::Full,
-        };
+        let ht_type = ht_type(Type::Boolean(BooleanType), Type::Boolean(BooleanType), Ownership::Full);
 
         let encoded = ht_type
             .encode(&Value::Null, true)
@@ -480,13 +425,7 @@ fn hashtable_null_optional() {
 #[test]
 fn hashtable_borrowed_does_not_free() {
     common::run(|| {
-        let key_type = Type::Integer(IntegerKind::I32);
-        let value_type = Type::Integer(IntegerKind::I32);
-        let ht_type = HashTableType {
-            key_type: Box::new(key_type),
-            value_type: Box::new(value_type),
-            ownership: Ownership::Borrowed,
-        };
+        let ht_type = ht_type(Type::Integer(IntegerKind::I32), Type::Integer(IntegerKind::I32), Ownership::Borrowed);
 
         let hash_table = common::make_integer_hash_table(&[(1, 100), (2, 200)]);
 
@@ -508,13 +447,7 @@ fn hashtable_borrowed_does_not_free() {
 #[test]
 fn float_memory_properly_freed_on_drop() {
     common::run(|| {
-        let key_type = Type::Float(FloatKind::F64);
-        let value_type = Type::Float(FloatKind::F64);
-        let ht_type = HashTableType {
-            key_type: Box::new(key_type),
-            value_type: Box::new(value_type),
-            ownership: Ownership::Full,
-        };
+        let ht_type = ht_type(Type::Float(FloatKind::F64), Type::Float(FloatKind::F64), Ownership::Full);
 
         let input = Value::Array(vec![
             Value::Array(vec![Value::Number(1.1), Value::Number(2.2)]),
@@ -522,10 +455,7 @@ fn float_memory_properly_freed_on_drop() {
             Value::Array(vec![Value::Number(5.5), Value::Number(6.6)]),
         ]);
 
-        let encoded = ht_type
-            .encode(&input, false)
-            .expect("encoding should succeed");
-        let _ = ht_type.decode(&encoded).expect("decoding should succeed");
+        let _ = roundtrip(&ht_type, &input);
     });
 }
 
@@ -656,11 +586,7 @@ fn encode_ptr_array_value_with_objects_and_nulls() {
 #[test]
 fn ptr_array_value_freed_when_hashtable_storage_drops() {
     common::run(|| {
-        let ht_type = HashTableType {
-            key_type: Box::new(Type::Integer(IntegerKind::I32)),
-            value_type: Box::new(gptrarray_type()),
-            ownership: Ownership::Borrowed,
-        };
+        let ht_type = ht_type(Type::Integer(IntegerKind::I32), gptrarray_type(), Ownership::Borrowed);
         let input = Value::Array(vec![Value::Array(vec![
             Value::Number(1.0),
             Value::Array(vec![Value::Object(boxed_handle())]),
@@ -696,42 +622,26 @@ fn encoder_debug_and_clone() {
 
 #[test]
 fn hashtable_encode_rejects_non_array() {
-    let ht_type = HashTableType {
-        key_type: Box::new(Type::Boolean(BooleanType)),
-        value_type: Box::new(Type::Boolean(BooleanType)),
-        ownership: Ownership::Full,
-    };
+    let ht_type = ht_type(Type::Boolean(BooleanType), Type::Boolean(BooleanType), Ownership::Full);
     assert!(ht_type.encode(&Value::Number(1.0), false).is_err());
 }
 
 #[test]
 fn hashtable_encode_rejects_unsupported_key_type() {
-    let ht_type = HashTableType {
-        key_type: Box::new(Type::Void(VoidType)),
-        value_type: Box::new(Type::Boolean(BooleanType)),
-        ownership: Ownership::Full,
-    };
+    let ht_type = ht_type(Type::Void(VoidType), Type::Boolean(BooleanType), Ownership::Full);
     assert!(ht_type.encode(&Value::Array(vec![]), false).is_err());
 }
 
 #[test]
 fn hashtable_encode_rejects_unsupported_value_type() {
-    let ht_type = HashTableType {
-        key_type: Box::new(Type::Boolean(BooleanType)),
-        value_type: Box::new(Type::Void(VoidType)),
-        ownership: Ownership::Full,
-    };
+    let ht_type = ht_type(Type::Boolean(BooleanType), Type::Void(VoidType), Ownership::Full);
     assert!(ht_type.encode(&Value::Array(vec![]), false).is_err());
 }
 
 #[test]
 fn hashtable_encode_rejects_non_tuple_entry() {
     common::run(|| {
-        let ht_type = HashTableType {
-            key_type: Box::new(Type::Boolean(BooleanType)),
-            value_type: Box::new(Type::Boolean(BooleanType)),
-            ownership: Ownership::Full,
-        };
+        let ht_type = ht_type(Type::Boolean(BooleanType), Type::Boolean(BooleanType), Ownership::Full);
         let input = Value::Array(vec![Value::Array(vec![Value::Boolean(true)])]);
         assert!(ht_type.encode(&input, false).is_err());
     });
@@ -740,11 +650,7 @@ fn hashtable_encode_rejects_non_tuple_entry() {
 #[test]
 fn hashtable_encode_propagates_key_encoder_error() {
     common::run(|| {
-        let ht_type = HashTableType {
-            key_type: Box::new(Type::Boolean(BooleanType)),
-            value_type: Box::new(Type::Boolean(BooleanType)),
-            ownership: Ownership::Full,
-        };
+        let ht_type = ht_type(Type::Boolean(BooleanType), Type::Boolean(BooleanType), Ownership::Full);
         let input = Value::Array(vec![Value::Array(vec![
             Value::Number(1.0),
             Value::Boolean(true),
@@ -755,11 +661,7 @@ fn hashtable_encode_propagates_key_encoder_error() {
 
 #[test]
 fn hashtable_decode_null_yields_empty_array() {
-    let ht_type = HashTableType {
-        key_type: Box::new(Type::Boolean(BooleanType)),
-        value_type: Box::new(Type::Boolean(BooleanType)),
-        ownership: Ownership::Full,
-    };
+    let ht_type = ht_type(Type::Boolean(BooleanType), Type::Boolean(BooleanType), Ownership::Full);
     let decoded = ht_type
         .decode(&FfiValue::Ptr(std::ptr::null_mut()))
         .unwrap();
@@ -769,11 +671,7 @@ fn hashtable_decode_null_yields_empty_array() {
 #[test]
 fn hashtable_ptr_to_value_null_and_populated() {
     common::run(|| {
-        let ht_type = HashTableType {
-            key_type: Box::new(Type::Integer(IntegerKind::I32)),
-            value_type: Box::new(Type::Integer(IntegerKind::I32)),
-            ownership: Ownership::Borrowed,
-        };
+        let ht_type = ht_type(Type::Integer(IntegerKind::I32), Type::Integer(IntegerKind::I32), Ownership::Borrowed);
 
         let empty = ht_type.ptr_to_value(std::ptr::null_mut(), "ctx").unwrap();
         assert!(matches!(empty, Value::Array(items) if items.is_empty()));
@@ -790,11 +688,7 @@ fn hashtable_ptr_to_value_null_and_populated() {
 #[test]
 fn hashtable_decode_full_ownership_from_raw_ptr_unrefs() {
     common::run(|| {
-        let ht_type = HashTableType {
-            key_type: Box::new(Type::Integer(IntegerKind::I32)),
-            value_type: Box::new(Type::Integer(IntegerKind::I32)),
-            ownership: Ownership::Full,
-        };
+        let ht_type = ht_type(Type::Integer(IntegerKind::I32), Type::Integer(IntegerKind::I32), Ownership::Full);
         let hash_table = common::make_integer_hash_table(&[(3, 30)]);
         unsafe {
             glib::ffi::g_hash_table_ref(hash_table);
@@ -815,17 +709,12 @@ fn hashtable_decode_full_ownership_from_raw_ptr_unrefs() {
 #[test]
 fn hashtable_encode_native_handle_keys_roundtrips() {
     common::run(|| {
-        let ht_type = HashTableType {
-            key_type: Box::new(struct_type()),
-            value_type: Box::new(Type::Integer(IntegerKind::I32)),
-            ownership: Ownership::Full,
-        };
+        let ht_type = ht_type(struct_type(), Type::Integer(IntegerKind::I32), Ownership::Full);
         let input = Value::Array(vec![Value::Array(vec![
             Value::Object(boxed_handle()),
             Value::Number(5.0),
         ])]);
-        let encoded = ht_type.encode(&input, false).unwrap();
-        let decoded = ht_type.decode(&encoded).unwrap();
+        let decoded = roundtrip(&ht_type, &input);
         assert!(matches!(decoded, Value::Array(items) if items.len() == 1));
     });
 }
@@ -833,23 +722,14 @@ fn hashtable_encode_native_handle_keys_roundtrips() {
 #[test]
 fn boolean_roundtrip_preserves_values() {
     common::run(|| {
-        let key_type = Type::Integer(IntegerKind::I32);
-        let value_type = Type::Boolean(BooleanType);
-        let ht_type = HashTableType {
-            key_type: Box::new(key_type),
-            value_type: Box::new(value_type),
-            ownership: Ownership::Full,
-        };
+        let ht_type = ht_type(Type::Integer(IntegerKind::I32), Type::Boolean(BooleanType), Ownership::Full);
 
         let input = Value::Array(vec![
             Value::Array(vec![Value::Number(0.0), Value::Boolean(true)]),
             Value::Array(vec![Value::Number(1.0), Value::Boolean(false)]),
         ]);
 
-        let encoded = ht_type
-            .encode(&input, false)
-            .expect("encoding should succeed");
-        let decoded = ht_type.decode(&encoded).expect("decoding should succeed");
+        let decoded = roundtrip(&ht_type, &input);
 
         let Value::Array(pairs) = decoded else {
             panic!("Expected array")
