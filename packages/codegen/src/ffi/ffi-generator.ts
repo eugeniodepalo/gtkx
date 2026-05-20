@@ -99,6 +99,11 @@ export class FfiGenerator {
         const file = fileBuilder();
         file.setMode("js");
 
+        if (this.options.namespace !== "GObject" && this.options.namespace !== "GLib") {
+            file.addSideEffectImport("../../gobject/object.js");
+            file.addSideEffectImport("../../gobject/value.js");
+        }
+
         this.emitEnums(namespace, file);
         this.generateRecords(namespace, generatorOptions, file);
         this.generateClasses(namespace, generatorOptions, file);

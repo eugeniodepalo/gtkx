@@ -29,6 +29,7 @@ export function registerNativeClass(cls: NativeClass, gtype: GType): void {
     if (gtype !== G_TYPE_INVALID) {
         classRegistry.set(gtype, cls);
         gtypeByClass.set(cls, gtype);
+        (cls.prototype as GTypeStamped).__gtype__ = gtype;
     }
 }
 

@@ -1,8 +1,6 @@
-import { CONSTRUCTION_META, getParentClass, type NativeClass } from "@gtkx/ffi";
 import type { GType } from "@gtkx/ffi/gobject";
 import { typeName, typeParent } from "@gtkx/ffi/gobject";
-import { PROPS, SIGNALS } from "./generated/internal.js";
-import { camelToSnake } from "./nodes/internal/naming.js";
+import { CONSTRUCT_ONLY, PROPS, SIGNALS } from "./generated/internal.js";
 import type { Container } from "./types.js";
 
 const typeNameChainCache = new Map<GType, readonly string[]>();
@@ -64,15 +62,9 @@ export const resolvePropMeta = (instance: Container, key: string): string | null
     });
 
 export const isConstructOnlyProp = (instance: Container, key: string): boolean =>
-    memoize(constructOnlyCache, instance, key, () => {
-        const ffiKey = camelToSnake(key);
-        let cls: NativeClass | null = instance.constructor as NativeClass;
-        while (cls) {
-            const meta = CONSTRUCTION_META.get(cls);
-            if (meta?.kind === "gobject" && ffiKey in meta.props) {
-                return meta.props[ffiKey]?.constructOnly === true;
-            }
-            cls = getParentClass(cls);
+    memoize(constructOnlyCache, instance, key, (typeNames) => {
+        for (const name of typeNames) {
+            if (CONSTRUCT_ONLY[name]?.has(key)) return true;
         }
         return false;
     });

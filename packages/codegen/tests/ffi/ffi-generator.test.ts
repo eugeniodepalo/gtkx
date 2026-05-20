@@ -169,7 +169,7 @@ describe("FfiGenerator.generateNamespace (3)", () => {
         expect(file?.content).toContain("export const MAJOR_VERSION");
     });
 
-    it("emits a single namespace file with no body when there is nothing to declare", () => {
+    it("emits only the gobject augmentation side-effect imports when there is nothing to declare", () => {
         const ns = createNormalizedNamespace({ name: "Pango", sharedLibrary: "libpango-1.0.so.0" });
         const repo = createMockRepository(baseNamespaces({ Pango: ns }));
 
@@ -180,7 +180,7 @@ describe("FfiGenerator.generateNamespace (3)", () => {
 
         const file = namespaceFile(files, "Pango");
         expect(file?.path).toBe("pango/pango.js");
-        expect(file?.content).toBe("");
+        expect(file?.content).toBe('import "../../gobject/object.js";\nimport "../../gobject/value.js";\n\n');
     });
 });
 

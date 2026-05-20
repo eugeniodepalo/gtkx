@@ -38,11 +38,11 @@ describe("InternalGenerator / generate", () => {
 });
 
 describe("InternalGenerator / FFI namespace imports", () => {
-    it("side-effect-imports every namespace that contributes a reconcilable element", () => {
+    it("namespace-imports every namespace that contributes a reconcilable element", () => {
         const adwMeta = createCodegenWidgetMeta({ className: "Bin", jsxName: "AdwBin", namespace: "Adw" });
         const code = generateCode([createWidgetMeta(), adwMeta]);
-        expect(code).toContain('import "@gtkx/ffi/adw";');
-        expect(code).toContain('import "@gtkx/ffi/gtk";');
+        expect(code).toContain('import * as Adw from "@gtkx/ffi/adw";');
+        expect(code).toContain('import * as Gtk from "@gtkx/ffi/gtk";');
     });
 });
 
@@ -96,7 +96,8 @@ describe("InternalGenerator / SIGNALS map", () => {
         const widgetMeta = createWidgetMeta();
         const code = generateCode([widgetMeta, labelMeta]);
         const signalsStart = code.indexOf("SIGNALS");
-        const signalsSection = code.slice(signalsStart);
+        const signalsEnd = code.indexOf("CONSTRUCT_ONLY", signalsStart);
+        const signalsSection = code.slice(signalsStart, signalsEnd);
         expect(signalsSection).toContain("GtkWidget");
         expect(signalsSection).not.toContain("GtkLabel");
     });

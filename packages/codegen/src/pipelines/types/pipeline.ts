@@ -32,6 +32,7 @@ import {
     type MethodShadowRenameMap,
     type NamespaceAsyncMembers,
     type NamespaceHashTableMembers,
+    type RegisteredClassMap,
 } from "./rewrite.js";
 
 /**
@@ -113,6 +114,32 @@ export const collectGtypeStructNames = (repository: GirRepository): GtypeStructM
         for (const record of namespace.records.values()) {
             if (isClassVtable(record)) {
                 names.add(record.name);
+            }
+        }
+        return names;
+    });
+
+/**
+ * Collects every class or record name whose runtime wrapper is registered
+ * with `registerNativeClass`, keyed lowercase namespace identifier. A type is
+ * registered when its GIR declaration carries a `glib:get-type` symbol; that
+ * is the same condition the FFI generator checks before emitting the
+ * registration call.
+ *
+ * @param repository - The loaded GIR repository.
+ * @returns Registered class/record names keyed lowercase namespace identifier.
+ */
+export const collectRegisteredClassNames = (repository: GirRepository): RegisteredClassMap =>
+    collectByNamespace(repository, (namespace) => {
+        const names = new Set<string>();
+        for (const cls of namespace.classes.values()) {
+            if (cls.glibGetType) {
+                names.add(toPascalCase(cls.name));
+            }
+        }
+        for (const record of namespace.records.values()) {
+            if (record.glibGetType) {
+                names.add(toPascalCase(record.name));
             }
         }
         return names;
@@ -693,6 +720,7 @@ export async function runTypesPipeline(loaded: LoadedGir, outDir: string): Promi
             hashTableMembers: collectHashTableMembers(loaded.repository),
             errorDomainNames: collectErrorDomainNames(loaded.repository),
             bitfieldNames: collectBitfieldNames(loaded.repository),
+            registeredClassNames: collectRegisteredClassNames(loaded.repository),
         });
 
         await mkdir(outDir, { recursive: true });

@@ -1,24 +1,19 @@
-import { findNativeClass, type NativeClass } from "@gtkx/ffi";
-import { isInvalidGType, typeFromName } from "@gtkx/ffi/gobject";
+import { CLASS_BY_TYPE_NAME, type NativeClass } from "../../generated/internal.js";
 import type { Container, Props } from "../../types.js";
 import { camelToSnake } from "./naming.js";
 
 /**
  * Resolves the registered native wrapper class for a GLib type name.
  *
- * Returns `null` when `typeName` is not a GLib type — a virtual reconciler
- * element such as `"Slot"` — or when no wrapper class is registered for it.
- * Widget construction and node-class resolution both gate on this: a `null`
- * result marks the element as a non-widget node.
+ * Returns `null` when `typeName` is not a reconcilable element — a virtual
+ * reconciler element such as `"Slot"` — or when no wrapper class is registered
+ * for it. Widget construction and node-class resolution both gate on this: a
+ * `null` result marks the element as a non-widget node.
  *
  * @param typeName - GLib type name (e.g. `"GtkLabel"`)
  */
 export function resolveNativeClass(typeName: string): NativeClass | null {
-    const gtype = typeFromName(typeName);
-    if (isInvalidGType(gtype)) {
-        return null;
-    }
-    return findNativeClass(gtype);
+    return CLASS_BY_TYPE_NAME.get(typeName) ?? null;
 }
 
 /**

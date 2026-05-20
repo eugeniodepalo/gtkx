@@ -1,4 +1,3 @@
-import { getClassGType } from "@gtkx/ffi";
 import * as Adw from "@gtkx/ffi/adw";
 import * as Gio from "@gtkx/ffi/gio";
 import type * as GObject from "@gtkx/ffi/gobject";
@@ -595,7 +594,7 @@ export class ListNode extends WidgetNode<Gtk.Widget, ListProps, ListChild> {
         const sections = this.collectSections();
 
         if (!this.sectionStore) {
-            this.sectionStore = Gio.ListStore.new(getClassGType(Gtk.StringList));
+            this.sectionStore = Gio.ListStore.new(Gtk.StringList.prototype.__gtype__);
             this.flattenModel = new Gtk.FlattenListModel({ model: this.sectionStore });
 
             this.assignBaseModelToSelection(this.flattenModel);

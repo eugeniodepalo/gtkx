@@ -1,9 +1,4 @@
-export { CONSTRUCTION_META, type ConstructionMeta } from "./construction-meta.js";
-export { getParentClass, type NativeClass } from "./handles.js";
 export { freeze, unfreeze } from "./helpers.js";
-export * from "./lifecycle.js";
+export { stop, whenStopped } from "./lifecycle.js";
+export { getInstanceGType } from "./native.js";
 export { type RegisterClassOptions, registerClass } from "./register-class.js";
-export { findNativeClass, getClassGType } from "./registry.js";
-import "./cairo/index.js";
-import "./gobject/object.js";
-import "./gobject/value.js";

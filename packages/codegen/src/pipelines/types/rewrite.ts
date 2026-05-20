@@ -23,6 +23,7 @@ import {
     rewriteEnumsToConstObjects,
 } from "./rewrites/enums.js";
 import { type FieldNameMap, stripClassFields, stripSignalActionMethods } from "./rewrites/fields.js";
+import { ensureGtypeFieldOnRecords, type RegisteredClassMap } from "./rewrites/gtype-field.js";
 import {
     type GtypeStructMap,
     stripAnonymousCompositeClasses,
@@ -45,6 +46,7 @@ export * from "./rewrites/constants.js";
 export * from "./rewrites/constructors.js";
 export * from "./rewrites/enums.js";
 export * from "./rewrites/fields.js";
+export * from "./rewrites/gtype-field.js";
 export * from "./rewrites/gtype-structs.js";
 export * from "./rewrites/hash-table.js";
 export * from "./rewrites/namespace-wrapper.js";
@@ -96,6 +98,8 @@ export type RewriteInputs = {
     errorDomainNames?: ErrorDomainMap;
     /** Bitfield enum names whose type alias is widened to `number`. */
     bitfieldNames?: BitfieldMap;
+    /** Names of classes and records whose runtime wrapper is registered. */
+    registeredClassNames?: RegisteredClassMap;
 };
 
 /**
@@ -119,6 +123,7 @@ export function loadAndRewrite(rawFilesByName: Map<string, string>, inputs: Rewr
         hashTableMembers,
         errorDomainNames,
         bitfieldNames,
+        registeredClassNames,
     } = inputs;
     const results: RewriteResult[] = [];
     for (const [filename, contents] of rawFilesByName) {
@@ -151,6 +156,7 @@ export function loadAndRewrite(rawFilesByName: Map<string, string>, inputs: Rewr
         source = rewriteNamespaceDeclarations(source);
         source = rewriteDefaultImportsToNamespace(source);
         source = rewriteModuleKeywordToNamespace(source);
+        source = ensureGtypeFieldOnRecords(source, registeredClassNames?.get(namespace));
         results.push({ namespace, content: source });
     }
     return results;
