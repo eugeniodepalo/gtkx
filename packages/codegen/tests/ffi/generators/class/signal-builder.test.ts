@@ -3,11 +3,7 @@ import { fileBuilder } from "../../../../src/builders/file-builder.js";
 import { Writer } from "../../../../src/builders/text-writer.js";
 import { SignalBuilder, type SignalBuilderOptions } from "../../../../src/ffi/generators/class/signal-builder.js";
 import { FfiMapper } from "../../../../src/type-system/ffi-mapper.js";
-import {
-    buildGeneratorOptions,
-    GTK_GENERATOR_OPTIONS,
-    setupGtkFfiContext,
-} from "../../../fixtures/generator-fixtures.js";
+import { setupGtkFfiContext } from "../../../fixtures/generator-fixtures.js";
 import {
     createNormalizedClass,
     createNormalizedEnumeration,
@@ -51,6 +47,13 @@ function createTestSetup(
     return { cls, builder, ffiMapper, file };
 }
 
+function buildSignalStructures(
+    classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]>,
+    namespaces?: Map<string, ReturnType<typeof createNormalizedNamespace>>,
+) {
+    return createTestSetup(classOverrides, namespaces).builder.buildConnectMethodStructures();
+}
+
 describe("SignalBuilder / constructor", () => {
     it("creates builder with class and dependencies", () => {
         const { builder } = createTestSetup();
@@ -60,51 +63,41 @@ describe("SignalBuilder / constructor", () => {
 
 describe("SignalBuilder / buildConnectMethodStructures", () => {
     it("returns empty array when no signals", () => {
-        const { builder } = createTestSetup({ signals: [] });
-
-        const structures = builder.buildConnectMethodStructures();
+        const structures = buildSignalStructures({ signals: [] });
 
         expect(structures).toHaveLength(0);
     });
 
     it("builds connect method when class has signals", () => {
-        const { builder } = createTestSetup({
+        const structures = buildSignalStructures({
             signals: [createNormalizedSignal({ name: "clicked" })],
         });
-
-        const structures = builder.buildConnectMethodStructures();
 
         expect(structures.map((s) => s.name)).toEqual(["connect", "emit"]);
     });
 
     it("includes overloads for each signal", () => {
-        const { builder } = createTestSetup({
+        const structures = buildSignalStructures({
             signals: [createNormalizedSignal({ name: "clicked" }), createNormalizedSignal({ name: "activate" })],
         });
-
-        const structures = builder.buildConnectMethodStructures();
 
         expect(structures[0]?.overloads).toBeDefined();
         expect(structures[0]?.overloads?.length).toBeGreaterThanOrEqual(2);
     });
 
     it("includes generic string overload", () => {
-        const { builder } = createTestSetup({
+        const structures = buildSignalStructures({
             signals: [createNormalizedSignal({ name: "clicked" })],
         });
-
-        const structures = builder.buildConnectMethodStructures();
 
         const genericOverload = structures[0]?.overloads?.find((o) => o.params?.[0]?.type === "string");
         expect(genericOverload).toBeDefined();
     });
 
     it("returns number from connect method", () => {
-        const { builder } = createTestSetup({
+        const structures = buildSignalStructures({
             signals: [createNormalizedSignal({ name: "clicked" })],
         });
-
-        const structures = builder.buildConnectMethodStructures();
 
         expect(structures[0]?.returnType).toBe("number");
     });
@@ -143,11 +136,9 @@ describe("SignalBuilder / collectAllSignals", () => {
 
 describe("SignalBuilder / import tracking", () => {
     it("adds call import when building connect method", () => {
-        const { builder } = createTestSetup({
+        const structures = buildSignalStructures({
             signals: [createNormalizedSignal({ name: "clicked" })],
         });
-
-        const structures = builder.buildConnectMethodStructures();
 
         expect(structures.length).toBeGreaterThan(0);
     });
@@ -155,18 +146,16 @@ describe("SignalBuilder / import tracking", () => {
 
 describe("SignalBuilder / signal handler parameters", () => {
     it("emits a parameterless handler for signals with no own parameters", () => {
-        const { builder } = createTestSetup({
+        const structures = buildSignalStructures({
             signals: [createNormalizedSignal({ name: "clicked", parameters: [] })],
         });
-
-        const structures = builder.buildConnectMethodStructures();
 
         const overload = structures[0]?.overloads?.[0];
         expect(overload?.params?.[1]?.type).toBe("() => void");
     });
 
     it("includes signal parameters in handler", () => {
-        const { builder } = createTestSetup({
+        const structures = buildSignalStructures({
             signals: [
                 createNormalizedSignal({
                     name: "scroll",
@@ -183,8 +172,6 @@ describe("SignalBuilder / signal handler parameters", () => {
                 }),
             ],
         });
-
-        const structures = builder.buildConnectMethodStructures();
 
         const overload = structures[0]?.overloads?.[0];
         expect(overload?.params?.[1]?.type).toContain("deltaX:");
@@ -237,7 +224,7 @@ describe("SignalBuilder / buildSignalMetaWriter", () => {
 
 describe("SignalBuilder - Extended Coverage / signal return types", () => {
     it("handles signal with boolean return type", () => {
-        const { builder } = createTestSetup({
+        const structures = buildSignalStructures({
             signals: [
                 createNormalizedSignal({
                     name: "query-tooltip",
@@ -246,14 +233,12 @@ describe("SignalBuilder - Extended Coverage / signal return types", () => {
             ],
         });
 
-        const structures = builder.buildConnectMethodStructures();
-
         const overload = structures[0]?.overloads?.[0];
         expect(overload?.params?.[1]?.type).toContain("=> boolean");
     });
 
     it("handles signal with void return type", () => {
-        const { builder } = createTestSetup({
+        const structures = buildSignalStructures({
             signals: [
                 createNormalizedSignal({
                     name: "clicked",
@@ -262,14 +247,12 @@ describe("SignalBuilder - Extended Coverage / signal return types", () => {
             ],
         });
 
-        const structures = builder.buildConnectMethodStructures();
-
         const overload = structures[0]?.overloads?.[0];
         expect(overload?.params?.[1]?.type).toContain("=> void");
     });
 
     it("handles signal with string return type", () => {
-        const { builder } = createTestSetup({
+        const structures = buildSignalStructures({
             signals: [
                 createNormalizedSignal({
                     name: "format-value",
@@ -277,8 +260,6 @@ describe("SignalBuilder - Extended Coverage / signal return types", () => {
                 }),
             ],
         });
-
-        const structures = builder.buildConnectMethodStructures();
 
         const overload = structures[0]?.overloads?.[0];
         expect(overload?.params?.[1]?.type).toContain("=> string");
@@ -296,7 +277,7 @@ describe("SignalBuilder - Extended Coverage / signal with GObject parameters", (
             classes: new Map([["Button", buttonClass]]),
         });
 
-        const { builder } = createTestSetup(
+        const structures = buildSignalStructures(
             {
                 signals: [
                     createNormalizedSignal({
@@ -313,8 +294,6 @@ describe("SignalBuilder - Extended Coverage / signal with GObject parameters", (
             new Map([["Gtk", ns]]),
         );
 
-        const structures = builder.buildConnectMethodStructures();
-
         expect(structures[0]?.name).toBe("connect");
         const overload = structures[0]?.overloads?.[0];
         expect(overload?.params?.[1]?.type).toContain("child:");
@@ -323,7 +302,7 @@ describe("SignalBuilder - Extended Coverage / signal with GObject parameters", (
 
 describe("SignalBuilder - Extended Coverage / varargs filtering", () => {
     it("filters out varargs from signal parameters", () => {
-        const { builder } = createTestSetup({
+        const structures = buildSignalStructures({
             signals: [
                 createNormalizedSignal({
                     name: "custom",
@@ -341,8 +320,6 @@ describe("SignalBuilder - Extended Coverage / varargs filtering", () => {
                 }),
             ],
         });
-
-        const structures = builder.buildConnectMethodStructures();
 
         const overload = structures[0]?.overloads?.[0];
         expect(overload?.params?.[1]?.type).not.toContain("...");
