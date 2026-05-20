@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
 import { suppressUnhandledRejections } from "../lifecycle.js";
 import {
-    BOOLEAN,
     connectSignal,
     connectSignalTrampoline,
     createButton,
@@ -11,13 +10,12 @@ import {
     forceGC,
     GIO_LIB,
     GOBJECT_BORROWED,
-    GOBJECT_LIB,
     getRefCount,
-    STRING,
+    isSignalHandlerConnected,
     startMemoryMeasurement,
-    UINT64,
     VOID,
 } from "../utils.js";
+import { connectCancelledSignal } from "./_helpers.js";
 
 describe("call - callback types - closure connect", () => {
     it("connects callback to signal", () => {
@@ -35,27 +33,9 @@ describe("call - callback types - closure invoke", () => {
         const cancellable = createCancellable();
         let callbackInvoked = false;
 
-        call(
-            GOBJECT_LIB,
-            "g_signal_connect_closure",
-            [
-                { type: GOBJECT_BORROWED, value: cancellable },
-                { type: STRING, value: "cancelled" },
-                {
-                    type: {
-                        type: "callback",
-                        kind: "closure",
-                        argTypes: [{ type: "gobject", ownership: "borrowed" }],
-                        returnType: { type: "void" },
-                    },
-                    value: () => {
-                        callbackInvoked = true;
-                    },
-                },
-                { type: BOOLEAN, value: false },
-            ],
-            UINT64,
-        );
+        connectCancelledSignal(cancellable, () => {
+            callbackInvoked = true;
+        });
 
         call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
@@ -68,27 +48,9 @@ describe("call - callback types - closure args", () => {
         const cancellable = createCancellable();
         let receivedArg: unknown = null;
 
-        call(
-            GOBJECT_LIB,
-            "g_signal_connect_closure",
-            [
-                { type: GOBJECT_BORROWED, value: cancellable },
-                { type: STRING, value: "cancelled" },
-                {
-                    type: {
-                        type: "callback",
-                        kind: "closure",
-                        argTypes: [{ type: "gobject", ownership: "borrowed" }],
-                        returnType: { type: "void" },
-                    },
-                    value: (arg: unknown) => {
-                        receivedArg = arg;
-                    },
-                },
-                { type: BOOLEAN, value: false },
-            ],
-            UINT64,
-        );
+        connectCancelledSignal(cancellable, (arg) => {
+            receivedArg = arg;
+        });
 
         call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
@@ -104,17 +66,7 @@ describe("call - callback types - closure disconnect", () => {
 
         disconnectSignal(button, handlerId);
 
-        const isConnected = call(
-            GOBJECT_LIB,
-            "g_signal_handler_is_connected",
-            [
-                { type: GOBJECT_BORROWED, value: button },
-                { type: UINT64, value: handlerId },
-            ],
-            BOOLEAN,
-        );
-
-        expect(isConnected).toBe(false);
+        expect(isSignalHandlerConnected(button, handlerId)).toBe(false);
     });
 });
 
@@ -124,49 +76,12 @@ describe("call - callback types - closure multiple", () => {
         let count1 = 0;
         let count2 = 0;
 
-        call(
-            GOBJECT_LIB,
-            "g_signal_connect_closure",
-            [
-                { type: GOBJECT_BORROWED, value: cancellable },
-                { type: STRING, value: "cancelled" },
-                {
-                    type: {
-                        type: "callback",
-                        kind: "closure",
-                        argTypes: [{ type: "gobject", ownership: "borrowed" }],
-                        returnType: { type: "void" },
-                    },
-                    value: () => {
-                        count1++;
-                    },
-                },
-                { type: BOOLEAN, value: false },
-            ],
-            UINT64,
-        );
-
-        call(
-            GOBJECT_LIB,
-            "g_signal_connect_closure",
-            [
-                { type: GOBJECT_BORROWED, value: cancellable },
-                { type: STRING, value: "cancelled" },
-                {
-                    type: {
-                        type: "callback",
-                        kind: "closure",
-                        argTypes: [{ type: "gobject", ownership: "borrowed" }],
-                        returnType: { type: "void" },
-                    },
-                    value: () => {
-                        count2++;
-                    },
-                },
-                { type: BOOLEAN, value: false },
-            ],
-            UINT64,
-        );
+        connectCancelledSignal(cancellable, () => {
+            count1++;
+        });
+        connectCancelledSignal(cancellable, () => {
+            count2++;
+        });
 
         call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
@@ -198,27 +113,9 @@ describe("call - callback types - argument types", () => {
         const cancellable = createCancellable();
         let receivedObject: unknown = null;
 
-        call(
-            GOBJECT_LIB,
-            "g_signal_connect_closure",
-            [
-                { type: GOBJECT_BORROWED, value: cancellable },
-                { type: STRING, value: "cancelled" },
-                {
-                    type: {
-                        type: "callback",
-                        kind: "closure",
-                        argTypes: [{ type: "gobject", ownership: "borrowed" }],
-                        returnType: { type: "void" },
-                    },
-                    value: (obj: unknown) => {
-                        receivedObject = obj;
-                    },
-                },
-                { type: BOOLEAN, value: false },
-            ],
-            UINT64,
-        );
+        connectCancelledSignal(cancellable, (obj) => {
+            receivedObject = obj;
+        });
 
         call(GIO_LIB, "g_cancellable_cancel", [{ type: GOBJECT_BORROWED, value: cancellable }], VOID);
 
@@ -274,27 +171,9 @@ describe("call - callback types - edge cases throw", () => {
     it("handles callback that throws exception gracefully", async () => {
         const cancellable = createCancellable();
 
-        call(
-            GOBJECT_LIB,
-            "g_signal_connect_closure",
-            [
-                { type: GOBJECT_BORROWED, value: cancellable },
-                { type: STRING, value: "cancelled" },
-                {
-                    type: {
-                        type: "callback",
-                        kind: "closure",
-                        argTypes: [{ type: "gobject", ownership: "borrowed" }],
-                        returnType: { type: "void" },
-                    },
-                    value: () => {
-                        throw new Error("Test error in callback");
-                    },
-                },
-                { type: BOOLEAN, value: false },
-            ],
-            UINT64,
-        );
+        connectCancelledSignal(cancellable, () => {
+            throw new Error("Test error in callback");
+        });
 
         await suppressUnhandledRejections(() => {
             expect(() => {
@@ -310,21 +189,11 @@ describe("call - callback types - edge cases multiple object", () => {
         const handlers: number[] = [];
 
         for (let i = 0; i < 5; i++) {
-            const handlerId = connectSignal(button, "clicked", () => {});
-            handlers.push(handlerId);
+            handlers.push(connectSignal(button, "clicked", () => {}));
         }
 
         for (const handlerId of handlers) {
-            const isConnected = call(
-                GOBJECT_LIB,
-                "g_signal_handler_is_connected",
-                [
-                    { type: GOBJECT_BORROWED, value: button },
-                    { type: UINT64, value: handlerId },
-                ],
-                BOOLEAN,
-            );
-            expect(isConnected).toBe(true);
+            expect(isSignalHandlerConnected(button, handlerId)).toBe(true);
         }
 
         for (const handlerId of handlers) {

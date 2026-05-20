@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
 import {
     boxAppend,
+    boxRemove,
     createBox,
     createButton,
     createLabel,
@@ -31,24 +32,9 @@ describe("call - gobject types - owned", () => {
         const box = createBox();
         const label = createLabel("Test");
 
-        call(
-            GTK_LIB,
-            "gtk_box_append",
-            [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label },
-            ],
-            VOID,
-        );
+        boxAppend(box, label);
 
-        const firstChild = call(
-            GTK_LIB,
-            "gtk_widget_get_first_child",
-            [{ type: GOBJECT_BORROWED, value: box }],
-            GOBJECT_BORROWED,
-        );
-
-        expect(firstChild).toBeDefined();
+        expect(getFirstChild(box)).toBeDefined();
     });
 
     it("creates different widget types", () => {
@@ -100,33 +86,11 @@ describe("call - gobject types - widget hierarchy parent-child", () => {
         const label1 = createLabel("First");
         const label2 = createLabel("Second");
 
-        call(
-            GTK_LIB,
-            "gtk_box_append",
-            [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label1 },
-            ],
-            VOID,
-        );
+        boxAppend(box, label1);
 
-        call(
-            GTK_LIB,
-            "gtk_box_append",
-            [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label2 },
-            ],
-            VOID,
-        );
+        boxAppend(box, label2);
 
-        const firstChild = call(
-            GTK_LIB,
-            "gtk_widget_get_first_child",
-            [{ type: GOBJECT_BORROWED, value: box }],
-            GOBJECT_BORROWED,
-        );
-
+        const firstChild = getFirstChild(box);
         const lastChild = call(
             GTK_LIB,
             "gtk_widget_get_last_child",
@@ -145,48 +109,18 @@ describe("call - gobject types - widget hierarchy children", () => {
         const box = createBox();
         const label = createLabel("Child");
 
-        call(
-            GTK_LIB,
-            "gtk_box_append",
-            [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label },
-            ],
-            VOID,
-        );
+        boxAppend(box, label);
 
-        const child = call(
-            GTK_LIB,
-            "gtk_widget_get_first_child",
-            [{ type: GOBJECT_BORROWED, value: box }],
-            GOBJECT_BORROWED,
-        );
-
-        expect(child).toBeDefined();
+        expect(getFirstChild(box)).toBeDefined();
     });
 
     it("retrieves parent from child", () => {
         const box = createBox();
         const label = createLabel("Child");
 
-        call(
-            GTK_LIB,
-            "gtk_box_append",
-            [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label },
-            ],
-            VOID,
-        );
+        boxAppend(box, label);
 
-        const parent = call(
-            GTK_LIB,
-            "gtk_widget_get_parent",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            GOBJECT_BORROWED,
-        );
-
-        expect(parent).toBeDefined();
+        expect(getParent(label)).toBeDefined();
     });
 });
 
@@ -216,36 +150,13 @@ describe("call - gobject types - widget hierarchy remove", () => {
         const box = createBox();
         const label = createLabel("Removable");
 
-        call(
-            GTK_LIB,
-            "gtk_box_append",
-            [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label },
-            ],
-            VOID,
-        );
+        boxAppend(box, label);
 
-        let child = call(
-            GTK_LIB,
-            "gtk_widget_get_first_child",
-            [{ type: GOBJECT_BORROWED, value: box }],
-            GOBJECT_BORROWED,
-        );
-        expect(child).toBeDefined();
+        expect(getFirstChild(box)).toBeDefined();
 
-        call(
-            GTK_LIB,
-            "gtk_box_remove",
-            [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label },
-            ],
-            VOID,
-        );
+        boxRemove(box, label);
 
-        child = call(GTK_LIB, "gtk_widget_get_first_child", [{ type: GOBJECT_BORROWED, value: box }], GOBJECT_BORROWED);
-        expect(child).toBeNull();
+        expect(getFirstChild(box)).toBeNull();
     });
 });
 
@@ -255,26 +166,11 @@ describe("call - gobject types - refcount management add", () => {
         const label = createLabel("Test");
         const initialRefCount = getRefCount(label);
 
-        call(
-            GTK_LIB,
-            "gtk_box_append",
-            [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label },
-            ],
-            VOID,
-        );
+        boxAppend(box, label);
 
         expect(getRefCount(label)).toBe(initialRefCount + 1);
 
-        const child = call(
-            GTK_LIB,
-            "gtk_widget_get_first_child",
-            [{ type: GOBJECT_BORROWED, value: box }],
-            GOBJECT_BORROWED,
-        );
-
-        expect(child).toBeDefined();
+        expect(getFirstChild(box)).toBeDefined();
     });
 });
 
@@ -297,27 +193,11 @@ describe("call - gobject types - refcount release", () => {
         const label = createLabel("Test");
         const initialRefCount = getRefCount(label);
 
-        call(
-            GTK_LIB,
-            "gtk_box_append",
-            [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label },
-            ],
-            VOID,
-        );
+        boxAppend(box, label);
 
         expect(getRefCount(label)).toBe(initialRefCount + 1);
 
-        call(
-            GTK_LIB,
-            "gtk_box_remove",
-            [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label },
-            ],
-            VOID,
-        );
+        boxRemove(box, label);
 
         expect(getRefCount(label)).toBe(initialRefCount);
     });
@@ -343,28 +223,13 @@ describe("call - gobject types - memory leaks container append", () => {
 
         for (let i = 0; i < 100; i++) {
             const label = createLabel(`Label ${i}`);
-            call(
-                GTK_LIB,
-                "gtk_box_append",
-                [
-                    { type: GOBJECT_BORROWED, value: box },
-                    { type: GOBJECT_BORROWED, value: label },
-                ],
-                VOID,
-            );
+            boxAppend(box, label);
         }
 
         expect(getRefCount(box)).toBe(boxRefCount);
         expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
 
-        const firstChild = call(
-            GTK_LIB,
-            "gtk_widget_get_first_child",
-            [{ type: GOBJECT_BORROWED, value: box }],
-            GOBJECT_BORROWED,
-        );
-
-        expect(firstChild).toBeDefined();
+        expect(getFirstChild(box)).toBeDefined();
     });
 });
 
@@ -377,41 +242,18 @@ describe("call - gobject types - memory leaks container remove", () => {
         for (let i = 0; i < 50; i++) {
             const label = createLabel(`Label ${i}`);
             labels.push(label);
-            call(
-                GTK_LIB,
-                "gtk_box_append",
-                [
-                    { type: GOBJECT_BORROWED, value: box },
-                    { type: GOBJECT_BORROWED, value: label },
-                ],
-                VOID,
-            );
+            boxAppend(box, label);
         }
 
         for (const label of labels) {
-            call(
-                GTK_LIB,
-                "gtk_box_remove",
-                [
-                    { type: GOBJECT_BORROWED, value: box },
-                    { type: GOBJECT_BORROWED, value: label },
-                ],
-                VOID,
-            );
+            boxRemove(box, label);
         }
 
         expect(getRefCount(box)).toBe(boxRefCount);
 
         forceGC();
 
-        const child = call(
-            GTK_LIB,
-            "gtk_widget_get_first_child",
-            [{ type: GOBJECT_BORROWED, value: box }],
-            GOBJECT_BORROWED,
-        );
-
-        expect(child).toBeNull();
+        expect(getFirstChild(box)).toBeNull();
     });
 });
 
@@ -419,14 +261,7 @@ describe("call - gobject types - edge cases null", () => {
     it("handles null GObject when optional", () => {
         const label = createLabel("Test");
 
-        const parent = call(
-            GTK_LIB,
-            "gtk_widget_get_parent",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            GOBJECT_BORROWED,
-        );
-
-        expect(parent).toBeNull();
+        expect(getParent(label)).toBeNull();
     });
 });
 
@@ -435,15 +270,7 @@ describe("call - gobject types - edge cases multiple pass", () => {
         const box = createBox();
         const label = createLabel("Test");
 
-        call(
-            GTK_LIB,
-            "gtk_box_append",
-            [
-                { type: GOBJECT_BORROWED, value: box },
-                { type: GOBJECT_BORROWED, value: label },
-            ],
-            VOID,
-        );
+        boxAppend(box, label);
 
         call(
             GTK_LIB,
@@ -468,54 +295,13 @@ describe("call - gobject types - edge cases nested", () => {
         const innerBox = createBox(1, 0);
         const label = createLabel("Deep");
 
-        call(
-            GTK_LIB,
-            "gtk_box_append",
-            [
-                { type: GOBJECT_BORROWED, value: outerBox },
-                { type: GOBJECT_BORROWED, value: middleBox },
-            ],
-            VOID,
-        );
-        call(
-            GTK_LIB,
-            "gtk_box_append",
-            [
-                { type: GOBJECT_BORROWED, value: middleBox },
-                { type: GOBJECT_BORROWED, value: innerBox },
-            ],
-            VOID,
-        );
-        call(
-            GTK_LIB,
-            "gtk_box_append",
-            [
-                { type: GOBJECT_BORROWED, value: innerBox },
-                { type: GOBJECT_BORROWED, value: label },
-            ],
-            VOID,
-        );
+        boxAppend(outerBox, middleBox);
+        boxAppend(middleBox, innerBox);
+        boxAppend(innerBox, label);
 
-        let current = call(
-            GTK_LIB,
-            "gtk_widget_get_first_child",
-            [{ type: GOBJECT_BORROWED, value: outerBox }],
-            GOBJECT_BORROWED,
-        );
-
-        current = call(
-            GTK_LIB,
-            "gtk_widget_get_first_child",
-            [{ type: GOBJECT_BORROWED, value: current }],
-            GOBJECT_BORROWED,
-        );
-
-        current = call(
-            GTK_LIB,
-            "gtk_widget_get_first_child",
-            [{ type: GOBJECT_BORROWED, value: current }],
-            GOBJECT_BORROWED,
-        );
+        let current = getFirstChild(outerBox);
+        current = getFirstChild(current);
+        current = getFirstChild(current);
 
         expect(current).toBeDefined();
     });

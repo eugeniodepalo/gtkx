@@ -16,12 +16,14 @@ import {
     INT16,
     INT32,
     INT64,
+    isSignalHandlerConnected,
     UINT8,
     UINT16,
     UINT32,
     UINT64,
     VOID,
 } from "../utils.js";
+import { setAndGetLabelMaxWidthChars } from "./_helpers.js";
 
 describe("call - integer types - 8-bit signed", () => {
     it("handles signed 8-bit as part of boolean-like values", () => {
@@ -85,22 +87,7 @@ describe("call - integer types - 16-bit signed", () => {
     it("passes and returns 16-bit signed integers", () => {
         const label = createLabel("Test");
 
-        call(
-            GTK_LIB,
-            "gtk_label_set_max_width_chars",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT16, value: 100 },
-            ],
-            VOID,
-        );
-
-        const result = call(
-            GTK_LIB,
-            "gtk_label_get_max_width_chars",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            INT16,
-        );
+        const result = setAndGetLabelMaxWidthChars(label, INT16, 100);
 
         expect(result).toBe(100);
     });
@@ -108,22 +95,7 @@ describe("call - integer types - 16-bit signed", () => {
     it("handles negative 16-bit values", () => {
         const label = createLabel("Test");
 
-        call(
-            GTK_LIB,
-            "gtk_label_set_max_width_chars",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT16, value: -1 },
-            ],
-            VOID,
-        );
-
-        const result = call(
-            GTK_LIB,
-            "gtk_label_get_max_width_chars",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            INT16,
-        );
+        const result = setAndGetLabelMaxWidthChars(label, INT16, -1);
 
         expect(result).toBe(-1);
     });
@@ -133,22 +105,7 @@ describe("call - integer types - 16-bit unsigned", () => {
     it("passes and returns 16-bit unsigned integers", () => {
         const label = createLabel("Test");
 
-        call(
-            GTK_LIB,
-            "gtk_label_set_max_width_chars",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: UINT16, value: 500 },
-            ],
-            VOID,
-        );
-
-        const result = call(
-            GTK_LIB,
-            "gtk_label_get_max_width_chars",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            UINT16,
-        );
+        const result = setAndGetLabelMaxWidthChars(label, UINT16, 500);
 
         expect(result).toBe(500);
     });
@@ -158,22 +115,7 @@ describe("call - integer types - 32-bit signed basic", () => {
     it("passes and returns 32-bit signed integers", () => {
         const label = createLabel("Test");
 
-        call(
-            GTK_LIB,
-            "gtk_label_set_max_width_chars",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 42 },
-            ],
-            VOID,
-        );
-
-        const result = call(
-            GTK_LIB,
-            "gtk_label_get_max_width_chars",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            INT32,
-        );
+        const result = setAndGetLabelMaxWidthChars(label, INT32, 42);
 
         expect(result).toBe(42);
     });
@@ -181,22 +123,7 @@ describe("call - integer types - 32-bit signed basic", () => {
     it("handles negative 32-bit values", () => {
         const label = createLabel("Test");
 
-        call(
-            GTK_LIB,
-            "gtk_label_set_max_width_chars",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: -1 },
-            ],
-            VOID,
-        );
-
-        const result = call(
-            GTK_LIB,
-            "gtk_label_get_max_width_chars",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            INT32,
-        );
+        const result = setAndGetLabelMaxWidthChars(label, INT32, -1);
 
         expect(result).toBe(-1);
     });
@@ -206,22 +133,7 @@ describe("call - integer types - 32-bit signed zero", () => {
     it("handles zero", () => {
         const label = createLabel("Test");
 
-        call(
-            GTK_LIB,
-            "gtk_label_set_max_width_chars",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 0 },
-            ],
-            VOID,
-        );
-
-        const result = call(
-            GTK_LIB,
-            "gtk_label_get_max_width_chars",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            INT32,
-        );
+        const result = setAndGetLabelMaxWidthChars(label, INT32, 0);
 
         expect(result).toBe(0);
     });
@@ -231,22 +143,7 @@ describe("call - integer types - 32-bit signed large", () => {
     it("handles large positive values", () => {
         const label = createLabel("Test");
 
-        call(
-            GTK_LIB,
-            "gtk_label_set_max_width_chars",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 100000 },
-            ],
-            VOID,
-        );
-
-        const result = call(
-            GTK_LIB,
-            "gtk_label_get_max_width_chars",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            INT32,
-        );
+        const result = setAndGetLabelMaxWidthChars(label, INT32, 100000);
 
         expect(result).toBe(100000);
     });
@@ -297,22 +194,7 @@ describe("call - integer types - 32-bit unsigned", () => {
     it("passes and returns 32-bit unsigned integers", () => {
         const label = createLabel("Test");
 
-        call(
-            GTK_LIB,
-            "gtk_label_set_max_width_chars",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: UINT32, value: 200 },
-            ],
-            VOID,
-        );
-
-        const result = call(
-            GTK_LIB,
-            "gtk_label_get_max_width_chars",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            UINT32,
-        );
+        const result = setAndGetLabelMaxWidthChars(label, UINT32, 200);
 
         expect(result).toBe(200);
     });
@@ -384,22 +266,7 @@ describe("call - integer types - edge cases simultaneous", () => {
     it("handles integer as argument and return type simultaneously", () => {
         const label = createLabel("Test");
 
-        call(
-            GTK_LIB,
-            "gtk_label_set_max_width_chars",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 50 },
-            ],
-            VOID,
-        );
-
-        const result = call(
-            GTK_LIB,
-            "gtk_label_get_max_width_chars",
-            [{ type: GOBJECT_BORROWED, value: label }],
-            INT32,
-        );
+        const result = setAndGetLabelMaxWidthChars(label, INT32, 50);
 
         expect(result).toBe(50);
     });

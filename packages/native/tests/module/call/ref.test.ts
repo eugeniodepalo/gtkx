@@ -1,15 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { call } from "../../../index.js";
 import {
     createLabel,
     createRef,
-    GOBJECT_BORROWED,
-    GTK_LIB,
     getRefCount,
-    INT32,
-    POINTER,
+    measureWidget,
+    measureWidgetAllNull,
     startMemoryMeasurement,
-    VOID,
 } from "../utils.js";
 
 describe("call - ref types - integer refs basic", () => {
@@ -18,20 +14,7 @@ describe("call - ref types - integer refs basic", () => {
         const minRef = createRef(0);
         const naturalRef = createRef(0);
 
-        call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 0 },
-                { type: INT32, value: -1 },
-                { type: { type: "ref", innerType: INT32 }, value: minRef },
-                { type: { type: "ref", innerType: INT32 }, value: naturalRef },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-            ],
-            VOID,
-        );
+        measureWidget({ widget: label, orientation: 0, forSize: -1, minRef, naturalRef });
 
         expect(typeof minRef.value).toBe("number");
         expect(typeof naturalRef.value).toBe("number");
@@ -41,28 +24,23 @@ describe("call - ref types - integer refs basic", () => {
 
     it("handles multiple integer refs in same call", () => {
         const label = createLabel("A longer test label for measuring");
-        const minWidthRef = createRef(0);
-        const naturalWidthRef = createRef(0);
+        const minRef = createRef(0);
+        const naturalRef = createRef(0);
         const minBaselineRef = createRef(0);
         const naturalBaselineRef = createRef(0);
 
-        call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 0 },
-                { type: INT32, value: -1 },
-                { type: { type: "ref", innerType: INT32 }, value: minWidthRef },
-                { type: { type: "ref", innerType: INT32 }, value: naturalWidthRef },
-                { type: { type: "ref", innerType: INT32 }, value: minBaselineRef },
-                { type: { type: "ref", innerType: INT32 }, value: naturalBaselineRef },
-            ],
-            VOID,
-        );
+        measureWidget({
+            widget: label,
+            orientation: 0,
+            forSize: -1,
+            minRef,
+            naturalRef,
+            minBaselineRef,
+            naturalBaselineRef,
+        });
 
-        expect(typeof minWidthRef.value).toBe("number");
-        expect(typeof naturalWidthRef.value).toBe("number");
+        expect(typeof minRef.value).toBe("number");
+        expect(typeof naturalRef.value).toBe("number");
         expect(typeof minBaselineRef.value).toBe("number");
         expect(typeof naturalBaselineRef.value).toBe("number");
     });
@@ -74,39 +52,23 @@ describe("call - ref types - integer refs orientations", () => {
 
         const horizontalMinRef = createRef(0);
         const horizontalNaturalRef = createRef(0);
-
-        call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 0 },
-                { type: INT32, value: -1 },
-                { type: { type: "ref", innerType: INT32 }, value: horizontalMinRef },
-                { type: { type: "ref", innerType: INT32 }, value: horizontalNaturalRef },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-            ],
-            VOID,
-        );
+        measureWidget({
+            widget: label,
+            orientation: 0,
+            forSize: -1,
+            minRef: horizontalMinRef,
+            naturalRef: horizontalNaturalRef,
+        });
 
         const verticalMinRef = createRef(0);
         const verticalNaturalRef = createRef(0);
-
-        call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 1 },
-                { type: INT32, value: -1 },
-                { type: { type: "ref", innerType: INT32 }, value: verticalMinRef },
-                { type: { type: "ref", innerType: INT32 }, value: verticalNaturalRef },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-            ],
-            VOID,
-        );
+        measureWidget({
+            widget: label,
+            orientation: 1,
+            forSize: -1,
+            minRef: verticalMinRef,
+            naturalRef: verticalNaturalRef,
+        });
 
         expect(horizontalMinRef.value).toBeGreaterThanOrEqual(0);
         expect(verticalMinRef.value).toBeGreaterThanOrEqual(0);
@@ -117,20 +79,7 @@ describe("call - ref types - integer refs orientations", () => {
         const minRef = createRef(0);
         const naturalRef = createRef(0);
 
-        call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 1 },
-                { type: INT32, value: 100 },
-                { type: { type: "ref", innerType: INT32 }, value: minRef },
-                { type: { type: "ref", innerType: INT32 }, value: naturalRef },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-            ],
-            VOID,
-        );
+        measureWidget({ widget: label, orientation: 1, forSize: 100, minRef, naturalRef });
 
         expect(typeof minRef.value).toBe("number");
         expect(typeof naturalRef.value).toBe("number");
@@ -142,20 +91,7 @@ describe("call - ref types - null refs", () => {
         const label = createLabel("Test");
         const minRef = createRef(0);
 
-        call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 0 },
-                { type: INT32, value: -1 },
-                { type: { type: "ref", innerType: INT32 }, value: minRef },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-            ],
-            VOID,
-        );
+        measureWidget({ widget: label, orientation: 0, forSize: -1, minRef });
 
         expect(typeof minRef.value).toBe("number");
     });
@@ -164,20 +100,7 @@ describe("call - ref types - null refs", () => {
         const label = createLabel("Test");
         const naturalRef = createRef(0);
 
-        call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 0 },
-                { type: INT32, value: -1 },
-                { type: POINTER, value: 0 },
-                { type: { type: "ref", innerType: INT32 }, value: naturalRef },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-            ],
-            VOID,
-        );
+        measureWidget({ widget: label, orientation: 0, forSize: -1, naturalRef });
 
         expect(typeof naturalRef.value).toBe("number");
     });
@@ -185,22 +108,7 @@ describe("call - ref types - null refs", () => {
     it("handles all null refs", () => {
         const label = createLabel("Test");
 
-        const result = call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 0 },
-                { type: INT32, value: -1 },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-            ],
-            VOID,
-        );
-
-        expect(result).toBeUndefined();
+        expect(measureWidgetAllNull(label)).toBeUndefined();
     });
 });
 
@@ -211,23 +119,13 @@ describe("call - ref types - memory leaks loop", () => {
         const mem = startMemoryMeasurement();
 
         for (let i = 0; i < 500; i++) {
-            const minRef = createRef(0);
-            const naturalRef = createRef(0);
-
-            call(
-                GTK_LIB,
-                "gtk_widget_measure",
-                [
-                    { type: GOBJECT_BORROWED, value: label },
-                    { type: INT32, value: 0 },
-                    { type: INT32, value: -1 },
-                    { type: { type: "ref", innerType: INT32 }, value: minRef },
-                    { type: { type: "ref", innerType: INT32 }, value: naturalRef },
-                    { type: POINTER, value: 0 },
-                    { type: POINTER, value: 0 },
-                ],
-                VOID,
-            );
+            measureWidget({
+                widget: label,
+                orientation: 0,
+                forSize: -1,
+                minRef: createRef(0),
+                naturalRef: createRef(0),
+            });
         }
 
         expect(getRefCount(label)).toBe(labelRefCount);
@@ -243,27 +141,14 @@ describe("call - ref types - memory leaks mixed", () => {
 
         for (let i = 0; i < 500; i++) {
             const ref = createRef(0);
-
-            call(
-                GTK_LIB,
-                "gtk_widget_measure",
-                [
-                    { type: GOBJECT_BORROWED, value: label },
-                    { type: INT32, value: i % 2 },
-                    { type: INT32, value: -1 },
-                    {
-                        type: i % 2 === 0 ? { type: "ref", innerType: INT32 } : POINTER,
-                        value: i % 2 === 0 ? ref : 0,
-                    },
-                    {
-                        type: i % 2 === 1 ? { type: "ref", innerType: INT32 } : POINTER,
-                        value: i % 2 === 1 ? ref : 0,
-                    },
-                    { type: POINTER, value: 0 },
-                    { type: POINTER, value: 0 },
-                ],
-                VOID,
-            );
+            const useFirst = i % 2 === 0;
+            measureWidget({
+                widget: label,
+                orientation: i % 2,
+                forSize: -1,
+                minRef: useFirst ? ref : null,
+                naturalRef: useFirst ? null : ref,
+            });
         }
 
         expect(getRefCount(label)).toBe(labelRefCount);
@@ -276,20 +161,7 @@ describe("call - ref types - edge cases overwriting", () => {
         const label = createLabel("Test");
         const ref = createRef(9999);
 
-        call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 0 },
-                { type: INT32, value: -1 },
-                { type: { type: "ref", innerType: INT32 }, value: ref },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-            ],
-            VOID,
-        );
+        measureWidget({ widget: label, orientation: 0, forSize: -1, minRef: ref });
 
         expect(ref.value).not.toBe(9999);
     });
@@ -301,20 +173,13 @@ describe("call - ref types - edge cases partial", () => {
         const minRef = createRef(0);
         const baselineRef = createRef(0);
 
-        call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 0 },
-                { type: INT32, value: -1 },
-                { type: { type: "ref", innerType: INT32 }, value: minRef },
-                { type: POINTER, value: 0 },
-                { type: { type: "ref", innerType: INT32 }, value: baselineRef },
-                { type: POINTER, value: 0 },
-            ],
-            VOID,
-        );
+        measureWidget({
+            widget: label,
+            orientation: 0,
+            forSize: -1,
+            minRef,
+            minBaselineRef: baselineRef,
+        });
 
         expect(typeof minRef.value).toBe("number");
         expect(typeof baselineRef.value).toBe("number");
@@ -327,38 +192,10 @@ describe("call - ref types - edge cases reuse", () => {
         const label2 = createLabel("This is a much longer label text");
         const ref = createRef(0);
 
-        call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label1 },
-                { type: INT32, value: 0 },
-                { type: INT32, value: -1 },
-                { type: { type: "ref", innerType: INT32 }, value: ref },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-            ],
-            VOID,
-        );
-
+        measureWidget({ widget: label1, orientation: 0, forSize: -1, minRef: ref });
         const shortWidth = ref.value;
 
-        call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label2 },
-                { type: INT32, value: 0 },
-                { type: INT32, value: -1 },
-                { type: { type: "ref", innerType: INT32 }, value: ref },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-            ],
-            VOID,
-        );
-
+        measureWidget({ widget: label2, orientation: 0, forSize: -1, minRef: ref });
         const longWidth = ref.value;
 
         expect(longWidth).toBeGreaterThan(shortWidth);
@@ -371,35 +208,8 @@ describe("call - ref types - edge cases consistent reads", () => {
         const ref1 = createRef(0);
         const ref2 = createRef(0);
 
-        call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 0 },
-                { type: INT32, value: -1 },
-                { type: { type: "ref", innerType: INT32 }, value: ref1 },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-            ],
-            VOID,
-        );
-
-        call(
-            GTK_LIB,
-            "gtk_widget_measure",
-            [
-                { type: GOBJECT_BORROWED, value: label },
-                { type: INT32, value: 0 },
-                { type: INT32, value: -1 },
-                { type: { type: "ref", innerType: INT32 }, value: ref2 },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-            ],
-            VOID,
-        );
+        measureWidget({ widget: label, orientation: 0, forSize: -1, minRef: ref1 });
+        measureWidget({ widget: label, orientation: 0, forSize: -1, minRef: ref2 });
 
         expect(ref1.value).toBe(ref2.value);
     });
