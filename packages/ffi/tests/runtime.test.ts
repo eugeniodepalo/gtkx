@@ -31,7 +31,6 @@ const EXPECTED_RUNTIME_EXPORTS = [
     "connectSignal",
     "emitSignal",
     "registerSignalMeta",
-    "constructNativeObject",
 ] as const;
 
 describe("runtime barrel", () => {
@@ -41,8 +40,7 @@ describe("runtime barrel", () => {
         }
     });
 
-    it("re-exports `constructNativeObject` last so the import cycle through ./object.js closes after the acyclic runtime is initialized", () => {
-        const exportNames = Object.keys(runtime);
-        expect(exportNames[exportNames.length - 1]).toBe("constructNativeObject");
+    it("does not re-export `constructNativeObject` so the barrel stays acyclic", () => {
+        expect(runtime).not.toHaveProperty("constructNativeObject");
     });
 });
