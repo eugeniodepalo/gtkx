@@ -1,4 +1,5 @@
 import { call, createRef, type NativeHandle, read } from "../../index.js";
+import type { Type } from "../../types.js";
 
 export { createRef };
 
@@ -111,6 +112,15 @@ export function startMemoryMeasurement(): MemoryMeasurement {
 }
 
 export function connectSignal(obj: unknown, signalName: string, callback: (...args: unknown[]) => void): number {
+    return connectSignalReturning(obj, signalName, callback, UINT64) as number;
+}
+
+export function connectSignalReturning(
+    obj: unknown,
+    signalName: string,
+    callback: (...args: unknown[]) => void,
+    returnType: Type,
+): unknown {
     return call(
         GOBJECT_LIB,
         "g_signal_connect_data",
@@ -123,6 +133,38 @@ export function connectSignal(obj: unknown, signalName: string, callback: (...ar
             },
             { type: POINTER, value: 0 },
             { type: POINTER, value: 0 },
+            { type: INT32, value: 0 },
+        ],
+        returnType,
+    );
+}
+
+export function connectSignalTrampoline(
+    obj: unknown,
+    signalName: string,
+    callback: (...args: unknown[]) => void,
+    options: { argTypes: Type[]; userDataIndex: number; hasDestroy?: boolean } = {
+        argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "uint64" }],
+        userDataIndex: 1,
+        hasDestroy: true,
+    },
+): number {
+    return call(
+        GOBJECT_LIB,
+        "g_signal_connect_data",
+        [
+            { type: GOBJECT_BORROWED, value: obj },
+            { type: STRING, value: signalName },
+            {
+                type: {
+                    type: "trampoline",
+                    argTypes: options.argTypes,
+                    returnType: { type: "void" },
+                    hasDestroy: options.hasDestroy ?? true,
+                    userDataIndex: options.userDataIndex,
+                },
+                value: callback,
+            },
             { type: INT32, value: 0 },
         ],
         UINT64,

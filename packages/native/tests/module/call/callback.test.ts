@@ -4,6 +4,7 @@ import { suppressUnhandledRejections } from "../lifecycle.js";
 import {
     BOOLEAN,
     connectSignal,
+    connectSignalTrampoline,
     createButton,
     createCancellable,
     disconnectSignal,
@@ -12,8 +13,6 @@ import {
     GOBJECT_BORROWED,
     GOBJECT_LIB,
     getRefCount,
-    INT32,
-    POINTER,
     STRING,
     startMemoryMeasurement,
     UINT64,
@@ -24,22 +23,7 @@ describe("call - callback types - closure connect", () => {
     it("connects callback to signal", () => {
         const button = createButton("Test");
 
-        const handlerId = call(
-            GOBJECT_LIB,
-            "g_signal_connect_data",
-            [
-                { type: GOBJECT_BORROWED, value: button },
-                { type: STRING, value: "clicked" },
-                {
-                    type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
-                    value: () => {},
-                },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: INT32, value: 0 },
-            ],
-            UINT64,
-        );
+        const handlerId = connectSignal(button, "clicked", () => {});
 
         expect(typeof handlerId).toBe("number");
         expect(handlerId).toBeGreaterThan(0);
@@ -116,22 +100,7 @@ describe("call - callback types - closure disconnect", () => {
     it("disconnects callback correctly", () => {
         const button = createButton("Test");
 
-        const handlerId = call(
-            GOBJECT_LIB,
-            "g_signal_connect_data",
-            [
-                { type: GOBJECT_BORROWED, value: button },
-                { type: STRING, value: "clicked" },
-                {
-                    type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
-                    value: () => {},
-                },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: INT32, value: 0 },
-            ],
-            UINT64,
-        ) as number;
+        const handlerId = connectSignal(button, "clicked", () => {});
 
         disconnectSignal(button, handlerId);
 
@@ -211,28 +180,9 @@ describe("call - callback types - destroy trampoline", () => {
         const cancellable = createCancellable();
         let callbackInvoked = false;
 
-        const handlerId = call(
-            GOBJECT_LIB,
-            "g_signal_connect_data",
-            [
-                { type: GOBJECT_BORROWED, value: cancellable },
-                { type: STRING, value: "cancelled" },
-                {
-                    type: {
-                        type: "trampoline",
-                        argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "uint64" }],
-                        returnType: { type: "void" },
-                        hasDestroy: true,
-                        userDataIndex: 1,
-                    },
-                    value: () => {
-                        callbackInvoked = true;
-                    },
-                },
-                { type: INT32, value: 0 },
-            ],
-            UINT64,
-        );
+        const handlerId = connectSignalTrampoline(cancellable, "cancelled", () => {
+            callbackInvoked = true;
+        });
 
         expect(typeof handlerId).toBe("number");
         expect(handlerId).toBeGreaterThan(0);
@@ -311,28 +261,9 @@ describe("call - callback types - memory leaks trampoline", () => {
         for (let i = 0; i < 100; i++) {
             const cancellable = createCancellable();
 
-            const handlerId = call(
-                GOBJECT_LIB,
-                "g_signal_connect_data",
-                [
-                    { type: GOBJECT_BORROWED, value: cancellable },
-                    { type: STRING, value: "cancelled" },
-                    {
-                        type: {
-                            type: "trampoline",
-                            argTypes: [{ type: "gobject", ownership: "borrowed" }, { type: "uint64" }],
-                            returnType: { type: "void" },
-                            hasDestroy: true,
-                            userDataIndex: 1,
-                        },
-                        value: () => {},
-                    },
-                    { type: INT32, value: 0 },
-                ],
-                UINT64,
-            );
+            const handlerId = connectSignalTrampoline(cancellable, "cancelled", () => {});
 
-            disconnectSignal(cancellable, handlerId as number);
+            disconnectSignal(cancellable, handlerId);
         }
 
         expect(mem.measure()).toBeLessThan(5 * 1024 * 1024);
@@ -406,22 +337,7 @@ describe("call - callback types - edge cases closure trampoline", () => {
     it("handles closure callback trampoline", () => {
         const button = createButton("Test");
 
-        const handlerId = call(
-            GOBJECT_LIB,
-            "g_signal_connect_data",
-            [
-                { type: GOBJECT_BORROWED, value: button },
-                { type: STRING, value: "clicked" },
-                {
-                    type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
-                    value: () => {},
-                },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: INT32, value: 0 },
-            ],
-            UINT64,
-        );
+        const handlerId = connectSignal(button, "clicked", () => {});
 
         expect(typeof handlerId).toBe("number");
         expect(handlerId).toBeGreaterThan(0);

@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { call } from "../../../index.js";
 import {
+    connectSignal,
+    connectSignalReturning,
     createBox,
     createButton,
     createGrid,
     createLabel,
+    disconnectSignal,
     GOBJECT,
     GOBJECT_BORROWED,
     GOBJECT_LIB,
@@ -13,7 +16,6 @@ import {
     INT16,
     INT32,
     INT64,
-    POINTER,
     STRING,
     UINT8,
     UINT16,
@@ -339,25 +341,10 @@ describe("call - integer types - 64-bit signed", () => {
     it("passes and returns 64-bit signed integers", () => {
         const button = createButton("Test");
 
-        const handlerId = call(
-            GOBJECT_LIB,
-            "g_signal_connect_data",
-            [
-                { type: GOBJECT_BORROWED, value: button },
-                { type: STRING, value: "clicked" },
-                {
-                    type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
-                    value: () => {},
-                },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: INT32, value: 0 },
-            ],
-            INT64,
-        );
+        const handlerId = connectSignalReturning(button, "clicked", () => {}, INT64);
 
         expect(typeof handlerId).toBe("number");
-        expect(handlerId).toBeGreaterThan(0);
+        expect(handlerId as number).toBeGreaterThan(0);
     });
 });
 
@@ -365,22 +352,7 @@ describe("call - integer types - 64-bit unsigned basic", () => {
     it("passes and returns 64-bit unsigned integers", () => {
         const button = createButton("Test");
 
-        const handlerId = call(
-            GOBJECT_LIB,
-            "g_signal_connect_data",
-            [
-                { type: GOBJECT_BORROWED, value: button },
-                { type: STRING, value: "clicked" },
-                {
-                    type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
-                    value: () => {},
-                },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: INT32, value: 0 },
-            ],
-            UINT64,
-        );
+        const handlerId = connectSignal(button, "clicked", () => {});
 
         expect(typeof handlerId).toBe("number");
         expect(handlerId).toBeGreaterThan(0);
@@ -391,32 +363,9 @@ describe("call - integer types - 64-bit unsigned disconnect", () => {
     it("handles signal handler disconnection", () => {
         const button = createButton("Test");
 
-        const handlerId = call(
-            GOBJECT_LIB,
-            "g_signal_connect_data",
-            [
-                { type: GOBJECT_BORROWED, value: button },
-                { type: STRING, value: "clicked" },
-                {
-                    type: { type: "callback", kind: "closure", argTypes: [], returnType: { type: "void" } },
-                    value: () => {},
-                },
-                { type: POINTER, value: 0 },
-                { type: POINTER, value: 0 },
-                { type: INT32, value: 0 },
-            ],
-            UINT64,
-        );
+        const handlerId = connectSignal(button, "clicked", () => {});
 
-        call(
-            GOBJECT_LIB,
-            "g_signal_handler_disconnect",
-            [
-                { type: GOBJECT_BORROWED, value: button },
-                { type: UINT64, value: handlerId },
-            ],
-            VOID,
-        );
+        disconnectSignal(button, handlerId);
 
         const isConnected = call(
             GOBJECT_LIB,
