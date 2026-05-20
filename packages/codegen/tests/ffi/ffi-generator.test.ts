@@ -50,7 +50,6 @@ const generateNamespaceFor = (
     return { files, file: namespaceFile(files, namespace) };
 };
 
-
 function makeOuterInnerNamespace(
     innerOverrides: Partial<Parameters<typeof createNormalizedRecord>[0]> = {},
 ): GirNamespace {

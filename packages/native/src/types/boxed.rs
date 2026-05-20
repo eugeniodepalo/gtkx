@@ -5,8 +5,6 @@
 //! or have fixed sizes. This module provides [`BoxedType`] and [`StructType`]
 //! descriptors that handle encoding/decoding these types for FFI calls.
 
-use std::ffi::c_void;
-
 use anyhow::bail;
 use gtk4::glib::{
     self,
@@ -14,12 +12,10 @@ use gtk4::glib::{
 };
 use napi::{Env, JsObject};
 
-use super::raw_ptr::{null_guarded, write_object_ptr, write_return_object_ptr};
-use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
+use super::prelude::*;
 use crate::error_reporter::NativeErrorReporter;
 use crate::managed::{Boxed, NativeValue};
 use crate::state::GtkThreadState;
-use crate::{ffi, value};
 
 #[derive(Debug, Clone)]
 pub struct BoxedType {

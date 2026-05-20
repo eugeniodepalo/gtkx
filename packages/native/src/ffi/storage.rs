@@ -173,6 +173,32 @@ impl FfiStorage {
     }
 }
 
+/// Frees a `GList`/`GSList` of duplicated string elements, dispatching to the
+/// `_free_full` or plain `_free` variant based on whether the elements were
+/// duplicated on the way in.
+///
+/// `is_null` and the two closures carry the list-type-specific bindings the
+/// caller already has in hand; this helper only owns the branching.
+fn free_string_list<F, G>(
+    should_free: bool,
+    is_null: bool,
+    elements_duped: bool,
+    free_full: F,
+    free_simple: G,
+) where
+    F: FnOnce(),
+    G: FnOnce(),
+{
+    if !should_free || is_null {
+        return;
+    }
+    if elements_duped {
+        free_full();
+    } else {
+        free_simple();
+    }
+}
+
 impl FfiStorage {
     fn drop_gclosure(&self) {
         if !self.ptr.is_null() {
@@ -183,29 +209,23 @@ impl FfiStorage {
     }
 
     fn drop_string_glist(data: &StringGListData) {
-        if !data.should_free || data.list_ptr.is_null() {
-            return;
-        }
-        if data.elements_duped {
-            unsafe {
-                glib::ffi::g_list_free_full(data.list_ptr, Some(glib::ffi::g_free));
-            }
-        } else {
-            unsafe { glib::ffi::g_list_free(data.list_ptr) };
-        }
+        free_string_list(
+            data.should_free,
+            data.list_ptr.is_null(),
+            data.elements_duped,
+            || unsafe { glib::ffi::g_list_free_full(data.list_ptr, Some(glib::ffi::g_free)) },
+            || unsafe { glib::ffi::g_list_free(data.list_ptr) },
+        );
     }
 
     fn drop_string_gslist(data: &StringGSListData) {
-        if !data.should_free || data.list_ptr.is_null() {
-            return;
-        }
-        if data.elements_duped {
-            unsafe {
-                glib::ffi::g_slist_free_full(data.list_ptr, Some(glib::ffi::g_free));
-            }
-        } else {
-            unsafe { glib::ffi::g_slist_free(data.list_ptr) };
-        }
+        free_string_list(
+            data.should_free,
+            data.list_ptr.is_null(),
+            data.elements_duped,
+            || unsafe { glib::ffi::g_slist_free_full(data.list_ptr, Some(glib::ffi::g_free)) },
+            || unsafe { glib::ffi::g_slist_free(data.list_ptr) },
+        );
     }
     fn drop_hash_table(data: &HashTableData) {
         if data.should_free && !data.handle.is_null() {

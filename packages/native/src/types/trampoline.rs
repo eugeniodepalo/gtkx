@@ -1,13 +1,11 @@
-use std::ffi::c_void;
 use std::sync::atomic::{AtomicPtr, Ordering};
 
 use libffi::middle as libffi;
 use napi::{Env, JsObject};
 
-use crate::ffi;
+use super::prelude::*;
 use crate::trampoline::{TrampolineData, TrampolineState};
-use crate::types::{FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec, Type};
-use crate::value;
+use crate::types::Type;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[non_exhaustive]
@@ -91,14 +89,7 @@ impl TrampolineType {
 }
 
 impl FfiEncoder for TrampolineType {
-    fn call_cif(
-        &self,
-        _cif: &libffi::Cif,
-        _ptr: libffi::CodePtr,
-        _args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        anyhow::bail!("Trampolines cannot be return types")
-    }
+    arg_only_call_cif!("Trampolines");
 
     fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
         types.push(libffi::Type::pointer());

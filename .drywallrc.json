@@ -1,3 +1,0 @@
-{
-    "ignore": "**/target/**,**/node_modules/**,**/dist/**,**/generated/**,**/girs/**,**/.turbo/**,**/coverage/**,**/build/**,**/.next/**,**/website/api/**,**/website/screenshots/**,**/*.svg,**/*.md,**/package.json,**/package-lock.json,**/pnpm-lock.yaml,**/native-binding.cjs"
-}

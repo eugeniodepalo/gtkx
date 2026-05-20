@@ -1,5 +1,3 @@
-use std::ffi::c_void;
-
 use anyhow::bail;
 use gtk4::glib::{
     self,
@@ -8,10 +6,29 @@ use gtk4::glib::{
 };
 use napi::{Env, JsObject};
 
-use super::raw_ptr::{null_guarded, write_object_ptr, write_return_object_ptr};
-use super::{FfiDecoder, FfiEncoder, GlibValueCodec, Ownership, RawPtrCodec};
+use super::prelude::*;
 use crate::managed::NativeValue;
-use crate::{ffi, value};
+
+/// Loads and validates the instance's `g_class` pointer.
+///
+/// Bails with `"GObject has invalid type class (object may have been freed)"`
+/// when the slot is null — the dangling-pointer signature after a
+/// `g_object_unref` to zero. The loaded pointer is returned so callers reuse
+/// the single read instead of re-dereferencing the field.
+///
+/// # Safety
+///
+/// `ptr` must be a non-null pointer to a live `GObject` whose `g_type_instance`
+/// is readable.
+unsafe fn load_type_class(
+    ptr: *mut glib::gobject_ffi::GObject,
+) -> anyhow::Result<*mut glib::gobject_ffi::GTypeClass> {
+    let type_class = unsafe { (*ptr).g_type_instance.g_class };
+    if type_class.is_null() {
+        bail!("GObject has invalid type class (object may have been freed)");
+    }
+    Ok(type_class)
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct GObjectType {
@@ -63,10 +80,7 @@ impl FfiDecoder for GObjectType {
 
         let gobject_ptr = object_ptr as *mut glib::gobject_ffi::GObject;
 
-        let type_class = unsafe { (*gobject_ptr).g_type_instance.g_class };
-        if type_class.is_null() {
-            bail!("GObject has invalid type class (object may have been freed)");
-        }
+        let type_class = unsafe { load_type_class(gobject_ptr)? };
 
         let is_floating = unsafe { glib::gobject_ffi::g_object_is_floating(gobject_ptr) != 0 };
 
@@ -93,10 +107,7 @@ impl RawPtrCodec for GObjectType {
     fn ptr_to_value(&self, ptr: *mut c_void, _context: &str) -> anyhow::Result<value::Value> {
         null_guarded(ptr, |ptr| {
             let gobject_ptr = ptr as *mut glib::gobject_ffi::GObject;
-            let type_class = unsafe { (*gobject_ptr).g_type_instance.g_class };
-            if type_class.is_null() {
-                bail!("GObject has invalid type class (object may have been freed)");
-            }
+            unsafe { load_type_class(gobject_ptr)? };
             let object = unsafe { glib::Object::from_glib_none(gobject_ptr) };
             Ok(value::Value::Object(NativeValue::GObject(object).into()))
         })
@@ -138,10 +149,7 @@ impl GlibValueCodec for GObjectType {
         if obj_ptr.is_null() {
             return Ok(value::Value::Null);
         }
-        let type_class = unsafe { (*obj_ptr).g_type_instance.g_class };
-        if type_class.is_null() {
-            bail!("GObject has invalid type class (object may have been freed)");
-        }
+        unsafe { load_type_class(obj_ptr)? };
         let obj = unsafe { glib::Object::from_glib_none(obj_ptr) };
         Ok(value::Value::Object(NativeValue::GObject(obj).into()))
     }

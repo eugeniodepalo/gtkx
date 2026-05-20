@@ -80,6 +80,7 @@ mod fundamental;
 mod gobject;
 mod hashtable;
 mod numeric;
+mod prelude;
 mod raw_ptr;
 mod ref_type;
 mod string;

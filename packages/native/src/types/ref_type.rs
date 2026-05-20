@@ -1,18 +1,14 @@
-use std::ffi::{CStr, c_char, c_void};
+use std::ffi::{CStr, c_char};
 
 use anyhow::bail;
 use gtk4::glib::{self, translate::ToGlibPtr as _};
-use libffi::middle as libffi;
 use napi::bindgen_prelude::*;
 use napi::{Env, JsObject};
 
+use super::prelude::*;
 use crate::arg::Arg;
 use crate::ffi::{FfiStorage, FfiStorageKind};
-use crate::{
-    ffi,
-    types::{ArrayKind, FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec, Type},
-    value,
-};
+use crate::types::{ArrayKind, Type};
 
 #[derive(Debug, Clone)]
 pub struct RefType {
@@ -113,22 +109,29 @@ impl FfiEncoder for RefType {
         }
     }
 
-    fn call_cif(
-        &self,
-        _cif: &libffi::Cif,
-        _ptr: libffi::CodePtr,
-        _args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        bail!("Ref types cannot be return types")
+    arg_only_call_cif!("Ref types");
+}
+
+/// Extracts the [`FfiStorage`] backing a `Ref` decode.
+///
+/// Returns `None` for the null-pointer fast path so the caller can short
+/// circuit to [`value::Value::Null`]. `kind` (e.g. `"Ref"` or `"Ref<Array>"`)
+/// names the expected shape in the bail message when the variant is unexpected.
+fn ref_storage_or_null<'a>(
+    ffi_value: &'a ffi::FfiValue,
+    kind: &str,
+) -> anyhow::Result<Option<&'a FfiStorage>> {
+    match ffi_value {
+        ffi::FfiValue::Storage(s) => Ok(Some(s)),
+        ffi::FfiValue::Ptr(ptr) if ptr.is_null() => Ok(None),
+        _ => bail!("Expected a Storage ffi::FfiValue for {kind}, got {ffi_value:?}"),
     }
 }
 
 impl FfiDecoder for RefType {
     fn decode(&self, ffi_value: &ffi::FfiValue) -> anyhow::Result<value::Value> {
-        let storage = match ffi_value {
-            ffi::FfiValue::Storage(s) => s,
-            ffi::FfiValue::Ptr(ptr) if ptr.is_null() => return Ok(value::Value::Null),
-            _ => bail!("Expected a Storage ffi::FfiValue for Ref, got {ffi_value:?}"),
+        let Some(storage) = ref_storage_or_null(ffi_value, "Ref")? else {
+            return Ok(value::Value::Null);
         };
 
         match &*self.inner_type {
@@ -223,10 +226,8 @@ impl RefType {
         args: &[Arg],
     ) -> anyhow::Result<value::Value> {
         if let Type::Array(array_type) = &*self.inner_type {
-            let storage = match ffi_value {
-                ffi::FfiValue::Storage(s) => s,
-                ffi::FfiValue::Ptr(ptr) if ptr.is_null() => return Ok(value::Value::Null),
-                _ => bail!("Expected a Storage ffi::FfiValue for Ref<Array>, got {ffi_value:?}"),
+            let Some(storage) = ref_storage_or_null(ffi_value, "Ref<Array>")? else {
+                return Ok(value::Value::Null);
             };
 
             let actual_ptr = match storage.kind() {

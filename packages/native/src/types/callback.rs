@@ -1,4 +1,3 @@
-use std::ffi::c_void;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicPtr, Ordering};
 
@@ -6,16 +5,15 @@ use gtk4::glib::{
     self, gobject_ffi,
     translate::{FromGlibPtrFull as _, ToGlibPtr as _},
 };
-use libffi::middle as libffi;
 use napi::{Env, JsFunction, JsObject};
 
+use super::prelude::*;
 use crate::callback::ClosureGuard;
 use crate::dispatch::Mailbox;
 use crate::error_reporter::NativeErrorReporter;
-use crate::ffi::{self, FfiStorage};
+use crate::ffi::FfiStorage;
 use crate::managed::{Boxed, NativeValue};
-use crate::types::{FfiDecoder, FfiEncoder, GlibValueCodec, RawPtrCodec, Type};
-use crate::value;
+use crate::types::Type;
 use crate::value::{Callback, JsRef};
 
 struct ClosureContext {
@@ -187,14 +185,7 @@ impl FfiEncoder for CallbackType {
         Ok(self.build_ffi_value(callback))
     }
 
-    fn call_cif(
-        &self,
-        _cif: &libffi::Cif,
-        _ptr: libffi::CodePtr,
-        _args: &[libffi::Arg],
-    ) -> anyhow::Result<ffi::FfiValue> {
-        anyhow::bail!("Callbacks cannot be return types")
-    }
+    arg_only_call_cif!("Callbacks");
 }
 
 impl FfiDecoder for CallbackType {}
