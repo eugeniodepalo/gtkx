@@ -26,12 +26,18 @@ function createTestSetup(namespaces: Map<string, ReturnType<typeof createNormali
     return { repo, mapper, analyzer };
 }
 
+function analyzeProperties(
+    cls: ReturnType<typeof createNormalizedClass>,
+    namespaces?: Map<string, ReturnType<typeof createNormalizedNamespace>>,
+) {
+    const { analyzer } = createTestSetup(namespaces ?? gtkNamespaceWith(cls));
+    return analyzer.analyzeWidgetProperties(cls);
+}
+
 describe("PropertyAnalyzer / analyzeWidgetProperties (1)", () => {
     it("returns empty array for class with no properties", () => {
         const cls = createNormalizedClass({ properties: [] });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result).toHaveLength(0);
     });
@@ -42,9 +48,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (1)", () => {
             parent: null,
             properties: [createNormalizedProperty({ name: "label", type: createNormalizedType({ name: "utf8" }) })],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result).toHaveLength(1);
         expect(result[0]).toMatchObject({
@@ -68,9 +72,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (2)", () => {
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.camelName).toBe("iconName");
     });
@@ -111,9 +113,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (3)", () => {
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result.find((p) => p.name === "orientation")?.isRequired).toBe(true);
         expect(result.find((p) => p.name === "spacing")?.isRequired).toBe(true);
@@ -144,9 +144,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (4)", () => {
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.isRequired).toBe(false);
     });
@@ -166,9 +164,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (5)", () => {
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.isWritable).toBe(false);
     });
@@ -216,9 +212,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (6)", () => {
                 ["Button", buttonClass],
             ]),
         });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
-
-        const result = analyzer.analyzeWidgetProperties(buttonClass);
+        const result = analyzeProperties(buttonClass, new Map([["Gtk", ns]]));
 
         expect(result.map((p) => p.name)).toContain("label");
         expect(result.map((p) => p.name)).toContain("icon-name");
@@ -251,9 +245,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (7)", () => {
             classes: new Map([["Box", boxClass]]),
             interfaces: new Map([["Orientable", orientable]]),
         });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
-
-        const result = analyzer.analyzeWidgetProperties(boxClass);
+        const result = analyzeProperties(boxClass, new Map([["Gtk", ns]]));
 
         expect(result.map((p) => p.name)).toContain("orientation");
         expect(result.map((p) => p.name)).toContain("spacing");
@@ -273,9 +265,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (8)", () => {
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.getter).toBe("get_label");
         expect(result[0]?.setter).toBe("set_label");
@@ -312,9 +302,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (9)", () => {
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.getter).toBe("get_file");
         expect(result[0]?.setter).toBe("set_from_file");
@@ -382,9 +370,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (11)", () => {
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result.find((p) => p.name === "title")?.isRequired).toBe(false);
     });
@@ -402,9 +388,7 @@ describe("PropertyAnalyzer / analyzeWidgetProperties (12)", () => {
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.doc).toBe("The text shown in the button.");
     });
@@ -465,9 +449,7 @@ describe("PropertyAnalyzer - Extended Coverage / construct-only properties", () 
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.hasSyntheticSetter).toBe(false);
     });
@@ -486,9 +468,7 @@ describe("PropertyAnalyzer - Extended Coverage / construct-only properties", () 
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.hasSyntheticSetter).toBe(true);
         expect(result[0]?.setter).toBe("setLabel");
@@ -515,9 +495,7 @@ describe("PropertyAnalyzer - Extended Coverage / synthetic setter generation for
             enumerations: new Map([["Orientation", enumType]]),
             classes: new Map([["Box", cls]]),
         });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls, new Map([["Gtk", ns]]));
 
         expect(result[0]?.hasSyntheticSetter).toBe(true);
     });
@@ -543,9 +521,7 @@ describe("PropertyAnalyzer - Extended Coverage / synthetic setter generation for
             bitfields: new Map([["StateFlags", flags]]),
             classes: new Map([["Widget", cls]]),
         });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls, new Map([["Gtk", ns]]));
 
         expect(result[0]?.hasSyntheticSetter).toBe(true);
     });
@@ -576,9 +552,7 @@ describe("PropertyAnalyzer - Extended Coverage / synthetic setter generation for
                 ["Container", containerClass],
             ]),
         });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
-
-        const result = analyzer.analyzeWidgetProperties(containerClass);
+        const result = analyzeProperties(containerClass, new Map([["Gtk", ns]]));
 
         expect(result[0]?.hasSyntheticSetter).toBe(true);
     });
@@ -598,9 +572,7 @@ describe("PropertyAnalyzer - Extended Coverage / synthetic setter generation for
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.hasSyntheticSetter).toBe(true);
     });
@@ -626,9 +598,7 @@ describe("PropertyAnalyzer - Extended Coverage / synthetic setter generation for
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.hasSyntheticSetter).toBe(false);
         expect(result[0]?.setter).toBe("set_text");
@@ -656,9 +626,7 @@ describe("PropertyAnalyzer - Extended Coverage / nullability inference (1)", () 
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.isNullable).toBe(true);
     });
@@ -690,9 +658,7 @@ describe("PropertyAnalyzer - Extended Coverage / nullability inference (2)", () 
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.isNullable).toBe(false);
     });
@@ -710,9 +676,7 @@ describe("PropertyAnalyzer - Extended Coverage / nullability inference (3)", () 
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.isNullable).toBe(true);
     });
@@ -739,9 +703,7 @@ describe("PropertyAnalyzer - Extended Coverage / nullability inference (4)", () 
                 }),
             ],
         });
-        const { analyzer } = createTestSetup(gtkNamespaceWith(cls));
-
-        const result = analyzer.analyzeWidgetProperties(cls);
+        const result = analyzeProperties(cls);
 
         expect(result[0]?.isNullable).toBe(false);
     });
@@ -778,9 +740,7 @@ describe("PropertyAnalyzer - Extended Coverage / property defaults", () => {
             name: "Gtk",
             classes: new Map([["Widget", widgetClass]]),
         });
-        const { analyzer } = createTestSetup(new Map([["Gtk", ns]]));
-
-        const result = analyzer.analyzeWidgetProperties(widgetClass);
+        const result = analyzeProperties(widgetClass, new Map([["Gtk", ns]]));
 
         expect(result.find((p) => p.name === "visible")?.isRequired).toBe(false);
     });
