@@ -6,16 +6,17 @@ import { createRef, type RefObject, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderListView } from "../helpers/list-fixtures.js";
 
+const TWO_ITEMS = [
+    { id: "1", value: { name: "First" } },
+    { id: "2", value: { name: "Second" } },
+];
+
+const THREE_ITEMS = [...TWO_ITEMS, { id: "3", value: { name: "Third" } }];
+
 describe("render - ListView - selection (1)", () => {
     describe("single (1)", () => {
         it("sets selected item via selected prop", async () => {
-            await renderListView(
-                [
-                    { id: "1", value: { name: "First" } },
-                    { id: "2", value: { name: "Second" } },
-                ],
-                { selected: ["2"] },
-            );
+            await renderListView(TWO_ITEMS, { selected: ["2"] });
 
             expect(screen.queryAllByText("Second")).toHaveLength(1);
         });
@@ -23,13 +24,7 @@ describe("render - ListView - selection (1)", () => {
         it("calls onSelectionChanged when selection changes", async () => {
             const onSelectionChanged = vi.fn();
 
-            const { ref } = await renderListView(
-                [
-                    { id: "1", value: { name: "First" } },
-                    { id: "2", value: { name: "Second" } },
-                ],
-                { onSelectionChanged },
-            );
+            const { ref } = await renderListView(TWO_ITEMS, { onSelectionChanged });
 
             await userEvent.selectOptions(ref.current, 0);
 
@@ -72,27 +67,17 @@ describe("render - ListView - selection (2)", () => {
 describe("render - ListView - selection (3)", () => {
     describe("multiple", () => {
         it("enables multi-select with selectionMode", async () => {
-            await renderListView(
-                [
-                    { id: "1", value: { name: "First" } },
-                    { id: "2", value: { name: "Second" } },
-                ],
-                { selectionMode: Gtk.SelectionMode.MULTIPLE },
-            );
+            await renderListView(TWO_ITEMS, { selectionMode: Gtk.SelectionMode.MULTIPLE });
 
             expect(screen.queryAllByText("First")).toHaveLength(1);
             expect(screen.queryAllByText("Second")).toHaveLength(1);
         });
 
         it("sets multiple selected items", async () => {
-            await renderListView(
-                [
-                    { id: "1", value: { name: "First" } },
-                    { id: "2", value: { name: "Second" } },
-                    { id: "3", value: { name: "Third" } },
-                ],
-                { selectionMode: Gtk.SelectionMode.MULTIPLE, selected: ["1", "3"] },
-            );
+            await renderListView(THREE_ITEMS, {
+                selectionMode: Gtk.SelectionMode.MULTIPLE,
+                selected: ["1", "3"],
+            });
 
             expect(screen.queryAllByText("First")).toHaveLength(1);
             expect(screen.queryAllByText("Third")).toHaveLength(1);
@@ -101,13 +86,10 @@ describe("render - ListView - selection (3)", () => {
         it("calls onSelectionChanged with array of ids", async () => {
             const onSelectionChanged = vi.fn();
 
-            const { ref } = await renderListView(
-                [
-                    { id: "1", value: { name: "First" } },
-                    { id: "2", value: { name: "Second" } },
-                ],
-                { selectionMode: Gtk.SelectionMode.MULTIPLE, onSelectionChanged },
-            );
+            const { ref } = await renderListView(TWO_ITEMS, {
+                selectionMode: Gtk.SelectionMode.MULTIPLE,
+                onSelectionChanged,
+            });
 
             await userEvent.selectOptions(ref.current, [0, 1]);
 
@@ -121,13 +103,7 @@ describe("render - ListView - selection (4)", () => {
         it("sets selected item via selected prop", async () => {
             const onSelectionChanged = vi.fn();
 
-            await renderListView(
-                [
-                    { id: "1", value: { name: "First" } },
-                    { id: "2", value: { name: "Second" } },
-                ],
-                { selected: ["2"], onSelectionChanged },
-            );
+            await renderListView(TWO_ITEMS, { selected: ["2"], onSelectionChanged });
 
             await tick();
 
@@ -152,13 +128,7 @@ describe("render - ListView - selection (4)", () => {
         it("calls onSelectionChanged when selection changes", async () => {
             const onSelectionChanged = vi.fn();
 
-            const { ref } = await renderListView(
-                [
-                    { id: "1", value: { name: "First" } },
-                    { id: "2", value: { name: "Second" } },
-                ],
-                { onSelectionChanged },
-            );
+            const { ref } = await renderListView(TWO_ITEMS, { onSelectionChanged });
 
             await userEvent.selectOptions(ref.current, 0);
 

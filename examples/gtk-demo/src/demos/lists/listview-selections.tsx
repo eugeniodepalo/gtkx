@@ -178,6 +178,13 @@ const SuggestionEntry = ({ words, placeholder }: { words: string[]; placeholder:
     );
 };
 
+const renderSelectableTimeItem = (label: string, selectedId: string) => (
+    <GtkBox spacing={10}>
+        <GtkLabel label={label} xalign={0} hexpand />
+        <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
+    </GtkBox>
+);
+
 const TimesDropDown = () => {
     const [selectedId, setSelectedId] = useState(times[0] ?? "");
 
@@ -185,12 +192,7 @@ const TimesDropDown = () => {
         <GtkDropDown
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
-            renderListItem={(label: string) => (
-                <GtkBox spacing={10}>
-                    <GtkLabel label={label} xalign={0} hexpand />
-                    <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
-                </GtkBox>
-            )}
+            renderListItem={(label: string) => renderSelectableTimeItem(label, selectedId)}
             items={times.map((t) => ({ id: t, value: t }))}
         />
     );
@@ -204,12 +206,7 @@ const TimesSectionedDropDown = () => {
             selectedId={selectedId}
             onSelectionChanged={setSelectedId}
             enableSearch
-            renderListItem={(label: string) => (
-                <GtkBox spacing={10}>
-                    <GtkLabel label={label} xalign={0} hexpand />
-                    <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
-                </GtkBox>
-            )}
+            renderListItem={(label: string) => renderSelectableTimeItem(label, selectedId)}
             renderHeader={(value: string) => (
                 <GtkLabel
                     label={`<big><b>${escapeMarkup(value)}</b></big>`}

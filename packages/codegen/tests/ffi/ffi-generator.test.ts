@@ -50,6 +50,31 @@ const generateNamespaceFor = (
     return { files, file: namespaceFile(files, namespace) };
 };
 
+
+function makeOuterInnerNamespace(
+    innerOverrides: Partial<Parameters<typeof createNormalizedRecord>[0]> = {},
+): GirNamespace {
+    const inner = createNormalizedRecord({
+        name: "Inner",
+        qualifiedName: "Gtk.Inner",
+        cType: "GtkInner",
+        ...innerOverrides,
+    });
+    const outer = createNormalizedRecord({
+        name: "Outer",
+        qualifiedName: "Gtk.Outer",
+        cType: "GtkOuter",
+        fields: [createNormalizedField({ name: "inner", type: createNormalizedType({ name: "Inner" }) })],
+    });
+    return createNormalizedNamespace({
+        name: "Gtk",
+        records: new Map([
+            [outer.name, outer],
+            [inner.name, inner],
+        ]),
+    });
+}
+
 describe("FfiGenerator constructor", () => {
     it("constructs with the supplied repository and namespace", () => {
         const repo = createMockRepository(baseNamespaces());
@@ -280,24 +305,8 @@ describe("FfiGenerator.generateNamespace (8)", () => {
 
 describe("FfiGenerator.generateNamespace (9)", () => {
     it("walks nested record fields when deciding whether to fully generate a record", () => {
-        const inner = createNormalizedRecord({
-            name: "Inner",
-            qualifiedName: "Gtk.Inner",
-            cType: "GtkInner",
+        const ns = makeOuterInnerNamespace({
             fields: [createNormalizedField({ name: "value", type: createNormalizedType({ name: "gint" }) })],
-        });
-        const outer = createNormalizedRecord({
-            name: "Outer",
-            qualifiedName: "Gtk.Outer",
-            cType: "GtkOuter",
-            fields: [createNormalizedField({ name: "inner", type: createNormalizedType({ name: "Inner" }) })],
-        });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            records: new Map([
-                [outer.name, outer],
-                [inner.name, inner],
-            ]),
         });
         const { file } = generateNamespaceFor(ns);
         expect(file?.content).toContain("export class Outer");
@@ -307,25 +316,7 @@ describe("FfiGenerator.generateNamespace (9)", () => {
 
 describe("FfiGenerator.generateNamespace (10)", () => {
     it("emits stub classes for records whose fields recurse to an unmarshalable type", () => {
-        const inner = createNormalizedRecord({
-            name: "Inner",
-            qualifiedName: "Gtk.Inner",
-            cType: "GtkInner",
-            disguised: true,
-        });
-        const outer = createNormalizedRecord({
-            name: "Outer",
-            qualifiedName: "Gtk.Outer",
-            cType: "GtkOuter",
-            fields: [createNormalizedField({ name: "inner", type: createNormalizedType({ name: "Inner" }) })],
-        });
-        const ns = createNormalizedNamespace({
-            name: "Gtk",
-            records: new Map([
-                [outer.name, outer],
-                [inner.name, inner],
-            ]),
-        });
+        const ns = makeOuterInnerNamespace({ disguised: true });
         const { file } = generateNamespaceFor(ns);
         expect(file?.content).toContain("export class Outer");
         expect(file?.content).toContain("export class Inner");
