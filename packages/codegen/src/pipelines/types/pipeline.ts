@@ -14,7 +14,7 @@ import {
     resolveFinishCallableName,
 } from "../../utils/async-callable.js";
 import { collectParentMethodNames } from "../../utils/class-traversal.js";
-import { generateConflictingMethodName, toCamelCase, toPascalCase } from "../../utils/naming.js";
+import { generateConflictingMethodName, normalizeClassName, toCamelCase, toPascalCase } from "../../utils/naming.js";
 import { isClassVtable } from "../../utils/record-filter.js";
 import {
     type AsyncMemberEntry,
@@ -134,12 +134,12 @@ export const collectRegisteredClassNames = (repository: GirRepository): Register
         const names = new Set<string>();
         for (const cls of namespace.classes.values()) {
             if (cls.glibGetType) {
-                names.add(toPascalCase(cls.name));
+                names.add(normalizeClassName(cls.name));
             }
         }
         for (const record of namespace.records.values()) {
             if (record.glibGetType) {
-                names.add(toPascalCase(record.name));
+                names.add(normalizeClassName(record.name));
             }
         }
         return names;

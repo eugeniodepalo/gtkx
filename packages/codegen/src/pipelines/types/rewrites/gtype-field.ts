@@ -4,9 +4,8 @@
  * Ensures every interface whose corresponding class is registered with the
  * runtime (`registerNativeClass`) carries an `__gtype__: number` member,
  * mirroring the prototype stamp installed at registration time. ts-for-gir
- * emits the field for GObject-derived interfaces only — boxed-record
- * interfaces lose it — and the runtime now stamps it on every registered
- * class, so the type surface needs to follow.
+ * emits the field for `GObject.Object` only, and the runtime stamps it on
+ * every registered class, so the type surface needs to follow.
  *
  * Plain structs that the runtime does not register (records without a
  * `glib:type-name`) are intentionally left alone, since their interfaces are

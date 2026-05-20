@@ -242,7 +242,8 @@ export class ClassGenerator {
         if (this.cls.glibGetType) {
             const getTypeCall = this.buildGTypeCall(this.cls.glibGetType, this.cls.glibTypeName);
             this.file.addImport("../../registry.js", ["registerNativeClass"]);
-            this.file.addStatement(`\nregisterNativeClass(${this.className}, ${getTypeCall});`);
+            this.file.addStatement(`\n${this.className}.prototype.__gtype__ = 0;`);
+            this.file.addStatement(`registerNativeClass(${this.className}, ${getTypeCall});`);
         }
 
         if (metaPlan.constructionMetaWriter) {

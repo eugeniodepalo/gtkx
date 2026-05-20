@@ -196,7 +196,8 @@ export class RecordGenerator {
         if (record.glibGetType) {
             this.file.addImport("../../registry.js", ["registerNativeClass"]);
             const getTypeCall = this.buildGTypeCall(record.glibGetType, record.glibTypeName, recordName);
-            this.file.addStatement(`\nregisterNativeClass(${recordName}, ${getTypeCall});`);
+            this.file.addStatement(`\n${recordName}.prototype.__gtype__ = 0;`);
+            this.file.addStatement(`registerNativeClass(${recordName}, ${getTypeCall});`);
         }
 
         if (canAllocateRecord(record)) {
