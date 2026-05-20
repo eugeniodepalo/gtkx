@@ -3,6 +3,7 @@ import { GtkButton, GtkLabel, GtkOverlay } from "@gtkx/react";
 import { render } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+import { countChildren } from "../helpers/child-count.js";
 
 describe("render - OverlayChild > OverlayChildNode (1)", () => {
     it("adds child as overlay", async () => {
@@ -80,24 +81,10 @@ describe("render - OverlayChild > OverlayChildNode (3)", () => {
         }
 
         await render(<App showOverlay={true} />);
-
-        let childCount = 0;
-        let child = overlayRef.current?.getFirstChild();
-        while (child) {
-            childCount++;
-            child = child.getNextSibling();
-        }
-        expect(childCount).toBe(2);
+        expect(countChildren(overlayRef.current)).toBe(2);
 
         await render(<App showOverlay={false} />);
-
-        childCount = 0;
-        child = overlayRef.current?.getFirstChild();
-        while (child) {
-            childCount++;
-            child = child.getNextSibling();
-        }
-        expect(childCount).toBe(1);
+        expect(countChildren(overlayRef.current)).toBe(1);
     });
 });
 
@@ -117,13 +104,7 @@ describe("render - OverlayChild > OverlayChildNode (4)", () => {
             </GtkOverlay>,
         );
 
-        let childCount = 0;
-        let child = overlayRef.current?.getFirstChild();
-        while (child) {
-            childCount++;
-            child = child.getNextSibling();
-        }
-        expect(childCount).toBe(3);
+        expect(countChildren(overlayRef.current)).toBe(3);
     });
 });
 
@@ -143,13 +124,7 @@ describe("render - OverlayChild > OverlayChildNode (5)", () => {
             </GtkOverlay>,
         );
 
-        let childCount = 0;
-        let child = overlayRef.current?.getFirstChild();
-        while (child) {
-            childCount++;
-            child = child.getNextSibling();
-        }
-        expect(childCount).toBe(3);
+        expect(countChildren(overlayRef.current)).toBe(3);
 
         const firstParent = firstRef.current?.getParent();
         const secondParent = secondRef.current?.getParent();

@@ -9,7 +9,8 @@ import { describe, expect, it } from "vitest";
  * Note: getChildPosition only works after widget realization,
  * but getChildTransform().toTranslate() works immediately.
  */
-function getChildPosition(fixed: Gtk.Fixed, child: Gtk.Widget): { x: number; y: number } {
+function getChildPosition(fixed: Gtk.Fixed | null, child: Gtk.Widget | null): { x: number; y: number } {
+    if (!fixed || !child) throw new Error("Refs should be set after render");
     const transform = fixed.getChildTransform(child);
     if (!transform) {
         return { x: 0, y: 0 };
@@ -31,9 +32,6 @@ describe("render - FixedChild > FixedChildNode (1)", () => {
             </GtkFixed>,
         );
 
-        if (!fixedRef.current || !labelRef.current) {
-            throw new Error("Refs should be set after render");
-        }
         const pos = getChildPosition(fixedRef.current, labelRef.current);
 
         expect(pos.x).toBe(100);
@@ -52,9 +50,6 @@ describe("render - FixedChild > FixedChildNode (1)", () => {
             </GtkFixed>,
         );
 
-        if (!fixedRef.current || !labelRef.current) {
-            throw new Error("Refs should be set after render");
-        }
         const pos = getChildPosition(fixedRef.current, labelRef.current);
 
         expect(pos.x).toBe(0);
@@ -78,10 +73,6 @@ describe("render - FixedChild > FixedChildNode (2)", () => {
         }
 
         await render(<App posX={0} posY={0} />);
-
-        if (!fixedRef.current || !labelRef.current) {
-            throw new Error("Refs should be set after render");
-        }
 
         const pos1 = getChildPosition(fixedRef.current, labelRef.current);
         expect(pos1.x).toBe(0);

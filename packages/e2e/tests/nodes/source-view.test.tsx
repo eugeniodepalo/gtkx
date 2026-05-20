@@ -3,7 +3,7 @@ import { GtkSourceView } from "@gtkx/react";
 import { render, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { getBufferText } from "../helpers/buffer-text.js";
+import { getBufferText, getSourceBuffer } from "../helpers/buffer-text.js";
 
 describe("render - SourceView (1)", () => {
     describe("basic rendering", () => {
@@ -21,7 +21,7 @@ describe("render - SourceView (1)", () => {
 
             await render(<GtkSourceView ref={ref}>Hello World</GtkSourceView>);
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(buffer).not.toBeNull();
             expect(getBufferText(buffer)).toBe("Hello World");
         });
@@ -33,7 +33,7 @@ describe("render - SourceView (1)", () => {
 
             await render(<GtkSourceView ref={ref}>Initial content</GtkSourceView>);
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(getBufferText(buffer)).toBe("Initial content");
         });
 
@@ -46,7 +46,7 @@ describe("render - SourceView (1)", () => {
 
             const { rerender } = await render(<App text="Initial" />);
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(getBufferText(buffer)).toBe("Initial");
 
             await rerender(<App text="Updated" />);
@@ -66,7 +66,7 @@ describe("render - SourceView (2)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(buffer.getEnableUndo()).toBe(true);
         });
 
@@ -79,7 +79,7 @@ describe("render - SourceView (2)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(buffer.getEnableUndo()).toBe(false);
         });
 
@@ -89,7 +89,7 @@ describe("render - SourceView (2)", () => {
 
             await render(<GtkSourceView ref={ref} enableUndo onCanUndoChanged={onCanUndoChanged} />);
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
 
             buffer.beginUserAction();
             buffer.insertAtCursor("text", -1);
@@ -110,7 +110,7 @@ describe("render - SourceView (3)", () => {
 
             await render(<GtkSourceView ref={ref} enableUndo onCanRedoChanged={onCanRedoChanged} />);
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
 
             buffer.beginUserAction();
             buffer.insertAtCursor("text", -1);
@@ -135,7 +135,7 @@ describe("render - SourceView (4)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             const language = buffer.getLanguage();
             expect(language?.getId()).toBe("js");
         });
@@ -151,7 +151,7 @@ describe("render - SourceView (4)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             const language = buffer.getLanguage();
             expect(language?.getId()).toBe("js");
         });
@@ -165,7 +165,7 @@ describe("render - SourceView (4)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             const scheme = buffer.getStyleScheme();
             expect(scheme?.getId()).toBe("classic");
         });
@@ -185,7 +185,7 @@ describe("render - SourceView (5)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             const scheme = buffer.getStyleScheme();
             expect(scheme?.getId()).toBe("classic");
         });
@@ -199,7 +199,7 @@ describe("render - SourceView (5)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(buffer.getHighlightSyntax()).toBe(true);
         });
 
@@ -212,7 +212,7 @@ describe("render - SourceView (5)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(buffer.getHighlightSyntax()).toBe(true);
         });
     });
@@ -229,7 +229,7 @@ describe("render - SourceView (6)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(buffer.getHighlightSyntax()).toBe(false);
         });
     });
@@ -246,7 +246,7 @@ describe("render - SourceView (7)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(buffer.getHighlightMatchingBrackets()).toBe(false);
         });
 
@@ -255,7 +255,7 @@ describe("render - SourceView (7)", () => {
 
             await render(<GtkSourceView ref={ref}>()</GtkSourceView>);
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(buffer.getHighlightMatchingBrackets()).toBe(true);
         });
 
@@ -268,7 +268,7 @@ describe("render - SourceView (7)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(buffer.getImplicitTrailingNewline()).toBe(false);
         });
 
@@ -281,7 +281,7 @@ describe("render - SourceView (7)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(buffer.getImplicitTrailingNewline()).toBe(true);
         });
     });
@@ -295,7 +295,7 @@ describe("render - SourceView (8)", () => {
 
             await render(<GtkSourceView ref={ref} onBufferChanged={onBufferChanged} />);
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             buffer.setText("New text", -1);
 
             await waitFor(() => {
@@ -336,7 +336,7 @@ describe("render - SourceView (9)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             const iter = buffer.getIterAtOffset(5);
             buffer.placeCursor(iter);
 
@@ -355,7 +355,7 @@ describe("render - SourceView (9)", () => {
                 </GtkSourceView>,
             );
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             buffer.setText("function foo() { return 42; }", -1);
 
             await waitFor(() => {
@@ -377,7 +377,7 @@ describe("render - SourceView (10)", () => {
 
             const { rerender } = await render(<App hasCallback={true} />);
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
 
             buffer.setText("Change 1", -1);
             await waitFor(() => {
@@ -411,7 +411,7 @@ describe("render - SourceView (11)", () => {
 
             const { rerender } = await render(<App lang="js" />);
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(buffer.getLanguage()?.getId()).toBe("js");
 
             await rerender(<App lang="python" />);
@@ -431,7 +431,7 @@ describe("render - SourceView (11)", () => {
 
             const { rerender } = await render(<App scheme="classic" />);
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(buffer.getStyleScheme()?.getId()).toBe("classic");
 
             await rerender(<App scheme="tango" />);
@@ -455,7 +455,7 @@ describe("render - SourceView (12)", () => {
 
             const { rerender } = await render(<App lang="js" />);
 
-            const buffer = ref.current?.getBuffer() as GtkSource.Buffer;
+            const buffer = getSourceBuffer(ref);
             expect(buffer.getLanguage()?.getId()).toBe("js");
 
             await rerender(<App lang={undefined} />);
