@@ -55,6 +55,15 @@ function createTestSetup(
     return { cls, generator, file, repo };
 }
 
+function generateClassCode(
+    classOverrides: Partial<Parameters<typeof createNormalizedClass>[0]> = {},
+    namespaces?: Map<string, ReturnType<typeof createNormalizedNamespace>>,
+) {
+    const setup = createTestSetup(classOverrides, namespaces ?? new Map());
+    setup.generator.generate();
+    return { ...setup, code: stringify(setup.file) };
+}
+
 describe("ClassGenerator / constructor", () => {
     it("creates generator with class and dependencies", () => {
         const { generator } = createTestSetup();
@@ -72,22 +81,14 @@ describe("ClassGenerator / generateToSourceFile (1)", () => {
     });
 
     it("generates class with correct name", () => {
-        const { generator, file } = createTestSetup({ name: "Button" });
-
-        generator.generate();
-
-        const code = stringify(file);
+        const { code } = generateClassCode({ name: "Button" });
         expect(code).toContain("export class Button");
     });
 
     it("generates class extending parent", () => {
-        const { generator, file } = createTestSetup({
+        const { code } = generateClassCode({
             parent: qualifiedName("Gtk", "Widget"),
         });
-
-        generator.generate();
-
-        const code = stringify(file);
         expect(code).toContain("extends Widget");
     });
 
@@ -101,11 +102,7 @@ describe("ClassGenerator / generateToSourceFile (1)", () => {
         gtkNs.classes.set("Widget", widgetClass);
         const namespaces = new Map([["Gtk", gtkNs]]);
 
-        const { generator, file } = createTestSetup({ parent: null }, namespaces);
-
-        generator.generate();
-
-        const code = stringify(file);
+        const { code } = generateClassCode({ parent: null }, namespaces);
         expect(code).toContain("constructNativeObject(this, props)");
         expect(code).not.toContain("extends NativeObject");
     });
@@ -113,31 +110,23 @@ describe("ClassGenerator / generateToSourceFile (1)", () => {
 
 describe("ClassGenerator / generateToSourceFile (2)", () => {
     it("emits exported get-type FFI binding when glibGetType is present", () => {
-        const { generator, file } = createTestSetup({
+        const { code } = generateClassCode({
             glibTypeName: "GtkButton",
             glibGetType: "gtk_button_get_type",
         });
-
-        generator.generate();
-
-        const code = stringify(file);
         expect(code).toContain("export const gtk_button_get_type");
         expect(code).toContain('"gtk_button_get_type"');
     });
 
     it("does not emit objectType property", () => {
-        const { generator, file } = createTestSetup({
+        const { code } = generateClassCode({
             glibTypeName: "GtkButton",
         });
-
-        generator.generate();
-
-        const code = stringify(file);
         expect(code).not.toContain("objectType");
     });
 
     it("generates methods for class", () => {
-        const { generator, file } = createTestSetup({
+        const { code } = generateClassCode({
             methods: [
                 createNormalizedMethod({
                     name: "get_label",
@@ -146,17 +135,13 @@ describe("ClassGenerator / generateToSourceFile (2)", () => {
                 }),
             ],
         });
-
-        generator.generate();
-
-        const code = stringify(file);
         expect(code).toContain("getLabel");
     });
 });
 
 describe("ClassGenerator / generateToSourceFile (3)", () => {
     it("generates static functions", () => {
-        const { generator, file } = createTestSetup({
+        const { code } = generateClassCode({
             staticFunctions: [
                 createNormalizedFunction({
                     name: "get_default_direction",
@@ -167,23 +152,15 @@ describe("ClassGenerator / generateToSourceFile (3)", () => {
                 }),
             ],
         });
-
-        generator.generate();
-
-        const code = stringify(file);
         expect(code).toContain("getDefaultDirection");
     });
 
     it("adds registerNativeClass call when glibGetType is present", () => {
-        const { generator, file } = createTestSetup({
+        const { code } = generateClassCode({
             name: "Button",
             glibTypeName: "GtkButton",
             glibGetType: "gtk_button_get_type",
         });
-
-        generator.generate();
-
-        const code = stringify(file);
         expect(code).toContain("registerNativeClass(Button, gtk_button_get_type());");
     });
 });
@@ -225,7 +202,7 @@ describe("ClassGenerator / widget metadata", () => {
 
 describe("ClassGenerator / context updates", () => {
     it("registers an FFI binding when the class has methods", () => {
-        const { generator, file } = createTestSetup({
+        const { code } = generateClassCode({
             methods: [
                 createNormalizedMethod({
                     name: "get_value",
@@ -234,10 +211,6 @@ describe("ClassGenerator / context updates", () => {
                 }),
             ],
         });
-
-        generator.generate();
-
-        const code = stringify(file);
         expect(code).toContain("gtk_button_get_value");
         expect(code).toContain("t.fn(");
     });
@@ -273,7 +246,7 @@ describe("ClassGenerator / context updates", () => {
 
 describe("ClassGenerator / constructor generation", () => {
     it("emits the GIR `new` constructor as a static factory", () => {
-        const { generator, file } = createTestSetup({
+        const { code } = generateClassCode({
             constructors: [
                 createNormalizedConstructor({
                     name: "new",
@@ -283,15 +256,11 @@ describe("ClassGenerator / constructor generation", () => {
                 }),
             ],
         });
-
-        generator.generate();
-
-        const code = stringify(file);
         expect(code).toContain("static new(");
     });
 
     it("generates factory methods for non-main constructors", () => {
-        const { generator, file } = createTestSetup({
+        const { code } = generateClassCode({
             constructors: [
                 createNormalizedConstructor({
                     name: "new",
@@ -312,48 +281,32 @@ describe("ClassGenerator / constructor generation", () => {
                 }),
             ],
         });
-
-        generator.generate();
-
-        const code = stringify(file);
         expect(code).toContain("newWithLabel");
     });
 });
 
 describe("ClassGenerator / signal generation", () => {
     it("generates connect method when class has signals", () => {
-        const { generator, file } = createTestSetup({
+        const { code } = generateClassCode({
             signals: [createNormalizedSignal({ name: "clicked" })],
         });
-
-        generator.generate();
-
-        const code = stringify(file);
         expect(code).toContain("connect");
     });
 
     it("includes signal in WIDGET_META", () => {
-        const { generator, file } = createTestSetup({
+        const { code } = generateClassCode({
             signals: [createNormalizedSignal({ name: "clicked" })],
             parent: qualifiedName("Gtk", "Widget"),
         });
-
-        generator.generate();
-
-        const code = stringify(file);
         expect(code).toContain("clicked");
     });
 });
 
 describe("ClassGenerator / JSDoc generation", () => {
     it("includes class documentation", () => {
-        const { generator, file } = createTestSetup({
+        const { code } = generateClassCode({
             doc: "A button widget for triggering actions",
         });
-
-        generator.generate();
-
-        const code = stringify(file);
         expect(code).toContain("A button widget for triggering actions");
     });
 });
