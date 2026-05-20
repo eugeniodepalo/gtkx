@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/ffi/gtk";
 import { GtkColumnView, GtkLabel } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import type { ReactNode, RefObject } from "react";
+import type { ComponentProps, ReactNode, RefObject } from "react";
 import { createRef, useCallback, useMemo, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { renderChildren } from "../helpers/render-children.js";
@@ -11,14 +11,30 @@ const MenuItem = "MenuItem" as const;
 const MenuSection = "MenuSection" as const;
 const MenuSubmenu = "MenuSubmenu" as const;
 
+const noop = () => {};
+const cellRenderer = () => "Cell";
+
+type ColumnExtra = Omit<ComponentProps<typeof GtkColumnView.Column>, "id" | "title" | "children" | "renderCell">;
+
+const DefaultColumn = ({
+    id,
+    title,
+    children,
+    ...extra
+}: { id: string; title: string; children?: ReactNode } & ColumnExtra) => (
+    <GtkColumnView.Column id={id} title={title} expand renderCell={cellRenderer} {...extra}>
+        {children}
+    </GtkColumnView.Column>
+);
+
 const buildColumnMenu = (columnViewRef: RefObject<Gtk.ColumnView | null>) => (items: string[]) => (
     <ScrollWrapper>
         <GtkColumnView ref={columnViewRef}>
-            <GtkColumnView.Column id="name" title="Name" expand renderCell={() => "Cell"}>
+            <DefaultColumn id="name" title="Name">
                 {items.map((label) => (
-                    <MenuItem key={label} id={label} label={label} onActivate={() => {}} />
+                    <MenuItem key={label} id={label} label={label} onActivate={noop} />
                 ))}
-            </GtkColumnView.Column>
+            </DefaultColumn>
         </GtkColumnView>
     </ScrollWrapper>
 );
@@ -40,10 +56,7 @@ describe("render - ColumnViewColumn (1)", () => {
         it("adds column to ColumnView", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            await renderColumns(
-                columnViewRef,
-                <GtkColumnView.Column id="name" title="Name" expand renderCell={() => "Cell"} />,
-            );
+            await renderColumns(columnViewRef, <DefaultColumn id="name" title="Name" />);
 
             expect(columnViewRef.current?.getColumns()?.getNItems()).toBe(1);
         });
@@ -51,10 +64,7 @@ describe("render - ColumnViewColumn (1)", () => {
         it("sets column title", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            await renderColumns(
-                columnViewRef,
-                <GtkColumnView.Column id="col" title="My Column" expand renderCell={() => "Cell"} />,
-            );
+            await renderColumns(columnViewRef, <DefaultColumn id="col" title="My Column" />);
 
             const columns = columnViewRef.current?.getColumns();
             const column = columns?.getItem(0) as Gtk.ColumnViewColumn;
@@ -173,10 +183,10 @@ describe("render - ColumnViewColumn (5)", () => {
 
             await renderColumns(
                 columnViewRef,
-                <GtkColumnView.Column id="name" title="Name" expand renderCell={() => "Cell"}>
-                    <MenuItem id="sort-asc" label="Sort A-Z" onActivate={() => {}} />
-                    <MenuItem id="sort-desc" label="Sort Z-A" onActivate={() => {}} />
-                </GtkColumnView.Column>,
+                <DefaultColumn id="name" title="Name">
+                    <MenuItem id="sort-asc" label="Sort A-Z" onActivate={noop} />
+                    <MenuItem id="sort-desc" label="Sort Z-A" onActivate={noop} />
+                </DefaultColumn>,
             );
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
@@ -187,10 +197,7 @@ describe("render - ColumnViewColumn (5)", () => {
         it("has no header menu when no menu children", async () => {
             const columnViewRef = createRef<Gtk.ColumnView>();
 
-            await renderColumns(
-                columnViewRef,
-                <GtkColumnView.Column id="name" title="Name" expand renderCell={() => "Cell"} />,
-            );
+            await renderColumns(columnViewRef, <DefaultColumn id="name" title="Name" />);
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
             expect(column.getHeaderMenu()).toBeNull();
@@ -201,15 +208,15 @@ describe("render - ColumnViewColumn (5)", () => {
 
             await renderColumns(
                 columnViewRef,
-                <GtkColumnView.Column id="name" title="Name" expand renderCell={() => "Cell"}>
+                <DefaultColumn id="name" title="Name">
                     <MenuSection>
-                        <MenuItem id="sort-asc" label="Sort A-Z" onActivate={() => {}} />
-                        <MenuItem id="sort-desc" label="Sort Z-A" onActivate={() => {}} />
+                        <MenuItem id="sort-asc" label="Sort A-Z" onActivate={noop} />
+                        <MenuItem id="sort-desc" label="Sort Z-A" onActivate={noop} />
                     </MenuSection>
                     <MenuSection>
-                        <MenuItem id="hide" label="Hide Column" onActivate={() => {}} />
+                        <MenuItem id="hide" label="Hide Column" onActivate={noop} />
                     </MenuSection>
-                </GtkColumnView.Column>,
+                </DefaultColumn>,
             );
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
@@ -226,12 +233,12 @@ describe("render - ColumnViewColumn (6)", () => {
 
             await renderColumns(
                 columnViewRef,
-                <GtkColumnView.Column id="name" title="Name" expand renderCell={() => "Cell"}>
-                    <MenuItem id="sort" label="Sort" onActivate={() => {}} />
+                <DefaultColumn id="name" title="Name">
+                    <MenuItem id="sort" label="Sort" onActivate={noop} />
                     <MenuSubmenu label="More">
-                        <MenuItem id="hide" label="Hide" onActivate={() => {}} />
+                        <MenuItem id="hide" label="Hide" onActivate={noop} />
                     </MenuSubmenu>
-                </GtkColumnView.Column>,
+                </DefaultColumn>,
             );
 
             const column = getColumn(columnViewRef.current as Gtk.ColumnView, 0);
@@ -274,9 +281,9 @@ describe("render - ColumnViewColumn (7)", () => {
                 return (
                     <ScrollWrapper>
                         <GtkColumnView ref={columnViewRef}>
-                            <GtkColumnView.Column id="name" title="Name" expand renderCell={() => "Cell"}>
-                                {showMenu && <MenuItem id="action" label="Action" onActivate={() => {}} />}
-                            </GtkColumnView.Column>
+                            <DefaultColumn id="name" title="Name">
+                                {showMenu && <MenuItem id="action" label="Action" onActivate={noop} />}
+                            </DefaultColumn>
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -301,14 +308,14 @@ describe("render - ColumnViewColumn (8)", () => {
             await renderColumns(
                 columnViewRef,
                 <>
-                    <GtkColumnView.Column id="name" title="Name" expand renderCell={() => "Cell"}>
-                        <MenuItem id="sort" label="Sort" onActivate={() => {}} />
-                    </GtkColumnView.Column>
-                    <GtkColumnView.Column id="age" title="Age" expand renderCell={() => "Cell"}>
-                        <MenuItem id="sort" label="Sort" onActivate={() => {}} />
-                        <MenuItem id="filter" label="Filter" onActivate={() => {}} />
-                    </GtkColumnView.Column>
-                    <GtkColumnView.Column id="email" title="Email" expand renderCell={() => "Cell"} />
+                    <DefaultColumn id="name" title="Name">
+                        <MenuItem id="sort" label="Sort" onActivate={noop} />
+                    </DefaultColumn>
+                    <DefaultColumn id="age" title="Age">
+                        <MenuItem id="sort" label="Sort" onActivate={noop} />
+                        <MenuItem id="filter" label="Filter" onActivate={noop} />
+                    </DefaultColumn>
+                    <DefaultColumn id="email" title="Email" />
                 </>,
             );
 
@@ -334,11 +341,11 @@ describe("render - ColumnViewColumn (9)", () => {
                     <ScrollWrapper>
                         <GtkColumnView ref={columnViewRef}>
                             {showColumn && (
-                                <GtkColumnView.Column id="name" title="Name" expand renderCell={() => "Cell"}>
+                                <DefaultColumn id="name" title="Name">
                                     <MenuItem id="action" label="Action" onActivate={onActivate} />
-                                </GtkColumnView.Column>
+                                </DefaultColumn>
                             )}
-                            <GtkColumnView.Column id="other" title="Other" expand renderCell={() => "Cell"} />
+                            <DefaultColumn id="other" title="Other" />
                         </GtkColumnView>
                     </ScrollWrapper>
                 );
@@ -432,7 +439,7 @@ function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.C
                 >
                     <ShowcaseColumnMenu column="role" onSort={handleSortChange}>
                         <MenuSection>
-                            <MenuItem id="hide" label="Hide Column" onActivate={() => {}} />
+                            <MenuItem id="hide" label="Hide Column" onActivate={noop} />
                         </MenuSection>
                     </ShowcaseColumnMenu>
                 </GtkColumnView.Column>
@@ -445,7 +452,7 @@ function ShowcaseSortableApp({ columnViewRef }: { columnViewRef: RefObject<Gtk.C
                 >
                     <ShowcaseColumnMenu column="salary" onSort={handleSortChange}>
                         <MenuSection>
-                            <MenuItem id="hide" label="Hide Column" onActivate={() => {}} />
+                            <MenuItem id="hide" label="Hide Column" onActivate={noop} />
                         </MenuSection>
                     </ShowcaseColumnMenu>
                 </GtkColumnView.Column>
@@ -488,28 +495,28 @@ describe("render - ColumnViewColumn (11)", () => {
             await renderColumns(
                 columnViewRef,
                 <>
-                    <GtkColumnView.Column id="name" title="Name" expand renderCell={() => "Cell"}>
+                    <DefaultColumn id="name" title="Name">
                         <MenuSection>
                             <MenuItem id="sort-asc" label="Sort Ascending" onActivate={nameSortAsc} />
                             <MenuItem id="sort-desc" label="Sort Descending" onActivate={nameSortDesc} />
                         </MenuSection>
-                    </GtkColumnView.Column>
-                    <GtkColumnView.Column id="role" title="Role" expand renderCell={() => "Cell"}>
+                    </DefaultColumn>
+                    <DefaultColumn id="role" title="Role">
                         <MenuSection>
                             <MenuItem id="sort-asc" label="Sort Ascending" onActivate={roleSortAsc} />
                         </MenuSection>
                         <MenuSection>
                             <MenuItem id="hide" label="Hide Column" onActivate={roleHide} />
                         </MenuSection>
-                    </GtkColumnView.Column>
-                    <GtkColumnView.Column id="salary" title="Salary" expand renderCell={() => "Cell"}>
+                    </DefaultColumn>
+                    <DefaultColumn id="salary" title="Salary">
                         <MenuSection>
                             <MenuItem id="sort-asc" label="Sort Ascending" onActivate={salarySortAsc} />
                         </MenuSection>
                         <MenuSection>
                             <MenuItem id="hide" label="Hide Column" onActivate={salaryHide} />
                         </MenuSection>
-                    </GtkColumnView.Column>
+                    </DefaultColumn>
                 </>,
             );
 
@@ -548,21 +555,21 @@ describe("render - ColumnViewColumn (12)", () => {
             await renderColumns(
                 columnViewRef,
                 <>
-                    <GtkColumnView.Column id="name" title="Name" expand renderCell={() => "Cell"}>
+                    <DefaultColumn id="name" title="Name">
                         <MenuSection>
-                            <MenuItem id="sort-asc" label="Sort Ascending" onActivate={() => {}} />
-                            <MenuItem id="sort-desc" label="Sort Descending" onActivate={() => {}} />
-                            <MenuItem id="sort-clear" label="Clear Sort" onActivate={() => {}} />
+                            <MenuItem id="sort-asc" label="Sort Ascending" onActivate={noop} />
+                            <MenuItem id="sort-desc" label="Sort Descending" onActivate={noop} />
+                            <MenuItem id="sort-clear" label="Clear Sort" onActivate={noop} />
                         </MenuSection>
-                    </GtkColumnView.Column>
-                    <GtkColumnView.Column id="role" title="Role" expand renderCell={() => "Cell"}>
+                    </DefaultColumn>
+                    <DefaultColumn id="role" title="Role">
                         <MenuSection>
-                            <MenuItem id="sort-asc" label="Sort Ascending" onActivate={() => {}} />
+                            <MenuItem id="sort-asc" label="Sort Ascending" onActivate={noop} />
                         </MenuSection>
                         <MenuSection>
-                            <MenuItem id="hide" label="Hide Column" onActivate={() => {}} />
+                            <MenuItem id="hide" label="Hide Column" onActivate={noop} />
                         </MenuSection>
-                    </GtkColumnView.Column>
+                    </DefaultColumn>
                 </>,
             );
 
