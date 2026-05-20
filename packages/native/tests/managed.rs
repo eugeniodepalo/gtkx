@@ -10,6 +10,8 @@ use gtk4::prelude::{ObjectType as _, StaticType as _};
 use native::dispatch::Mailbox;
 use native::managed::{Boxed, Fundamental, NativeHandle, NativeValue};
 
+use common::{param_spec_ref, param_spec_unref};
+
 fn param_spec_ptr() -> *mut c_void {
     common::ensure_gtk_init();
     unsafe {
@@ -21,19 +23,6 @@ fn param_spec_ptr() -> *mut c_void {
             glib::gobject_ffi::G_PARAM_READABLE,
         );
         param as *mut c_void
-    }
-}
-
-unsafe extern "C" fn param_spec_ref(ptr: *mut c_void) -> *mut c_void {
-    unsafe {
-        glib::gobject_ffi::g_param_spec_ref(ptr as *mut glib::gobject_ffi::GParamSpec)
-            as *mut c_void
-    }
-}
-
-unsafe extern "C" fn param_spec_unref(ptr: *mut c_void) {
-    unsafe {
-        glib::gobject_ffi::g_param_spec_unref(ptr as *mut glib::gobject_ffi::GParamSpec);
     }
 }
 

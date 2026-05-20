@@ -40,6 +40,50 @@ where
 }
 
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub fn make_integer_hash_table(entries: &[(usize, usize)]) -> *mut glib::ffi::GHashTable {
+    unsafe {
+        let table = glib::ffi::g_hash_table_new_full(
+            Some(glib::ffi::g_direct_hash),
+            Some(glib::ffi::g_direct_equal),
+            None,
+            None,
+        );
+        for (key, value) in entries {
+            glib::ffi::g_hash_table_insert(
+                table,
+                std::ptr::without_provenance_mut(*key),
+                std::ptr::without_provenance_mut(*value),
+            );
+        }
+        table
+    }
+}
+
+pub unsafe extern "C" fn param_spec_ref(ptr: *mut c_void) -> *mut c_void {
+    unsafe {
+        glib::gobject_ffi::g_param_spec_ref(ptr as *mut glib::gobject_ffi::GParamSpec)
+            as *mut c_void
+    }
+}
+
+pub unsafe extern "C" fn param_spec_unref(ptr: *mut c_void) {
+    unsafe {
+        glib::gobject_ffi::g_param_spec_unref(ptr as *mut glib::gobject_ffi::GParamSpec);
+    }
+}
+
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
+pub fn param_spec_refcount(ptr: *mut c_void) -> u32 {
+    if ptr.is_null() {
+        return 0;
+    }
+    unsafe {
+        let param = ptr as *mut glib::gobject_ffi::GParamSpec;
+        (*param).ref_count
+    }
+}
+
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub fn get_closure_refcount(closure_ptr: *mut glib::gobject_ffi::GClosure) -> u32 {
     if closure_ptr.is_null() {
         return 0;

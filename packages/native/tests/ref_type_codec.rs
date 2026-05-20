@@ -33,6 +33,15 @@ fn ptr_storage(slot: Box<*mut c_void>) -> ffi::FfiValue {
     ffi::FfiValue::Storage(FfiStorage::new(raw, FfiStorageKind::PtrStorage(slot)))
 }
 
+fn u8_array_ref_type() -> RefType {
+    RefType::new(Type::Array(ArrayType {
+        item_type: Box::new(Type::Integer(IntegerKind::U8)),
+        kind: ArrayKind::Array,
+        ownership: Ownership::Borrowed,
+        element_size: None,
+    }))
+}
+
 #[test]
 fn new_and_clone_and_debug() {
     common::run(|| {
@@ -169,13 +178,7 @@ fn decode_array_inner_bails_without_context() {
         let slot = Box::new(std::ptr::null_mut());
         let storage = ptr_storage(slot);
 
-        let array_type = ArrayType {
-            item_type: Box::new(Type::Integer(IntegerKind::U8)),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Borrowed,
-            element_size: None,
-        };
-        let ref_type = RefType::new(Type::Array(array_type));
+        let ref_type = u8_array_ref_type();
         assert!(ref_type.decode(&storage).is_err());
     });
 }
@@ -284,13 +287,7 @@ fn decode_with_context_trait_method_delegates() {
 #[test]
 fn decode_with_context_array_null_ptr_yields_null() {
     common::run(|| {
-        let array_type = ArrayType {
-            item_type: Box::new(Type::Integer(IntegerKind::U8)),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Borrowed,
-            element_size: None,
-        };
-        let ref_type = RefType::new(Type::Array(array_type));
+        let ref_type = u8_array_ref_type();
         let decoded = ref_type
             .decode_with_context(&ffi::FfiValue::Ptr(std::ptr::null_mut()), &[], &[])
             .expect("array null ptr decode_with_context should succeed");
@@ -301,13 +298,7 @@ fn decode_with_context_array_null_ptr_yields_null() {
 #[test]
 fn decode_with_context_array_rejects_non_storage() {
     common::run(|| {
-        let array_type = ArrayType {
-            item_type: Box::new(Type::Integer(IntegerKind::U8)),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Borrowed,
-            element_size: None,
-        };
-        let ref_type = RefType::new(Type::Array(array_type));
+        let ref_type = u8_array_ref_type();
         assert!(
             ref_type
                 .decode_with_context(&ffi::FfiValue::I32(1), &[], &[])
@@ -322,13 +313,7 @@ fn decode_with_context_array_ptr_storage_null_inner_yields_empty_array() {
         let slot: Box<*mut c_void> = Box::new(std::ptr::null_mut());
         let storage = ptr_storage(slot);
 
-        let array_type = ArrayType {
-            item_type: Box::new(Type::Integer(IntegerKind::U8)),
-            kind: ArrayKind::Array,
-            ownership: Ownership::Borrowed,
-            element_size: None,
-        };
-        let ref_type = RefType::new(Type::Array(array_type));
+        let ref_type = u8_array_ref_type();
         let decoded = ref_type
             .decode_with_context(&storage, &[], &[])
             .expect("array ptr_storage null inner decode should succeed");

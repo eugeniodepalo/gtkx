@@ -488,27 +488,7 @@ fn hashtable_borrowed_does_not_free() {
             ownership: Ownership::Borrowed,
         };
 
-        let hash_table = unsafe {
-            glib::ffi::g_hash_table_new_full(
-                Some(glib::ffi::g_direct_hash),
-                Some(glib::ffi::g_direct_equal),
-                None,
-                None,
-            )
-        };
-
-        unsafe {
-            glib::ffi::g_hash_table_insert(
-                hash_table,
-                std::ptr::without_provenance_mut(1),
-                std::ptr::without_provenance_mut(100),
-            );
-            glib::ffi::g_hash_table_insert(
-                hash_table,
-                std::ptr::without_provenance_mut(2),
-                std::ptr::without_provenance_mut(200),
-            );
-        }
+        let hash_table = common::make_integer_hash_table(&[(1, 100), (2, 200)]);
 
         let ffi_value = FfiValue::Ptr(hash_table as *mut c_void);
         let decoded = ht_type.decode(&ffi_value).expect("decoding should succeed");
@@ -798,21 +778,7 @@ fn hashtable_ptr_to_value_null_and_populated() {
         let empty = ht_type.ptr_to_value(std::ptr::null_mut(), "ctx").unwrap();
         assert!(matches!(empty, Value::Array(items) if items.is_empty()));
 
-        let hash_table = unsafe {
-            glib::ffi::g_hash_table_new_full(
-                Some(glib::ffi::g_direct_hash),
-                Some(glib::ffi::g_direct_equal),
-                None,
-                None,
-            )
-        };
-        unsafe {
-            glib::ffi::g_hash_table_insert(
-                hash_table,
-                std::ptr::without_provenance_mut(1),
-                std::ptr::without_provenance_mut(10),
-            );
-        }
+        let hash_table = common::make_integer_hash_table(&[(1, 10)]);
         let decoded = ht_type
             .ptr_to_value(hash_table as *mut c_void, "ctx")
             .unwrap();
@@ -829,20 +795,8 @@ fn hashtable_decode_full_ownership_from_raw_ptr_unrefs() {
             value_type: Box::new(Type::Integer(IntegerKind::I32)),
             ownership: Ownership::Full,
         };
-        let hash_table = unsafe {
-            glib::ffi::g_hash_table_new_full(
-                Some(glib::ffi::g_direct_hash),
-                Some(glib::ffi::g_direct_equal),
-                None,
-                None,
-            )
-        };
+        let hash_table = common::make_integer_hash_table(&[(3, 30)]);
         unsafe {
-            glib::ffi::g_hash_table_insert(
-                hash_table,
-                std::ptr::without_provenance_mut(3),
-                std::ptr::without_provenance_mut(30),
-            );
             glib::ffi::g_hash_table_ref(hash_table);
         }
 
