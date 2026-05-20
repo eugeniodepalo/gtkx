@@ -11,7 +11,7 @@ use libffi::middle;
 use native::types::{
     ArrayKind, ArrayType, BooleanType, BoxedType, CallbackType, FfiDecoder, FfiEncoder, FloatKind,
     FundamentalType, GObjectType, GlibValueCodec, HashTableType, IntegerKind, Ownership,
-    RawPtrCodec, RefType, StringType, StructType, TaggedKind, TaggedType, TrampolineType, Type,
+    RawPtrCodec, RefType, StringType, StructType, TrampolineType, Type,
     UnicharType, VoidType,
 };
 use native::value::Value;
@@ -130,34 +130,16 @@ fn trampoline_type() -> TrampolineType {
     }
 }
 
-fn enum_tagged() -> TaggedType {
-    TaggedType {
-        kind: TaggedKind::Enum,
-        library: "libgtk-4.so.1".to_owned(),
-        get_type_fn: "gtk_orientation_get_type".to_owned(),
-        storage: IntegerKind::I32,
-    }
-}
-
-fn flags_tagged() -> TaggedType {
-    TaggedType {
-        kind: TaggedKind::Flags,
-        library: "libgtk-4.so.1".to_owned(),
-        get_type_fn: "gtk_state_flags_get_type".to_owned(),
-        storage: IntegerKind::U32,
-    }
-}
-
 #[test]
 fn type_display_renders_every_variant() {
     assert_eq!(Type::Integer(IntegerKind::I32).to_string(), "Integer(I32)");
     assert_eq!(Type::Float(FloatKind::F64).to_string(), "Float(F64)");
     assert_eq!(
-        Type::Tagged(enum_tagged()).to_string(),
+        Type::Tagged(common::enum_tagged()).to_string(),
         "Enum(gtk_orientation_get_type)"
     );
     assert_eq!(
-        Type::Tagged(flags_tagged()).to_string(),
+        Type::Tagged(common::flags_tagged()).to_string(),
         "Flags(gtk_state_flags_get_type)"
     );
     assert_eq!(Type::String(string_type()).to_string(), "String");
@@ -191,7 +173,7 @@ fn can_be_return_type_accepts_value_shapes_and_rejects_argument_shapes() {
     assert!(Type::Integer(IntegerKind::I32).can_be_return_type());
     assert!(Type::Void(VoidType).can_be_return_type());
     assert!(Type::GObject(gobject_type()).can_be_return_type());
-    assert!(Type::Tagged(enum_tagged()).can_be_return_type());
+    assert!(Type::Tagged(common::enum_tagged()).can_be_return_type());
 
     assert!(!Type::Callback(callback_type()).can_be_return_type());
     assert!(!Type::Trampoline(trampoline_type()).can_be_return_type());
@@ -245,10 +227,11 @@ fn raw_ptr_codec_write_value_to_raw_ptr_default_bails() {
 
 #[test]
 fn glib_value_codec_from_glib_value_default_bails() {
-    common::ensure_gtk_init();
-    let gvalue = gtk4::glib::Value::from(1_i32);
-    assert!(GlibValueCodec::from_glib_value(&callback_type(), &gvalue).is_err());
-    assert!(GlibValueCodec::from_glib_value(&UnicharType, &gvalue).is_err());
+    common::run(|| {
+        let gvalue = gtk4::glib::Value::from(1_i32);
+        assert!(GlibValueCodec::from_glib_value(&callback_type(), &gvalue).is_err());
+        assert!(GlibValueCodec::from_glib_value(&UnicharType, &gvalue).is_err());
+    });
 }
 
 #[test]

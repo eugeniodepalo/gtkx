@@ -5,8 +5,7 @@ use std::ffi::c_void;
 use gtk4::glib;
 use libffi::middle;
 use native::types::{
-    FfiDecoder, FfiEncoder, FloatKind, GlibValueCodec, IntegerKind, RawPtrCodec, TaggedKind,
-    TaggedType, Type,
+    FfiDecoder, FfiEncoder, FloatKind, GlibValueCodec, IntegerKind, RawPtrCodec, Type,
 };
 use native::value::Value;
 use native::{ffi, value};
@@ -286,19 +285,20 @@ fn integer_raw_ptr_codec_round_trips() {
 
 #[test]
 fn integer_glib_value_round_trips() {
-    common::ensure_gtk_init();
-    for kind in INTEGER_KINDS {
-        let gvalue = GlibValueCodec::to_glib_value(&kind, &Value::Number(3.0))
-            .unwrap()
-            .expect("integer kind produces a glib value");
-        let decoded = GlibValueCodec::from_glib_value(&kind, &gvalue).unwrap();
-        assert!(matches!(decoded, Value::Number(n) if n == 3.0));
-        assert!(
-            GlibValueCodec::to_glib_value(&kind, &Value::Boolean(true))
+    common::run(|| {
+        for kind in INTEGER_KINDS {
+            let gvalue = GlibValueCodec::to_glib_value(&kind, &Value::Number(3.0))
                 .unwrap()
-                .is_none()
-        );
-    }
+                .expect("integer kind produces a glib value");
+            let decoded = GlibValueCodec::from_glib_value(&kind, &gvalue).unwrap();
+            assert!(matches!(decoded, Value::Number(n) if n == 3.0));
+            assert!(
+                GlibValueCodec::to_glib_value(&kind, &Value::Boolean(true))
+                    .unwrap()
+                    .is_none()
+            );
+        }
+    });
 }
 
 extern "C" fn ret_u8() -> u8 {
@@ -453,19 +453,20 @@ fn float_codec_encode_decode_and_raw_ptr() {
 
 #[test]
 fn float_glib_value_round_trips() {
-    common::ensure_gtk_init();
-    for kind in [FloatKind::F32, FloatKind::F64] {
-        let gvalue = GlibValueCodec::to_glib_value(&kind, &Value::Number(6.0))
-            .unwrap()
-            .expect("float kind produces a glib value");
-        let decoded = GlibValueCodec::from_glib_value(&kind, &gvalue).unwrap();
-        assert!(matches!(decoded, Value::Number(n) if (n - 6.0).abs() < 1e-6));
-        assert!(
-            GlibValueCodec::to_glib_value(&kind, &Value::Null)
+    common::run(|| {
+        for kind in [FloatKind::F32, FloatKind::F64] {
+            let gvalue = GlibValueCodec::to_glib_value(&kind, &Value::Number(6.0))
                 .unwrap()
-                .is_none()
-        );
-    }
+                .expect("float kind produces a glib value");
+            let decoded = GlibValueCodec::from_glib_value(&kind, &gvalue).unwrap();
+            assert!(matches!(decoded, Value::Number(n) if (n - 6.0).abs() < 1e-6));
+            assert!(
+                GlibValueCodec::to_glib_value(&kind, &Value::Null)
+                    .unwrap()
+                    .is_none()
+            );
+        }
+    });
 }
 
 #[test]
@@ -487,95 +488,82 @@ fn float_call_cif_invokes_native_functions() {
     assert!((r64.to_number().unwrap() - 2.5).abs() < 1e-9);
 }
 
-fn enum_tagged() -> TaggedType {
-    TaggedType {
-        kind: TaggedKind::Enum,
-        library: "libgtk-4.so.1".to_owned(),
-        get_type_fn: "gtk_orientation_get_type".to_owned(),
-        storage: IntegerKind::I32,
-    }
-}
-
-fn flags_tagged() -> TaggedType {
-    TaggedType {
-        kind: TaggedKind::Flags,
-        library: "libgtk-4.so.1".to_owned(),
-        get_type_fn: "gtk_state_flags_get_type".to_owned(),
-        storage: IntegerKind::U32,
-    }
-}
-
 #[test]
 fn tagged_encode_decode_and_libffi_type() {
-    common::ensure_gtk_init();
-    let tagged = enum_tagged();
-    let encoded = FfiEncoder::encode(&tagged, &Value::Number(1.0), false).unwrap();
-    assert!(matches!(encoded, ffi::FfiValue::I32(1)));
-    let decoded = FfiDecoder::decode(&tagged, &ffi::FfiValue::I32(1)).unwrap();
-    assert!(matches!(decoded, Value::Number(n) if n == 1.0));
-    assert_eq!(
-        FfiEncoder::libffi_type(&tagged).as_raw_ptr(),
-        IntegerKind::I32.ffi_type().as_raw_ptr()
-    );
+    common::run(|| {
+        let tagged = common::enum_tagged();
+        let encoded = FfiEncoder::encode(&tagged, &Value::Number(1.0), false).unwrap();
+        assert!(matches!(encoded, ffi::FfiValue::I32(1)));
+        let decoded = FfiDecoder::decode(&tagged, &ffi::FfiValue::I32(1)).unwrap();
+        assert!(matches!(decoded, Value::Number(n) if n == 1.0));
+        assert_eq!(
+            FfiEncoder::libffi_type(&tagged).as_raw_ptr(),
+            IntegerKind::I32.ffi_type().as_raw_ptr()
+        );
+    });
 }
 
 #[test]
 fn tagged_encode_rejects_invalid_enum_member() {
-    common::ensure_gtk_init();
-    let tagged = enum_tagged();
-    assert!(FfiEncoder::encode(&tagged, &Value::Number(9999.0), false).is_ok());
+    common::run(|| {
+        let tagged = common::enum_tagged();
+        assert!(FfiEncoder::encode(&tagged, &Value::Number(9999.0), false).is_ok());
+    });
 }
 
 #[test]
 fn tagged_call_cif_invokes_native_function() {
-    common::ensure_gtk_init();
-    let tagged = enum_tagged();
-    let cif = middle::Cif::new(Vec::new(), IntegerKind::I32.ffi_type());
-    let result =
-        FfiEncoder::call_cif(&tagged, &cif, middle::CodePtr(ret_i32 as *mut c_void), &[]).unwrap();
-    assert!(matches!(result, ffi::FfiValue::I32(-32)));
+    common::run(|| {
+        let tagged = common::enum_tagged();
+        let cif = middle::Cif::new(Vec::new(), IntegerKind::I32.ffi_type());
+        let result =
+            FfiEncoder::call_cif(&tagged, &cif, middle::CodePtr(ret_i32 as *mut c_void), &[]).unwrap();
+        assert!(matches!(result, ffi::FfiValue::I32(-32)));
+    });
 }
 
 #[test]
 fn tagged_raw_ptr_codec() {
-    common::ensure_gtk_init();
-    let tagged = enum_tagged();
-    let mut slot: i64 = 0;
-    let ptr = &mut slot as *mut i64 as *mut c_void;
-    RawPtrCodec::write_value_to_raw_ptr(&tagged, ptr, &Value::Number(2.0)).unwrap();
-    let read = RawPtrCodec::read_from_raw_ptr(&tagged, ptr as *const c_void, "c").unwrap();
-    assert!(matches!(read, Value::Number(n) if n == 2.0));
-    RawPtrCodec::write_return_to_raw_ptr(&tagged, ptr, &Ok(Value::Number(4.0)));
-    let from_ptr = RawPtrCodec::ptr_to_value(&tagged, 3 as *mut c_void, "c").unwrap();
-    assert!(matches!(from_ptr, Value::Number(n) if n == 3.0));
+    common::run(|| {
+        let tagged = common::enum_tagged();
+        let mut slot: i64 = 0;
+        let ptr = &mut slot as *mut i64 as *mut c_void;
+        RawPtrCodec::write_value_to_raw_ptr(&tagged, ptr, &Value::Number(2.0)).unwrap();
+        let read = RawPtrCodec::read_from_raw_ptr(&tagged, ptr as *const c_void, "c").unwrap();
+        assert!(matches!(read, Value::Number(n) if n == 2.0));
+        RawPtrCodec::write_return_to_raw_ptr(&tagged, ptr, &Ok(Value::Number(4.0)));
+        let from_ptr = RawPtrCodec::ptr_to_value(&tagged, 3 as *mut c_void, "c").unwrap();
+        assert!(matches!(from_ptr, Value::Number(n) if n == 3.0));
+    });
 }
 
 #[test]
 fn tagged_glib_value_round_trips_enum_and_flags() {
-    common::ensure_gtk_init();
-    let enum_tagged = enum_tagged();
-    let enum_gvalue = GlibValueCodec::to_glib_value(&enum_tagged, &Value::Number(1.0))
-        .unwrap()
-        .expect("enum tagged produces a glib value");
-    let enum_decoded = GlibValueCodec::from_glib_value(&enum_tagged, &enum_gvalue).unwrap();
-    assert!(matches!(enum_decoded, Value::Number(n) if n == 1.0));
-    assert!(
-        GlibValueCodec::to_glib_value(&enum_tagged, &Value::Boolean(true))
+    common::run(|| {
+        let enum_tagged = common::enum_tagged();
+        let enum_gvalue = GlibValueCodec::to_glib_value(&enum_tagged, &Value::Number(1.0))
             .unwrap()
-            .is_none()
-    );
+            .expect("enum tagged produces a glib value");
+        let enum_decoded = GlibValueCodec::from_glib_value(&enum_tagged, &enum_gvalue).unwrap();
+        assert!(matches!(enum_decoded, Value::Number(n) if n == 1.0));
+        assert!(
+            GlibValueCodec::to_glib_value(&enum_tagged, &Value::Boolean(true))
+                .unwrap()
+                .is_none()
+        );
 
-    let flags_tagged = flags_tagged();
-    let flags_gvalue = GlibValueCodec::to_glib_value(&flags_tagged, &Value::Number(1.0))
-        .unwrap()
-        .expect("flags tagged produces a glib value");
-    let flags_decoded = GlibValueCodec::from_glib_value(&flags_tagged, &flags_gvalue).unwrap();
-    assert!(matches!(flags_decoded, Value::Number(n) if n == 1.0));
+        let flags_tagged = common::flags_tagged();
+        let flags_gvalue = GlibValueCodec::to_glib_value(&flags_tagged, &Value::Number(1.0))
+            .unwrap()
+            .expect("flags tagged produces a glib value");
+        let flags_decoded = GlibValueCodec::from_glib_value(&flags_tagged, &flags_gvalue).unwrap();
+        assert!(matches!(flags_decoded, Value::Number(n) if n == 1.0));
+    });
 }
 
 #[test]
 fn tagged_type_appears_in_type_enum() {
-    let ty = Type::Tagged(enum_tagged());
+    let ty = Type::Tagged(common::enum_tagged());
     assert!(ty.can_be_return_type());
 }
 
@@ -601,63 +589,65 @@ fn integer_dispatch_methods_cover_every_kind() {
 
 #[test]
 fn integer_codec_covers_every_kind() {
-    common::ensure_gtk_init();
-    for kind in INTEGER_KINDS {
-        kind.checked_to_ffi_value(1.0).unwrap();
-        assert!(matches!(
-            kind.ptr_to_value_raw(4 as *mut c_void),
-            Value::Number(_)
-        ));
+    common::run(|| {
+        for kind in INTEGER_KINDS {
+            kind.checked_to_ffi_value(1.0).unwrap();
+            assert!(matches!(
+                kind.ptr_to_value_raw(4 as *mut c_void),
+                Value::Number(_)
+            ));
 
-        let encoded = FfiEncoder::encode(&kind, &Value::Number(1.0), false).unwrap();
-        FfiDecoder::decode(&kind, &encoded).unwrap();
+            let encoded = FfiEncoder::encode(&kind, &Value::Number(1.0), false).unwrap();
+            FfiDecoder::decode(&kind, &encoded).unwrap();
 
-        let gvalue = GlibValueCodec::to_glib_value(&kind, &Value::Number(1.0))
-            .unwrap()
-            .expect("integer kind yields a glib value");
-        GlibValueCodec::from_glib_value(&kind, &gvalue).unwrap();
+            let gvalue = GlibValueCodec::to_glib_value(&kind, &Value::Number(1.0))
+                .unwrap()
+                .expect("integer kind yields a glib value");
+            GlibValueCodec::from_glib_value(&kind, &gvalue).unwrap();
 
-        let wrong = glib::Value::from("not a number");
-        assert!(GlibValueCodec::from_glib_value(&kind, &wrong).is_err());
+            let wrong = glib::Value::from("not a number");
+            assert!(GlibValueCodec::from_glib_value(&kind, &wrong).is_err());
 
-        let mut slot = [0u8; 8];
-        let ptr = slot.as_mut_ptr().cast::<c_void>();
-        RawPtrCodec::write_value_to_raw_ptr(&kind, ptr, &Value::Number(2.0)).unwrap();
-        RawPtrCodec::read_from_raw_ptr(&kind, ptr.cast_const(), "c").unwrap();
-        RawPtrCodec::write_return_to_raw_ptr(&kind, ptr, &Ok(Value::Number(1.0)));
-        RawPtrCodec::ptr_to_value(&kind, std::ptr::dangling_mut::<c_void>(), "c").unwrap();
-    }
+            let mut slot = [0u8; 8];
+            let ptr = slot.as_mut_ptr().cast::<c_void>();
+            RawPtrCodec::write_value_to_raw_ptr(&kind, ptr, &Value::Number(2.0)).unwrap();
+            RawPtrCodec::read_from_raw_ptr(&kind, ptr.cast_const(), "c").unwrap();
+            RawPtrCodec::write_return_to_raw_ptr(&kind, ptr, &Ok(Value::Number(1.0)));
+            RawPtrCodec::ptr_to_value(&kind, std::ptr::dangling_mut::<c_void>(), "c").unwrap();
+        }
+    });
 }
 
 #[test]
 fn float_codec_covers_every_kind() {
-    common::ensure_gtk_init();
-    for kind in [FloatKind::F32, FloatKind::F64] {
-        let _ = kind.ffi_type();
-        let mut slot = [0u8; 8];
-        kind.write_ptr(slot.as_mut_ptr(), 1.5);
-        let _ = kind.read_ptr(slot.as_ptr());
-        let _ = kind.to_ffi_value(1.5);
-        kind.checked_to_ffi_value(1.5).unwrap();
-        assert!(matches!(
-            kind.ptr_to_value_raw(std::ptr::null_mut()),
-            Value::Number(_)
-        ));
+    common::run(|| {
+        for kind in [FloatKind::F32, FloatKind::F64] {
+            let _ = kind.ffi_type();
+            let mut slot = [0u8; 8];
+            kind.write_ptr(slot.as_mut_ptr(), 1.5);
+            let _ = kind.read_ptr(slot.as_ptr());
+            let _ = kind.to_ffi_value(1.5);
+            kind.checked_to_ffi_value(1.5).unwrap();
+            assert!(matches!(
+                kind.ptr_to_value_raw(std::ptr::null_mut()),
+                Value::Number(_)
+            ));
 
-        let encoded = FfiEncoder::encode(&kind, &Value::Number(1.0), false).unwrap();
-        FfiDecoder::decode(&kind, &encoded).unwrap();
+            let encoded = FfiEncoder::encode(&kind, &Value::Number(1.0), false).unwrap();
+            FfiDecoder::decode(&kind, &encoded).unwrap();
 
-        let gvalue = GlibValueCodec::to_glib_value(&kind, &Value::Number(1.0))
-            .unwrap()
-            .expect("float kind yields a glib value");
-        GlibValueCodec::from_glib_value(&kind, &gvalue).unwrap();
-        let wrong = glib::Value::from("not a number");
-        assert!(GlibValueCodec::from_glib_value(&kind, &wrong).is_err());
+            let gvalue = GlibValueCodec::to_glib_value(&kind, &Value::Number(1.0))
+                .unwrap()
+                .expect("float kind yields a glib value");
+            GlibValueCodec::from_glib_value(&kind, &gvalue).unwrap();
+            let wrong = glib::Value::from("not a number");
+            assert!(GlibValueCodec::from_glib_value(&kind, &wrong).is_err());
 
-        let ptr = slot.as_mut_ptr().cast::<c_void>();
-        RawPtrCodec::write_value_to_raw_ptr(&kind, ptr, &Value::Number(2.0)).unwrap();
-        RawPtrCodec::read_from_raw_ptr(&kind, ptr.cast_const(), "c").unwrap();
-        RawPtrCodec::write_return_to_raw_ptr(&kind, ptr, &Ok(Value::Number(1.0)));
-        RawPtrCodec::ptr_to_value(&kind, std::ptr::null_mut(), "c").unwrap();
-    }
+            let ptr = slot.as_mut_ptr().cast::<c_void>();
+            RawPtrCodec::write_value_to_raw_ptr(&kind, ptr, &Value::Number(2.0)).unwrap();
+            RawPtrCodec::read_from_raw_ptr(&kind, ptr.cast_const(), "c").unwrap();
+            RawPtrCodec::write_return_to_raw_ptr(&kind, ptr, &Ok(Value::Number(1.0)));
+            RawPtrCodec::ptr_to_value(&kind, std::ptr::null_mut(), "c").unwrap();
+        }
+    });
 }

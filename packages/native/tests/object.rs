@@ -58,15 +58,15 @@ fn handles_for_distinct_objects_have_distinct_pointers() {
 
 #[test]
 fn boxed_handle_stores_and_retrieves() {
-    common::ensure_gtk_init();
+    common::run(|| {
+        let gtype = gdk::RGBA::static_type();
+        let ptr = common::allocate_test_boxed(gtype);
+        let boxed = Boxed::from_glib_full(Some(gtype), ptr);
+        let object = NativeValue::Boxed(boxed);
+        let handle: NativeHandle = object.into();
 
-    let gtype = gdk::RGBA::static_type();
-    let ptr = common::allocate_test_boxed(gtype);
-    let boxed = Boxed::from_glib_full(Some(gtype), ptr);
-    let object = NativeValue::Boxed(boxed);
-    let handle: NativeHandle = object.into();
-
-    assert_eq!(handle.ptr(), ptr);
+        assert_eq!(handle.ptr(), ptr);
+    });
 }
 
 #[test]
@@ -101,25 +101,25 @@ fn object_gobject_clone_shares_reference() {
 
 #[test]
 fn object_boxed_clone_creates_copy() {
-    common::ensure_gtk_init();
+    common::run(|| {
+        let gtype = gdk::RGBA::static_type();
+        let ptr = common::allocate_test_boxed(gtype);
+        let boxed = Boxed::from_glib_full(Some(gtype), ptr);
+        let object = NativeValue::Boxed(boxed);
+        let cloned = object.clone();
 
-    let gtype = gdk::RGBA::static_type();
-    let ptr = common::allocate_test_boxed(gtype);
-    let boxed = Boxed::from_glib_full(Some(gtype), ptr);
-    let object = NativeValue::Boxed(boxed);
-    let cloned = object.clone();
+        let ptr1 = match &object {
+            NativeValue::Boxed(b) => b.as_ptr(),
+            _ => panic!("Expected Boxed"),
+        };
 
-    let ptr1 = match &object {
-        NativeValue::Boxed(b) => b.as_ptr(),
-        _ => panic!("Expected Boxed"),
-    };
+        let ptr2 = match &cloned {
+            NativeValue::Boxed(b) => b.as_ptr(),
+            _ => panic!("Expected Boxed"),
+        };
 
-    let ptr2 = match &cloned {
-        NativeValue::Boxed(b) => b.as_ptr(),
-        _ => panic!("Expected Boxed"),
-    };
-
-    assert_ne!(ptr1, ptr2);
+        assert_ne!(ptr1, ptr2);
+    });
 }
 
 #[test]

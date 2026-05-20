@@ -83,10 +83,11 @@ fn write_return_to_raw_ptr_is_a_no_op() {
 
 #[test]
 fn from_glib_value_yields_null() {
-    common::ensure_gtk_init();
-    let gvalue = gtk4::glib::Value::from(5_i32);
-    let decoded = GlibValueCodec::from_glib_value(&VoidType, &gvalue).unwrap();
-    assert!(matches!(decoded, Value::Null));
+    common::run(|| {
+        let gvalue = gtk4::glib::Value::from(5_i32);
+        let decoded = GlibValueCodec::from_glib_value(&VoidType, &gvalue).unwrap();
+        assert!(matches!(decoded, Value::Null));
+    });
 }
 
 #[test]

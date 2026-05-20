@@ -125,26 +125,27 @@ fn write_value_to_raw_ptr_writes_boolean_and_rejects_other() {
 
 #[test]
 fn glib_value_round_trips_and_rejects_other() {
-    common::ensure_gtk_init();
-
-    let gvalue = GlibValueCodec::to_glib_value(&BooleanType, &Value::Boolean(true))
-        .unwrap()
-        .expect("boolean produces a glib value");
-    let decoded = GlibValueCodec::from_glib_value(&BooleanType, &gvalue).unwrap();
-    assert!(matches!(decoded, Value::Boolean(true)));
-
-    assert!(
-        GlibValueCodec::to_glib_value(&BooleanType, &Value::Number(1.0))
+    common::run(|| {
+        let gvalue = GlibValueCodec::to_glib_value(&BooleanType, &Value::Boolean(true))
             .unwrap()
-            .is_none()
-    );
+            .expect("boolean produces a glib value");
+        let decoded = GlibValueCodec::from_glib_value(&BooleanType, &gvalue).unwrap();
+        assert!(matches!(decoded, Value::Boolean(true)));
+
+        assert!(
+            GlibValueCodec::to_glib_value(&BooleanType, &Value::Number(1.0))
+                .unwrap()
+                .is_none()
+        );
+    });
 }
 
 #[test]
 fn from_glib_value_rejects_non_boolean() {
-    common::ensure_gtk_init();
-    let int_value = gtk4::glib::Value::from(7_i32);
-    assert!(GlibValueCodec::from_glib_value(&BooleanType, &int_value).is_err());
+    common::run(|| {
+        let int_value = gtk4::glib::Value::from(7_i32);
+        assert!(GlibValueCodec::from_glib_value(&BooleanType, &int_value).is_err());
+    });
 }
 
 #[test]

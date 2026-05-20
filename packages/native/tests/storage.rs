@@ -102,30 +102,30 @@ fn unit_storage_does_not_unref_closure() {
 
 #[test]
 fn hashtable_storage_unrefs_on_drop() {
-    common::ensure_gtk_init();
+    common::run(|| {
+        let hash_table = unsafe {
+            glib::ffi::g_hash_table_new_full(
+                Some(glib::ffi::g_direct_hash),
+                Some(glib::ffi::g_direct_equal),
+                None,
+                None,
+            )
+        };
 
-    let hash_table = unsafe {
-        glib::ffi::g_hash_table_new_full(
-            Some(glib::ffi::g_direct_hash),
-            Some(glib::ffi::g_direct_equal),
-            None,
-            None,
-        )
-    };
+        unsafe { glib::ffi::g_hash_table_ref(hash_table) };
 
-    unsafe { glib::ffi::g_hash_table_ref(hash_table) };
+        {
+            let _storage = FfiStorage::new(
+                hash_table as *mut c_void,
+                FfiStorageKind::HashTable(HashTableData {
+                    handle: hash_table,
+                    should_free: true,
+                }),
+            );
+        }
 
-    {
-        let _storage = FfiStorage::new(
-            hash_table as *mut c_void,
-            FfiStorageKind::HashTable(HashTableData {
-                handle: hash_table,
-                should_free: true,
-            }),
-        );
-    }
-
-    unsafe { glib::ffi::g_hash_table_unref(hash_table) };
+        unsafe { glib::ffi::g_hash_table_unref(hash_table) };
+    });
 }
 
 #[test]
@@ -334,41 +334,43 @@ fn drop_no_op_kinds_do_not_crash() {
 
 #[test]
 fn glist_storage_frees_when_should_free() {
-    common::ensure_gtk_init();
-    let list = unsafe {
-        glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1))
-    };
-    {
-        let _storage = FfiStorage::new(
-            list as *mut c_void,
-            FfiStorageKind::GList(GListData {
-                handles: Vec::new(),
-                list_ptr: list,
-                should_free: true,
-            }),
-        );
-    }
+    common::run(|| {
+        let list = unsafe {
+            glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1))
+        };
+        {
+            let _storage = FfiStorage::new(
+                list as *mut c_void,
+                FfiStorageKind::GList(GListData {
+                    handles: Vec::new(),
+                    list_ptr: list,
+                    should_free: true,
+                }),
+            );
+        }
+    });
 }
 
 #[test]
 fn glist_storage_keeps_when_not_freed() {
-    common::ensure_gtk_init();
-    let list = unsafe {
-        glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1))
-    };
-    {
-        let _storage = FfiStorage::new(
-            list as *mut c_void,
-            FfiStorageKind::GList(GListData {
-                handles: Vec::new(),
-                list_ptr: list,
-                should_free: false,
-            }),
-        );
-    }
-    let len = unsafe { glib::ffi::g_list_length(list) };
-    assert_eq!(len, 1);
-    unsafe { glib::ffi::g_list_free(list) };
+    common::run(|| {
+        let list = unsafe {
+            glib::ffi::g_list_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1))
+        };
+        {
+            let _storage = FfiStorage::new(
+                list as *mut c_void,
+                FfiStorageKind::GList(GListData {
+                    handles: Vec::new(),
+                    list_ptr: list,
+                    should_free: false,
+                }),
+            );
+        }
+        let len = unsafe { glib::ffi::g_list_length(list) };
+        assert_eq!(len, 1);
+        unsafe { glib::ffi::g_list_free(list) };
+    });
 }
 
 #[test]
@@ -385,39 +387,41 @@ fn glist_storage_null_ptr_safe_on_drop() {
 
 #[test]
 fn gslist_storage_frees_when_should_free() {
-    common::ensure_gtk_init();
-    let list = unsafe {
-        glib::ffi::g_slist_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1))
-    };
-    {
-        let _storage = FfiStorage::new(
-            list as *mut c_void,
-            FfiStorageKind::GSList(GSListData {
-                handles: Vec::new(),
-                list_ptr: list,
-                should_free: true,
-            }),
-        );
-    }
+    common::run(|| {
+        let list = unsafe {
+            glib::ffi::g_slist_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1))
+        };
+        {
+            let _storage = FfiStorage::new(
+                list as *mut c_void,
+                FfiStorageKind::GSList(GSListData {
+                    handles: Vec::new(),
+                    list_ptr: list,
+                    should_free: true,
+                }),
+            );
+        }
+    });
 }
 
 #[test]
 fn gslist_storage_keeps_when_not_freed() {
-    common::ensure_gtk_init();
-    let list = unsafe {
-        glib::ffi::g_slist_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1))
-    };
-    {
-        let _storage = FfiStorage::new(
-            list as *mut c_void,
-            FfiStorageKind::GSList(GSListData {
-                handles: Vec::new(),
-                list_ptr: list,
-                should_free: false,
-            }),
-        );
-    }
-    unsafe { glib::ffi::g_slist_free(list) };
+    common::run(|| {
+        let list = unsafe {
+            glib::ffi::g_slist_append(std::ptr::null_mut(), std::ptr::without_provenance_mut(1))
+        };
+        {
+            let _storage = FfiStorage::new(
+                list as *mut c_void,
+                FfiStorageKind::GSList(GSListData {
+                    handles: Vec::new(),
+                    list_ptr: list,
+                    should_free: false,
+                }),
+            );
+        }
+        unsafe { glib::ffi::g_slist_free(list) };
+    });
 }
 
 #[test]
@@ -434,33 +438,35 @@ fn gslist_storage_null_ptr_safe_on_drop() {
 
 #[test]
 fn garray_storage_unrefs_when_should_free() {
-    common::ensure_gtk_init();
-    let array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
-    {
-        let _storage = FfiStorage::new(
-            array as *mut c_void,
-            FfiStorageKind::GArray(GArrayData {
-                array_ptr: array,
-                should_free: true,
-            }),
-        );
-    }
+    common::run(|| {
+        let array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
+        {
+            let _storage = FfiStorage::new(
+                array as *mut c_void,
+                FfiStorageKind::GArray(GArrayData {
+                    array_ptr: array,
+                    should_free: true,
+                }),
+            );
+        }
+    });
 }
 
 #[test]
 fn garray_storage_keeps_when_not_freed() {
-    common::ensure_gtk_init();
-    let array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
-    {
-        let _storage = FfiStorage::new(
-            array as *mut c_void,
-            FfiStorageKind::GArray(GArrayData {
-                array_ptr: array,
-                should_free: false,
-            }),
-        );
-    }
-    unsafe { glib::ffi::g_array_unref(array) };
+    common::run(|| {
+        let array = unsafe { glib::ffi::g_array_sized_new(0, 0, size_of::<i32>() as u32, 0) };
+        {
+            let _storage = FfiStorage::new(
+                array as *mut c_void,
+                FfiStorageKind::GArray(GArrayData {
+                    array_ptr: array,
+                    should_free: false,
+                }),
+            );
+        }
+        unsafe { glib::ffi::g_array_unref(array) };
+    });
 }
 
 #[test]
@@ -476,33 +482,35 @@ fn garray_storage_null_ptr_safe_on_drop() {
 
 #[test]
 fn gbytearray_storage_unrefs_when_should_free() {
-    common::ensure_gtk_init();
-    let array = unsafe { glib::ffi::g_byte_array_sized_new(0) };
-    {
-        let _storage = FfiStorage::new(
-            array as *mut c_void,
-            FfiStorageKind::GByteArray(GByteArrayData {
-                array_ptr: array,
-                should_free: true,
-            }),
-        );
-    }
+    common::run(|| {
+        let array = unsafe { glib::ffi::g_byte_array_sized_new(0) };
+        {
+            let _storage = FfiStorage::new(
+                array as *mut c_void,
+                FfiStorageKind::GByteArray(GByteArrayData {
+                    array_ptr: array,
+                    should_free: true,
+                }),
+            );
+        }
+    });
 }
 
 #[test]
 fn gbytearray_storage_keeps_when_not_freed() {
-    common::ensure_gtk_init();
-    let array = unsafe { glib::ffi::g_byte_array_sized_new(0) };
-    {
-        let _storage = FfiStorage::new(
-            array as *mut c_void,
-            FfiStorageKind::GByteArray(GByteArrayData {
-                array_ptr: array,
-                should_free: false,
-            }),
-        );
-    }
-    unsafe { glib::ffi::g_byte_array_unref(array) };
+    common::run(|| {
+        let array = unsafe { glib::ffi::g_byte_array_sized_new(0) };
+        {
+            let _storage = FfiStorage::new(
+                array as *mut c_void,
+                FfiStorageKind::GByteArray(GByteArrayData {
+                    array_ptr: array,
+                    should_free: false,
+                }),
+            );
+        }
+        unsafe { glib::ffi::g_byte_array_unref(array) };
+    });
 }
 
 #[test]
@@ -518,25 +526,26 @@ fn gbytearray_storage_null_ptr_safe_on_drop() {
 
 #[test]
 fn hashtable_storage_keeps_when_not_freed() {
-    common::ensure_gtk_init();
-    let hash_table = unsafe {
-        glib::ffi::g_hash_table_new_full(
-            Some(glib::ffi::g_direct_hash),
-            Some(glib::ffi::g_direct_equal),
-            None,
-            None,
-        )
-    };
-    {
-        let _storage = FfiStorage::new(
-            hash_table as *mut c_void,
-            FfiStorageKind::HashTable(HashTableData {
-                handle: hash_table,
-                should_free: false,
-            }),
-        );
-    }
-    unsafe { glib::ffi::g_hash_table_unref(hash_table) };
+    common::run(|| {
+        let hash_table = unsafe {
+            glib::ffi::g_hash_table_new_full(
+                Some(glib::ffi::g_direct_hash),
+                Some(glib::ffi::g_direct_equal),
+                None,
+                None,
+            )
+        };
+        {
+            let _storage = FfiStorage::new(
+                hash_table as *mut c_void,
+                FfiStorageKind::HashTable(HashTableData {
+                    handle: hash_table,
+                    should_free: false,
+                }),
+            );
+        }
+        unsafe { glib::ffi::g_hash_table_unref(hash_table) };
+    });
 }
 
 fn build_string_glist(strings: &[CString], dup: bool) -> *mut glib::ffi::GList {
@@ -554,57 +563,60 @@ fn build_string_glist(strings: &[CString], dup: bool) -> *mut glib::ffi::GList {
 
 #[test]
 fn string_glist_storage_frees_duped_elements() {
-    common::ensure_gtk_init();
-    let strings = vec![CString::new("a").unwrap(), CString::new("b").unwrap()];
-    let list = build_string_glist(&strings, true);
-    {
-        let _storage = FfiStorage::new(
-            list as *mut c_void,
-            FfiStorageKind::StringGList(StringGListData {
-                strings,
-                list_ptr: list,
-                should_free: true,
-                elements_duped: true,
-            }),
-        );
-    }
+    common::run(|| {
+        let strings = vec![CString::new("a").unwrap(), CString::new("b").unwrap()];
+        let list = build_string_glist(&strings, true);
+        {
+            let _storage = FfiStorage::new(
+                list as *mut c_void,
+                FfiStorageKind::StringGList(StringGListData {
+                    strings,
+                    list_ptr: list,
+                    should_free: true,
+                    elements_duped: true,
+                }),
+            );
+        }
+    });
 }
 
 #[test]
 fn string_glist_storage_frees_shallow_when_not_duped() {
-    common::ensure_gtk_init();
-    let strings = vec![CString::new("a").unwrap()];
-    let list = build_string_glist(&strings, false);
-    {
-        let _storage = FfiStorage::new(
-            list as *mut c_void,
-            FfiStorageKind::StringGList(StringGListData {
-                strings,
-                list_ptr: list,
-                should_free: true,
-                elements_duped: false,
-            }),
-        );
-    }
+    common::run(|| {
+        let strings = vec![CString::new("a").unwrap()];
+        let list = build_string_glist(&strings, false);
+        {
+            let _storage = FfiStorage::new(
+                list as *mut c_void,
+                FfiStorageKind::StringGList(StringGListData {
+                    strings,
+                    list_ptr: list,
+                    should_free: true,
+                    elements_duped: false,
+                }),
+            );
+        }
+    });
 }
 
 #[test]
 fn string_glist_storage_keeps_when_not_freed() {
-    common::ensure_gtk_init();
-    let strings = vec![CString::new("a").unwrap()];
-    let list = build_string_glist(&strings, false);
-    {
-        let _storage = FfiStorage::new(
-            list as *mut c_void,
-            FfiStorageKind::StringGList(StringGListData {
-                strings,
-                list_ptr: list,
-                should_free: false,
-                elements_duped: false,
-            }),
-        );
-    }
-    unsafe { glib::ffi::g_list_free(list) };
+    common::run(|| {
+        let strings = vec![CString::new("a").unwrap()];
+        let list = build_string_glist(&strings, false);
+        {
+            let _storage = FfiStorage::new(
+                list as *mut c_void,
+                FfiStorageKind::StringGList(StringGListData {
+                    strings,
+                    list_ptr: list,
+                    should_free: false,
+                    elements_duped: false,
+                }),
+            );
+        }
+        unsafe { glib::ffi::g_list_free(list) };
+    });
 }
 
 #[test]
@@ -635,57 +647,60 @@ fn build_string_gslist(strings: &[CString], dup: bool) -> *mut glib::ffi::GSList
 
 #[test]
 fn string_gslist_storage_frees_duped_elements() {
-    common::ensure_gtk_init();
-    let strings = vec![CString::new("a").unwrap(), CString::new("b").unwrap()];
-    let list = build_string_gslist(&strings, true);
-    {
-        let _storage = FfiStorage::new(
-            list as *mut c_void,
-            FfiStorageKind::StringGSList(StringGSListData {
-                strings,
-                list_ptr: list,
-                should_free: true,
-                elements_duped: true,
-            }),
-        );
-    }
+    common::run(|| {
+        let strings = vec![CString::new("a").unwrap(), CString::new("b").unwrap()];
+        let list = build_string_gslist(&strings, true);
+        {
+            let _storage = FfiStorage::new(
+                list as *mut c_void,
+                FfiStorageKind::StringGSList(StringGSListData {
+                    strings,
+                    list_ptr: list,
+                    should_free: true,
+                    elements_duped: true,
+                }),
+            );
+        }
+    });
 }
 
 #[test]
 fn string_gslist_storage_frees_shallow_when_not_duped() {
-    common::ensure_gtk_init();
-    let strings = vec![CString::new("a").unwrap()];
-    let list = build_string_gslist(&strings, false);
-    {
-        let _storage = FfiStorage::new(
-            list as *mut c_void,
-            FfiStorageKind::StringGSList(StringGSListData {
-                strings,
-                list_ptr: list,
-                should_free: true,
-                elements_duped: false,
-            }),
-        );
-    }
+    common::run(|| {
+        let strings = vec![CString::new("a").unwrap()];
+        let list = build_string_gslist(&strings, false);
+        {
+            let _storage = FfiStorage::new(
+                list as *mut c_void,
+                FfiStorageKind::StringGSList(StringGSListData {
+                    strings,
+                    list_ptr: list,
+                    should_free: true,
+                    elements_duped: false,
+                }),
+            );
+        }
+    });
 }
 
 #[test]
 fn string_gslist_storage_keeps_when_not_freed() {
-    common::ensure_gtk_init();
-    let strings = vec![CString::new("a").unwrap()];
-    let list = build_string_gslist(&strings, false);
-    {
-        let _storage = FfiStorage::new(
-            list as *mut c_void,
-            FfiStorageKind::StringGSList(StringGSListData {
-                strings,
-                list_ptr: list,
-                should_free: false,
-                elements_duped: false,
-            }),
-        );
-    }
-    unsafe { glib::ffi::g_slist_free(list) };
+    common::run(|| {
+        let strings = vec![CString::new("a").unwrap()];
+        let list = build_string_gslist(&strings, false);
+        {
+            let _storage = FfiStorage::new(
+                list as *mut c_void,
+                FfiStorageKind::StringGSList(StringGSListData {
+                    strings,
+                    list_ptr: list,
+                    should_free: false,
+                    elements_duped: false,
+                }),
+            );
+        }
+        unsafe { glib::ffi::g_slist_free(list) };
+    });
 }
 
 #[test]

@@ -72,83 +72,83 @@ fn trampoline_type_debug_and_clone() {
 
 #[test]
 fn call_cif_rejects_trampoline_as_return_type() {
-    common::ensure_gtk_init();
+    common::run(|| {
+        let cif = libffi::Cif::new(std::iter::empty(), libffi::Type::void());
+        let code_ptr = libffi::CodePtr(std::ptr::null_mut());
 
-    let cif = libffi::Cif::new(std::iter::empty(), libffi::Type::void());
-    let code_ptr = libffi::CodePtr(std::ptr::null_mut());
-
-    let result = trampoline_type(false).call_cif(&cif, code_ptr, &[]);
-    assert!(result.is_err());
-    assert!(
-        result
-            .unwrap_err()
-            .to_string()
-            .contains("Trampolines cannot be return types")
-    );
+        let result = trampoline_type(false).call_cif(&cif, code_ptr, &[]);
+        assert!(result.is_err());
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Trampolines cannot be return types")
+        );
+    });
 }
 
 #[test]
 fn append_ffi_arg_types_without_destroy_pushes_two_pointers() {
-    common::ensure_gtk_init();
-
-    let mut types: Vec<libffi::Type> = Vec::new();
-    trampoline_type(false).append_ffi_arg_types(&mut types);
-    assert_eq!(types.len(), 2);
+    common::run(|| {
+        let mut types: Vec<libffi::Type> = Vec::new();
+        trampoline_type(false).append_ffi_arg_types(&mut types);
+        assert_eq!(types.len(), 2);
+    });
 }
 
 #[test]
 fn append_ffi_arg_types_with_destroy_pushes_three_pointers() {
-    common::ensure_gtk_init();
-
-    let mut types: Vec<libffi::Type> = Vec::new();
-    trampoline_type(true).append_ffi_arg_types(&mut types);
-    assert_eq!(types.len(), 3);
+    common::run(|| {
+        let mut types: Vec<libffi::Type> = Vec::new();
+        trampoline_type(true).append_ffi_arg_types(&mut types);
+        assert_eq!(types.len(), 3);
+    });
 }
 
 #[test]
 fn encode_null_optional_without_destroy_builds_trampoline() {
-    common::ensure_gtk_init();
-
-    let encoded = trampoline_type(false)
-        .encode(&Value::Null, true)
-        .expect("optional null encode should succeed");
-    let ffi::FfiValue::Trampoline(tv) = encoded else {
-        panic!("expected Trampoline ffi value");
-    };
-    assert!(tv.fn_ptr().is_null());
-    assert!(tv.state_ptr().is_null());
-    assert!(tv.destroy_ptr().is_none());
+    common::run(|| {
+        let encoded = trampoline_type(false)
+            .encode(&Value::Null, true)
+            .expect("optional null encode should succeed");
+        let ffi::FfiValue::Trampoline(tv) = encoded else {
+            panic!("expected Trampoline ffi value");
+        };
+        assert!(tv.fn_ptr().is_null());
+        assert!(tv.state_ptr().is_null());
+        assert!(tv.destroy_ptr().is_none());
+    });
 }
 
 #[test]
 fn encode_null_optional_with_destroy_builds_trampoline_with_destroy_slot() {
-    common::ensure_gtk_init();
-
-    let encoded = trampoline_type(true)
-        .encode(&Value::Undefined, true)
-        .expect("optional undefined encode should succeed");
-    let ffi::FfiValue::Trampoline(tv) = encoded else {
-        panic!("expected Trampoline ffi value");
-    };
-    assert!(tv.fn_ptr().is_null());
-    assert!(tv.state_ptr().is_null());
-    assert_eq!(tv.destroy_ptr(), Some(std::ptr::null_mut()));
+    common::run(|| {
+        let encoded = trampoline_type(true)
+            .encode(&Value::Undefined, true)
+            .expect("optional undefined encode should succeed");
+        let ffi::FfiValue::Trampoline(tv) = encoded else {
+            panic!("expected Trampoline ffi value");
+        };
+        assert!(tv.fn_ptr().is_null());
+        assert!(tv.state_ptr().is_null());
+        assert_eq!(tv.destroy_ptr(), Some(std::ptr::null_mut()));
+    });
 }
 
 #[test]
 fn encode_rejects_non_callback() {
-    common::ensure_gtk_init();
-
-    assert!(
-        trampoline_type(false)
-            .encode(&Value::Number(1.0), true)
-            .is_err()
-    );
+    common::run(|| {
+        assert!(
+            trampoline_type(false)
+                .encode(&Value::Number(1.0), true)
+                .is_err()
+        );
+    });
 }
 
 #[test]
 fn encode_rejects_null_when_not_optional() {
-    common::ensure_gtk_init();
-
-    assert!(trampoline_type(false).encode(&Value::Null, false).is_err());
+    common::run(|| {
+        assert!(trampoline_type(false).encode(&Value::Null, false).is_err());
+    });
 }
