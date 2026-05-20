@@ -42,7 +42,7 @@ jobs:
       - name: Run tests
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm install --frozen-lockfile && pnpm turbo build --filter=@gtkx/vitest && pnpm test
+          command: pnpm install --frozen-lockfile && pnpm build && pnpm test
           cache-cargo: "true"
           cache-pnpm: "true"
 

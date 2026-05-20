@@ -38,7 +38,7 @@ jobs:
       - name: Generate coverage
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm install --frozen-lockfile && pnpm coverage
+          command: pnpm install --frozen-lockfile && pnpm build && pnpm coverage
           cache-cargo: "true"
           cache-pnpm: "true"
 
