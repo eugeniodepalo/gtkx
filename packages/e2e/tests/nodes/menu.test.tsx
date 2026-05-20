@@ -9,6 +9,8 @@ const MenuItem = "MenuItem" as const;
 const MenuSection = "MenuSection" as const;
 const MenuSubmenu = "MenuSubmenu" as const;
 
+const noop = () => {};
+
 const itemLabel = (model: Gio.MenuModel, index: number): string | null => {
     const variant = model.getItemAttributeValue(index, Gio.MENU_ATTRIBUTE_LABEL, null);
     if (!variant) return null;
@@ -42,7 +44,7 @@ const renderPopoverMenu = async (children: ReactNode): Promise<Gio.MenuModel> =>
 describe("render - Menu (1)", () => {
     describe("GtkPopoverMenu", () => {
         it("creates PopoverMenu widget", async () => {
-            const model = await renderPopoverMenu(<MenuItem id="item1" label="Item 1" onActivate={() => {}} />);
+            const model = await renderPopoverMenu(<MenuItem id="item1" label="Item 1" onActivate={noop} />);
 
             expect(model.getNItems()).toBe(1);
             expect(itemLabel(model, 0)).toBe("Item 1");
@@ -55,7 +57,7 @@ describe("render - Menu (1)", () => {
                 return (
                     <GtkPopoverMenu ref={ref}>
                         {items.map((label, i) => (
-                            <MenuItem key={label} id={`item${i}`} label={label} onActivate={() => {}} />
+                            <MenuItem key={label} id={`item${i}`} label={label} onActivate={noop} />
                         ))}
                     </GtkPopoverMenu>
                 );
@@ -81,7 +83,7 @@ describe("render - Menu (2)", () => {
             await render(
                 <GtkPopoverMenuBar ref={ref}>
                     <MenuSubmenu label="File">
-                        <MenuItem id="new" label="New" onActivate={() => {}} />
+                        <MenuItem id="new" label="New" onActivate={noop} />
                     </MenuSubmenu>
                 </GtkPopoverMenuBar>,
             );
@@ -100,7 +102,7 @@ describe("render - Menu (2)", () => {
 describe("render - Menu (3)", () => {
     describe("Menu.Item (1)", () => {
         it("adds menu item with label", async () => {
-            const model = await renderPopoverMenu(<MenuItem id="test" label="Test Item" onActivate={() => {}} />);
+            const model = await renderPopoverMenu(<MenuItem id="test" label="Test Item" onActivate={noop} />);
 
             expect(model.getNItems()).toBe(1);
             expect(itemLabel(model, 0)).toBe("Test Item");
@@ -108,7 +110,7 @@ describe("render - Menu (3)", () => {
 
         it("sets keyboard accelerators via accels prop", async () => {
             const model = await renderPopoverMenu(
-                <MenuItem id="save" label="Save" accels="<Control>s" onActivate={() => {}} />,
+                <MenuItem id="save" label="Save" accels="<Control>s" onActivate={noop} />,
             );
 
             expect(model.getNItems()).toBe(1);
@@ -121,7 +123,7 @@ describe("render - Menu (3)", () => {
             function App({ label }: { label: string }) {
                 return (
                     <GtkPopoverMenu ref={ref}>
-                        <MenuItem id="item" label={label} onActivate={() => {}} />
+                        <MenuItem id="item" label={label} onActivate={noop} />
                     </GtkPopoverMenu>
                 );
             }
@@ -143,7 +145,7 @@ describe("render - Menu (4)", () => {
             function App({ showItem }: { showItem: boolean }) {
                 return (
                     <GtkPopoverMenu ref={ref}>
-                        {showItem && <MenuItem id="removable" label="Removable" onActivate={() => {}} />}
+                        {showItem && <MenuItem id="removable" label="Removable" onActivate={noop} />}
                     </GtkPopoverMenu>
                 );
             }
@@ -162,8 +164,8 @@ describe("render - Menu (5)", () => {
         it("creates menu section", async () => {
             const model = await renderPopoverMenu(
                 <MenuSection>
-                    <MenuItem id="section1" label="Section Item 1" onActivate={() => {}} />
-                    <MenuItem id="section2" label="Section Item 2" onActivate={() => {}} />
+                    <MenuItem id="section1" label="Section Item 1" onActivate={noop} />
+                    <MenuItem id="section2" label="Section Item 2" onActivate={noop} />
                 </MenuSection>,
             );
 
@@ -179,10 +181,10 @@ describe("render - Menu (5)", () => {
             const model = await renderPopoverMenu(
                 <>
                     <MenuSection>
-                        <MenuItem id="itemA" label="Item A" onActivate={() => {}} />
+                        <MenuItem id="itemA" label="Item A" onActivate={noop} />
                     </MenuSection>
                     <MenuSection>
-                        <MenuItem id="itemB" label="Item B" onActivate={() => {}} />
+                        <MenuItem id="itemB" label="Item B" onActivate={noop} />
                     </MenuSection>
                 </>,
             );
@@ -198,7 +200,7 @@ describe("render - Menu (5)", () => {
         it("sets section label", async () => {
             const model = await renderPopoverMenu(
                 <MenuSection label="Section Title">
-                    <MenuItem id="item" label="Item" onActivate={() => {}} />
+                    <MenuItem id="item" label="Item" onActivate={noop} />
                 </MenuSection>,
             );
 
@@ -213,8 +215,8 @@ describe("render - Menu (6)", () => {
         it("creates submenu", async () => {
             const model = await renderPopoverMenu(
                 <MenuSubmenu label="File">
-                    <MenuItem id="new" label="New" onActivate={() => {}} />
-                    <MenuItem id="open" label="Open" onActivate={() => {}} />
+                    <MenuItem id="new" label="New" onActivate={noop} />
+                    <MenuItem id="open" label="Open" onActivate={noop} />
                 </MenuSubmenu>,
             );
 
@@ -230,9 +232,9 @@ describe("render - Menu (6)", () => {
         it("adds items within submenu", async () => {
             const model = await renderPopoverMenu(
                 <MenuSubmenu label="Edit">
-                    <MenuItem id="cut" label="Cut" onActivate={() => {}} />
-                    <MenuItem id="copy" label="Copy" onActivate={() => {}} />
-                    <MenuItem id="paste" label="Paste" onActivate={() => {}} />
+                    <MenuItem id="cut" label="Cut" onActivate={noop} />
+                    <MenuItem id="copy" label="Copy" onActivate={noop} />
+                    <MenuItem id="paste" label="Paste" onActivate={noop} />
                 </MenuSubmenu>,
             );
 
@@ -243,7 +245,7 @@ describe("render - Menu (6)", () => {
         it("sets submenu label", async () => {
             const model = await renderPopoverMenu(
                 <MenuSubmenu label="Help">
-                    <MenuItem id="about" label="About" onActivate={() => {}} />
+                    <MenuItem id="about" label="About" onActivate={noop} />
                 </MenuSubmenu>,
             );
 
@@ -259,8 +261,8 @@ describe("render - Menu (7)", () => {
             const model = await renderPopoverMenu(
                 <MenuSubmenu label="File">
                     <MenuSubmenu label="Recent">
-                        <MenuItem id="file1" label="File 1" onActivate={() => {}} />
-                        <MenuItem id="file2" label="File 2" onActivate={() => {}} />
+                        <MenuItem id="file1" label="File 1" onActivate={noop} />
+                        <MenuItem id="file2" label="File 2" onActivate={noop} />
                     </MenuSubmenu>
                 </MenuSubmenu>,
             );
