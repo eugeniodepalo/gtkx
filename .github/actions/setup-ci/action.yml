@@ -1,0 +1,27 @@
+name: Setup CI
+description: Pull the CI image, compute Turbo env vars, and (optionally) restore the cargo and pnpm caches. Composes the smaller setup composites so individual jobs don't repeat the boilerplate.
+
+inputs:
+  cargo:
+    description: Restore the cargo registry + git cache
+    default: "true"
+  pnpm:
+    description: Restore the pnpm store cache
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Pull CI image
+      uses: ./.github/actions/pull-image
+
+    - name: Compute turbo env
+      uses: ./.github/actions/compute-turbo-env
+
+    - name: Setup cargo cache
+      if: inputs.cargo == 'true'
+      uses: ./.github/actions/setup-cargo-cache
+
+    - name: Setup pnpm cache
+      if: inputs.pnpm == 'true'
+      uses: ./.github/actions/setup-pnpm-cache

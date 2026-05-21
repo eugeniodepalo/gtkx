@@ -14,6 +14,7 @@ concurrency:
 
 permissions:
   contents: read
+  packages: read
 
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
@@ -22,78 +23,107 @@ env:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
 
       - name: Lint
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm install --frozen-lockfile && pnpm lint
-          cache-cargo: "true"
-          cache-pnpm: "true"
+          command: pnpm lint
+          mount-cargo-cache: "true"
+          mount-pnpm-store: "true"
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
 
       - name: Run tests
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm install --frozen-lockfile && pnpm build && pnpm test
-          cache-cargo: "true"
-          cache-pnpm: "true"
+          command: pnpm build && pnpm test
+          mount-cargo-cache: "true"
+          mount-pnpm-store: "true"
 
   typecheck:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
 
       - name: Typecheck
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm install --frozen-lockfile && pnpm typecheck
-          cache-cargo: "true"
-          cache-pnpm: "true"
+          command: pnpm typecheck
+          mount-cargo-cache: "true"
+          mount-pnpm-store: "true"
 
   conformance:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
 
       - name: Conformance
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm install --frozen-lockfile && pnpm conformance
-          cache-cargo: "true"
-          cache-pnpm: "true"
+          command: pnpm conformance
+          mount-cargo-cache: "true"
+          mount-pnpm-store: "true"
 
   docs:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NODE_OPTIONS: --max-old-space-size=8192
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
 
       - name: Build docs
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm install --frozen-lockfile && pnpm run docs
-          cache-cargo: "true"
-          cache-pnpm: "true"
-          extra-env: -e NODE_OPTIONS="--max-old-space-size=8192"
+          command: pnpm run docs
+          mount-cargo-cache: "true"
+          mount-pnpm-store: "true"
+          extra-env: NODE_OPTIONS
 
   native-coverage:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
+        with:
+          pnpm: "false"
 
       - name: Native test coverage
         uses: ./.github/actions/run-in-container
         with:
           command: cd packages/native && pnpm native-coverage
-          cache-cargo: "true"
+          install: "false"
+          mount-cargo-cache: "true"

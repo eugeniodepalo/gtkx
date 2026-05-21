@@ -1,7 +1,5 @@
 FROM fedora:44
 
-RUN echo "keepcache=1" >> /etc/dnf/dnf.conf
-
 RUN dnf install -y \
     gcc \
     gcc-c++ \
@@ -34,7 +32,7 @@ RUN curl -fsSL https://rpm.nodesource.com/setup_26.x | bash - \
     && dnf install -y nodejs \
     && dnf clean all
 
-RUN npm install -g corepack && corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@latest --activate
 
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV CARGO_HOME=/usr/local/cargo
@@ -48,8 +46,6 @@ RUN /usr/local/cargo/bin/rustup toolchain install nightly --profile minimal --co
 
 RUN /usr/local/cargo/bin/cargo install cargo-llvm-cov --locked \
     && chmod -R a+rwX $CARGO_HOME
-
-RUN npm install -g turbo@2.9.14
 
 RUN find /usr/share/vulkan/icd.d -type f -name '*.json' ! -name 'lvp_icd*' -delete
 

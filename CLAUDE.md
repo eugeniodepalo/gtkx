@@ -69,7 +69,8 @@ Run codegen with: `turbo codegen`
 
 **IMPORTANT:** Do NOT run `turbo test` at the root level - it will run recursively and cause issues. Instead:
 
-- Run all tests: `pnpm test` (at root level)
+- Run all tests: `pnpm test` (at root level — Turbo per-package with caching)
+- Run all tests in one vitest process: `pnpm test:all` (multi-project vitest, no Turbo cache)
 - Run specific package tests: `turbo test --filter=<package-name>`
 - Run lint: `pnpm lint` (at root level)
 - Run specific package lint: `turbo lint --filter<package-name>`

@@ -1,0 +1,18 @@
+name: Setup pnpm Cache
+description: Cache the pnpm store directory for the CI container.
+
+runs:
+  using: composite
+  steps:
+    - name: Create pnpm store directory
+      shell: bash
+      run: |
+        mkdir -p "$HOME/.local/share/pnpm/store"
+
+    - name: Restore pnpm store cache
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: ~/.local/share/pnpm/store
+        key: pnpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: |
+          pnpm-${{ runner.os }}-${{ runner.arch }}-

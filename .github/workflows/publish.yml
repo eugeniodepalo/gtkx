@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
@@ -16,6 +17,7 @@ jobs:
   build-native:
     permissions:
       contents: read
+      packages: read
     strategy:
       matrix:
         include:
@@ -24,19 +26,23 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
 
       - name: Build native binary
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm install --frozen-lockfile && pnpm --filter @gtkx/native native-build
-          cache-cargo: "true"
-          cache-pnpm: "true"
+          command: pnpm --filter @gtkx/native native-build
+          mount-cargo-cache: "true"
+          mount-pnpm-store: "true"
 
       - name: Upload native binary
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: native-linux-${{ matrix.arch }}-gnu
           path: packages/native/native.linux-${{ matrix.arch }}-gnu.node
@@ -44,21 +50,28 @@ jobs:
   publish:
     needs: build-native
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
+      packages: read
       id-token: write
+    env:
+      NPM_CONFIG_PROVENANCE: "true"
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup CI
+        uses: ./.github/actions/setup-ci
 
       - name: Download x64 binary
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: native-linux-x64-gnu
           path: packages/native
 
       - name: Download arm64 binary
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: native-linux-arm64-gnu
           path: packages/native
@@ -66,7 +79,7 @@ jobs:
       - name: Build and publish
         uses: ./.github/actions/run-in-container
         with:
-          command: pnpm install --frozen-lockfile && pnpm build && pnpm --filter @gtkx/native create-npm-dirs && pnpm --filter @gtkx/native artifacts && pnpm -r publish --access public --no-git-checks
-          cache-cargo: "true"
-          cache-pnpm: "true"
-          extra-env: -e NPM_CONFIG_PROVENANCE=true
+          command: pnpm build && pnpm --filter @gtkx/native create-npm-dirs && pnpm --filter @gtkx/native artifacts && pnpm -r publish --access public --no-git-checks
+          mount-cargo-cache: "true"
+          mount-pnpm-store: "true"
+          extra-env: NPM_CONFIG_PROVENANCE

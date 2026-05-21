@@ -1,0 +1,20 @@
+name: Setup Cargo Cache
+description: Cache the cargo registry and git directories for the CI container.
+
+runs:
+  using: composite
+  steps:
+    - name: Create cargo cache directories
+      shell: bash
+      run: |
+        mkdir -p "$HOME/.cargo/registry" "$HOME/.cargo/git"
+
+    - name: Restore cargo cache
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/native/Cargo.lock') }}
+        restore-keys: |
+          cargo-${{ runner.os }}-${{ runner.arch }}-
