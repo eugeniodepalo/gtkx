@@ -32,7 +32,7 @@ RUN curl -fsSL https://rpm.nodesource.com/setup_26.x | bash - \
     && dnf install -y nodejs \
     && dnf clean all
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN npm install -g corepack && corepack enable && corepack prepare pnpm@latest --activate
 
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV CARGO_HOME=/usr/local/cargo
